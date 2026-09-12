@@ -19,7 +19,7 @@
  */
 
 @theme inline {
-  --font-sans: var(--font-sans);
+  --font-sans: var(--app-font-sans);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -68,7 +68,7 @@
 
 :root {
   --radius: 0.625rem;
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --app-font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --background: oklch(0.985 0.005 210);
   --foreground: oklch(0.24 0.03 240);
   --card: oklch(1 0 0);
