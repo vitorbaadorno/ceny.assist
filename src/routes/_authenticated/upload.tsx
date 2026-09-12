@@ -53,7 +53,7 @@ function UploadPage() {
         const path = `${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
         const { error: uploadError } = await supabase.storage
           .from("resumes")
-          .upload(path, file, { contentType: file.type || undefined });
+          .upload(path, file, { contentType: file.type || "application/octet-stream" });
         if (uploadError) throw new Error(uploadError.message);
 
         const { data: candidate, error: insertError } = await supabase
