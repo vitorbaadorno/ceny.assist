@@ -1,17 +1,30 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { rankJobCandidates } from "@/lib/scoring.functions";
+import { archiveJob } from "@/lib/records.functions";
 import type { MatchDetails } from "@/lib/scoring";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Trash2 } from "lucide-react";
+import { CityAutocomplete } from "@/components/city-autocomplete";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/vagas/$id")({
   head: () => ({
@@ -37,7 +50,9 @@ export const Route = createFileRoute("/_authenticated/vagas/$id")({
 function JobDetail() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const rank = useServerFn(rankJobCandidates);
+  const archive = useServerFn(archiveJob);
   const [localFilter, setLocalFilter] = useState("");
   const [minExp, setMinExp] = useState("");
 
@@ -72,6 +87,16 @@ function JobDetail() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const removeJob = useMutation({
+    mutationFn: async () => archive({ data: { jobId: id } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Vaga excluída.");
+      navigate({ to: "/vagas" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const filtered = useMemo(() => {
     return scores.filter((row) => {
       const candidate = row.candidates;
@@ -98,10 +123,35 @@ function JobDetail() {
           <h1 className="text-2xl font-semibold tracking-tight">{job?.titulo ?? "Vaga"}</h1>
           <p className="max-w-2xl text-sm text-muted-foreground">{job?.descricao}</p>
         </div>
-        <Button onClick={() => recalc.mutate()} disabled={recalc.isPending}>
-          <Sparkles className="size-4" />
-          {recalc.isPending ? "Calculando..." : "Calcular aderência"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => recalc.mutate()} disabled={recalc.isPending}>
+            <Sparkles className="size-4" />
+            {recalc.isPending ? "Calculando..." : "Calcular aderência"}
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive"><Trash2 className="size-4" /> Excluir vaga</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir vaga?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir? Essa ação não pode ser desfeita. Os candidatos serão mantidos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => removeJob.mutate()}
+                  disabled={removeJob.isPending}
+                >
+                  Excluir vaga
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </header>
 
       <Card>
@@ -109,6 +159,10 @@ function JobDetail() {
           <CardTitle className="text-base">Requisitos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
+          <p>
+            <span className="font-medium">Categoria:</span>{" "}
+            {job?.categoria === "jovem_aprendiz" ? "Jovem Aprendiz (14 a 24 anos)" : "Vaga regular"}
+          </p>
           <p>
             <span className="font-medium">Obrigatórios:</span>{" "}
             {(job?.requisitos_obrigatorios ?? []).join(", ") || "—"}
@@ -126,12 +180,13 @@ function JobDetail() {
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Filtrar por localização"
-          value={localFilter}
-          onChange={(e) => setLocalFilter(e.target.value)}
-          className="max-w-xs"
-        />
+        <div className="w-full max-w-xs">
+          <CityAutocomplete
+            value={localFilter}
+            onChange={setLocalFilter}
+            placeholder="Filtrar por cidade"
+          />
+        </div>
         <Input
           type="number"
           min={0}

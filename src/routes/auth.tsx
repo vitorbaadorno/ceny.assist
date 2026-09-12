@@ -32,7 +32,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nome, setNome] = useState("");
@@ -49,7 +49,13 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
+      if (mode === "recovery") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.");
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -100,11 +106,15 @@ function AuthPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{mode === "signin" ? "Entrar" : "Criar conta"}</CardTitle>
+            <CardTitle>
+              {mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Recuperar senha"}
+            </CardTitle>
             <CardDescription>
               {mode === "signin"
                 ? "Use seu e-mail corporativo para acessar o sistema."
-                : "Cadastre um novo usuário da equipe de RH."}
+                : mode === "signup"
+                  ? "Cadastre um novo usuário da equipe de RH."
+                  : "Informe seu e-mail para receber o link de redefinição."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -125,38 +135,62 @@ function AuthPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+              {mode !== "recovery" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <Label htmlFor="password">Senha</Label>
+                    {mode === "signin" && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setMode("recovery")}
+                      >
+                        Esqueci minha senha
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? "Aguarde..." : mode === "signin" ? "Entrar" : "Criar conta"}
+                {busy
+                  ? "Aguarde..."
+                  : mode === "signin"
+                    ? "Entrar"
+                    : mode === "signup"
+                      ? "Criar conta"
+                      : "Enviar link"}
               </Button>
             </form>
 
-            <div className="relative py-1 text-center text-xs text-muted-foreground">
-              <span className="bg-card px-2">ou</span>
-              <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
-            </div>
+            {mode !== "recovery" && (
+              <>
+                <div className="relative py-1 text-center text-xs text-muted-foreground">
+                  <span className="bg-card px-2">ou</span>
+                  <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
+                </div>
+                <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
+                  Continuar com Google
+                </Button>
+              </>
+            )}
 
-            <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
-              Continuar com Google
-            </Button>
-
-            <button
+            <Button
               type="button"
-              className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+              variant="link"
+              className="w-full text-muted-foreground"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
-              {mode === "signin" ? "Não tem conta? Criar acesso" : "Já tem conta? Entrar"}
-            </button>
+              {mode === "signin" ? "Não tem conta? Criar acesso" : "Voltar para entrar"}
+            </Button>
           </CardContent>
         </Card>
       </div>

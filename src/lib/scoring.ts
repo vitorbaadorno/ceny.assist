@@ -20,6 +20,7 @@ export type CandidateForScore = {
   localizacao?: string | null;
   anos_experiencia?: number | null;
   dados_extraidos?: unknown;
+  data_nascimento?: string | null;
 };
 
 export type JobForScore = {
@@ -28,6 +29,7 @@ export type JobForScore = {
   experiencia_minima?: number | null;
   formacao_exigida?: string | null;
   localizacao?: string | null;
+  categoria?: string | null;
 };
 
 function candidateHaystack(candidate: CandidateForScore) {

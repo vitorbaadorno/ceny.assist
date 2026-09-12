@@ -67,7 +67,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           dados_extraidos: Json
+          data_nascimento: string | null
           email: string | null
+          excluido: boolean
+          excluido_em: string | null
           id: string
           localizacao: string | null
           nome: string | null
@@ -86,7 +89,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dados_extraidos?: Json
+          data_nascimento?: string | null
           email?: string | null
+          excluido?: boolean
+          excluido_em?: string | null
           id?: string
           localizacao?: string | null
           nome?: string | null
@@ -105,7 +111,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dados_extraidos?: Json
+          data_nascimento?: string | null
           email?: string | null
+          excluido?: boolean
+          excluido_em?: string | null
           id?: string
           localizacao?: string | null
           nome?: string | null
@@ -165,9 +174,12 @@ export type Database = {
       }
       jobs: {
         Row: {
+          categoria: string
           created_at: string
           created_by: string | null
           descricao: string | null
+          excluido: boolean
+          excluido_em: string | null
           experiencia_minima: number
           formacao_exigida: string | null
           id: string
@@ -179,9 +191,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          categoria?: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          excluido?: boolean
+          excluido_em?: string | null
           experiencia_minima?: number
           formacao_exigida?: string | null
           id?: string
@@ -193,9 +208,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          categoria?: string
           created_at?: string
           created_by?: string | null
           descricao?: string | null
+          excluido?: boolean
+          excluido_em?: string | null
           experiencia_minima?: number
           formacao_exigida?: string | null
           id?: string

@@ -1,13 +1,19 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getResumeUrl, processResume } from "@/lib/resumes.functions";
+import { archiveCandidate } from "@/lib/records.functions";
+import { calculateAge, isYoungApprenticeEligible } from "@/lib/age";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CityAutocomplete } from "@/components/city-autocomplete";
 import {
   Select,
   SelectContent,
@@ -15,7 +21,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, FileDown, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileDown, RefreshCw, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { STATUS_FUNIL, processingLabel } from "./index";
 
 export const Route = createFileRoute("/_authenticated/candidatos/$id")({
@@ -45,8 +62,11 @@ type Formacao = { curso?: string; instituicao?: string; nivel?: string; periodo?
 function CandidateDetail() {
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const signUrl = useServerFn(getResumeUrl);
   const reprocess = useServerFn(processResume);
+  const archive = useServerFn(archiveCandidate);
+  const [city, setCity] = useState("");
 
   const { data: candidate, isLoading } = useQuery({
     queryKey: ["candidate", id],
@@ -57,8 +77,12 @@ function CandidateDetail() {
     },
   });
 
+  useEffect(() => {
+    if (candidate) setCity(candidate.localizacao ?? "");
+  }, [candidate]);
+
   const updateCandidate = useMutation({
-    mutationFn: async (patch: { status?: string; observacoes?: string }) => {
+    mutationFn: async (patch: { status?: string; observacoes?: string; localizacao?: string | null; data_nascimento?: string | null }) => {
       const { error } = await supabase.from("candidates").update(patch).eq("id", id);
       if (error) throw error;
     },
@@ -79,6 +103,16 @@ function CandidateDetail() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const removeCandidate = useMutation({
+    mutationFn: async () => archive({ data: { candidateId: id } }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["candidates"] });
+      toast.success("Currículo excluído.");
+      navigate({ to: "/" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (isLoading || !candidate) {
     return <p className="text-sm text-muted-foreground">Carregando candidato...</p>;
   }
@@ -91,6 +125,8 @@ function CandidateDetail() {
     campos_incertos?: string[];
   };
   const processing = processingLabel(candidate.processing_status);
+  const age = calculateAge(candidate.data_nascimento);
+  const apprenticeEligible = isYoungApprenticeEligible(candidate.data_nascimento);
 
   async function openResume() {
     if (!candidate?.arquivo_original_path) return;
@@ -130,6 +166,29 @@ function CandidateDetail() {
           >
             <RefreshCw className="size-4" /> {rerun.isPending ? "Lendo..." : "Reprocessar"}
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm"><Trash2 className="size-4" /> Excluir currículo</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir currículo?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tem certeza que deseja excluir? Essa ação não pode ser desfeita.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => removeCandidate.mutate()}
+                  disabled={removeCandidate.isPending}
+                >
+                  Excluir currículo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </header>
 
@@ -175,6 +234,32 @@ function CandidateDetail() {
             <p className="text-xs text-muted-foreground">
               Experiência estimada: {candidate.anos_experiencia ?? 0} ano(s)
             </p>
+            <div className="space-y-2 border-t pt-4">
+              <Label htmlFor="data-nascimento">Data de nascimento</Label>
+              <Input
+                id="data-nascimento"
+                type="date"
+                defaultValue={candidate.data_nascimento ?? ""}
+                onBlur={(event) => {
+                  const value = event.target.value || null;
+                  if (value !== candidate.data_nascimento) updateCandidate.mutate({ data_nascimento: value });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {age === null
+                  ? "Idade não informada — não elegível para vagas de Jovem Aprendiz."
+                  : `${age} anos · ${apprenticeEligible ? "Elegível" : "Não elegível"} para Jovem Aprendiz`}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cidade-candidato">Cidade</Label>
+              <CityAutocomplete
+                id="cidade-candidato"
+                value={city}
+                onChange={setCity}
+                onSelect={(localizacao) => updateCandidate.mutate({ localizacao })}
+              />
+            </div>
           </CardContent>
         </Card>
 
