@@ -9,6 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { CityAutocomplete } from "@/components/city-autocomplete";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/vagas/")({
@@ -41,6 +49,7 @@ const splitList = (value: string) =>
 function JobsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("todas");
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",
@@ -49,6 +58,7 @@ function JobsPage() {
     experiencia: "0",
     formacao: "",
     localizacao: "",
+    categoria: "regular",
   });
 
   const { data: jobs = [], isLoading } = useQuery({
@@ -73,6 +83,7 @@ function JobsPage() {
         experiencia_minima: Number(form.experiencia) || 0,
         formacao_exigida: form.formacao || null,
         localizacao: form.localizacao || null,
+        categoria: form.categoria,
       });
       if (error) throw error;
     },
@@ -87,6 +98,7 @@ function JobsPage() {
         experiencia: "0",
         formacao: "",
         localizacao: "",
+        categoria: "regular",
       });
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
@@ -106,6 +118,24 @@ function JobsPage() {
           <Plus className="size-4" /> Nova vaga
         </Button>
       </header>
+
+      <div className="flex flex-wrap gap-2" aria-label="Filtrar vagas por categoria">
+        {[
+          ["todas", "Todas"],
+          ["regular", "Vagas regulares"],
+          ["jovem_aprendiz", "Jovem Aprendiz"],
+        ].map(([value, label]) => (
+          <Button
+            key={value}
+            type="button"
+            size="sm"
+            variant={categoryFilter === value ? "default" : "outline"}
+            onClick={() => setCategoryFilter(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
 
       {open && (
         <Card>
@@ -129,6 +159,19 @@ function JobsPage() {
                   value={form.titulo}
                   onChange={(e) => setForm({ ...form, titulo: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="categoria">Categoria</Label>
+                <Select
+                  value={form.categoria}
+                  onValueChange={(categoria) => setForm({ ...form, categoria })}
+                >
+                  <SelectTrigger id="categoria"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="regular">Vaga regular</SelectItem>
+                    <SelectItem value="jovem_aprendiz">Jovem Aprendiz</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="descricao">Descrição</Label>
@@ -179,10 +222,10 @@ function JobsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="localizacao">Localização</Label>
-                <Input
+                <CityAutocomplete
                   id="localizacao"
                   value={form.localizacao}
-                  onChange={(e) => setForm({ ...form, localizacao: e.target.value })}
+                  onChange={(localizacao) => setForm({ ...form, localizacao })}
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -208,7 +251,7 @@ function JobsPage() {
         </Card>
       ) : (
         <div className="grid gap-3">
-          {jobs.map((job) => (
+          {jobs.filter((job) => categoryFilter === "todas" || job.categoria === categoryFilter).map((job) => (
             <Link
               key={job.id}
               to="/vagas/$id"
@@ -217,7 +260,12 @@ function JobsPage() {
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-medium">{job.titulo}</p>
-                <Badge variant="secondary">{job.localizacao ?? "Sem local definido"}</Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={job.categoria === "jovem_aprendiz" ? "default" : "outline"}>
+                    {job.categoria === "jovem_aprendiz" ? "Jovem Aprendiz" : "Vaga regular"}
+                  </Badge>
+                  <Badge variant="secondary">{job.localizacao ?? "Sem local definido"}</Badge>
+                </div>
               </div>
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
                 {job.descricao ?? "Sem descrição"}
