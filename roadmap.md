@@ -5,3 +5,4 @@
 - [x] Exclusão lógica de candidatos e vagas
 - [x] Autocomplete de cidades com Google Maps
 - [x] Validar os fluxos principais
+- [ ] Corrigir RLS e validar exclusão lógica de candidatos e vagas
