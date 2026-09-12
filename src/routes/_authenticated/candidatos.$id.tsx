@@ -58,7 +58,7 @@ function CandidateDetail() {
   });
 
   const updateCandidate = useMutation({
-    mutationFn: async (patch: Record<string, unknown>) => {
+    mutationFn: async (patch: { status?: string; observacoes?: string }) => {
       const { error } = await supabase.from("candidates").update(patch).eq("id", id);
       if (error) throw error;
     },
