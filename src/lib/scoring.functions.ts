@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { scoreCandidate } from "@/lib/scoring";
 import type { Json } from "@/integrations/supabase/types";
+import { isYoungApprenticeEligible } from "@/lib/age";
 
 export const rankJobCandidates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -19,11 +20,21 @@ export const rankJobCandidates = createServerFn({ method: "POST" })
 
     const { data: candidates, error: candidatesError } = await supabase
       .from("candidates")
-      .select("id, skills, localizacao, anos_experiencia, dados_extraidos")
+      .select("id, skills, localizacao, anos_experiencia, dados_extraidos, data_nascimento")
       .neq("processing_status", "processando");
     if (candidatesError) throw new Error(candidatesError.message);
 
-    const rows = (candidates ?? []).map((candidate) => {
+    const eligibleCandidates = (candidates ?? []).filter(
+      (candidate) => job.categoria !== "jovem_aprendiz" || isYoungApprenticeEligible(candidate.data_nascimento),
+    );
+
+    const { error: clearError } = await supabase
+      .from("candidate_scores")
+      .delete()
+      .eq("job_id", job.id);
+    if (clearError) throw new Error(clearError.message);
+
+    const rows = eligibleCandidates.map((candidate) => {
       const { score, details } = scoreCandidate(candidate, job);
       return {
         candidate_id: candidate.id,

@@ -11,6 +11,7 @@ const extractionSchema = {
     "nome_completo",
     "email",
     "telefone",
+    "data_nascimento",
     "localizacao",
     "formacao_academica",
     "experiencias",
@@ -25,6 +26,7 @@ const extractionSchema = {
     nome_completo: { type: ["string", "null"] },
     email: { type: ["string", "null"] },
     telefone: { type: ["string", "null"] },
+    data_nascimento: { type: ["string", "null"], description: "Data no formato YYYY-MM-DD" },
     localizacao: { type: ["string", "null"] },
     formacao_academica: {
       type: "array",
@@ -67,6 +69,7 @@ type Extraction = {
   nome_completo: string | null;
   email: string | null;
   telefone: string | null;
+  data_nascimento: string | null;
   localizacao: string | null;
   formacao_academica: unknown[];
   experiencias: unknown[];
@@ -120,7 +123,7 @@ export const processResume = createServerFn({ method: "POST" })
       const parts: InputPart[] = [
         {
           type: "input_text",
-          text: "Extraia os dados estruturados deste currículo. Use null quando a informação não estiver presente. Responda em português.",
+          text: "Extraia os dados estruturados deste currículo. Use null quando a informação não estiver presente. Para data de nascimento, use YYYY-MM-DD. Responda em português.",
         },
         isImage
           ? { type: "input_image", image_url: `data:${mime};base64,${base64}` }
@@ -145,6 +148,7 @@ export const processResume = createServerFn({ method: "POST" })
           nome: extraction.nome_completo ?? candidate.arquivo_nome ?? "Sem nome",
           email: extraction.email,
           telefone: extraction.telefone,
+          data_nascimento: extraction.data_nascimento,
           localizacao: extraction.localizacao,
           skills: extraction.skills ?? [],
           anos_experiencia: extraction.anos_experiencia_total,

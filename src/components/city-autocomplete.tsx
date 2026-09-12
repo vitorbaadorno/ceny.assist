@@ -4,6 +4,7 @@ import { Check, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { resolveCity, suggestCities } from "@/lib/maps.functions";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type Suggestion = { placeId: string; label: string };
@@ -92,18 +93,17 @@ export function CityAutocomplete({
       {open && (
         <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-md border bg-popover shadow-md">
           {suggestions.map((item) => (
-            <button
+            <Button
               key={item.placeId}
               type="button"
-              className={cn(
-                "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-              )}
+              variant="ghost"
+              className={cn("h-auto w-full justify-start rounded-none px-3 py-2 text-left font-normal")}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(item)}
             >
               <Check className="size-4 opacity-40" />
               <span>{item.label}</span>
-            </button>
+            </Button>
           ))}
         </div>
       )}
