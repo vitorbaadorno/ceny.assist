@@ -120,11 +120,11 @@ function JobsPage() {
       </header>
 
       <div className="flex flex-wrap gap-2" aria-label="Filtrar vagas por categoria">
-        {[
+        {([
           ["todas", "Todas"],
           ["regular", "Vagas regulares"],
           ["jovem_aprendiz", "Jovem Aprendiz"],
-        ].map(([value, label]) => (
+        ] as const).map(([value, label]) => (
           <Button
             key={value}
             type="button"
