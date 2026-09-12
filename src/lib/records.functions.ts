@@ -26,10 +26,9 @@ export const archiveCandidate = createServerFn({ method: "POST" })
       .eq("candidate_id", candidate.id);
     if (scoresError) throw new Error(scoresError.message);
 
-    const { error: archiveError } = await context.supabase
-      .from("candidates")
-      .update({ excluido: true, excluido_em: new Date().toISOString(), arquivo_original_path: null })
-      .eq("id", candidate.id);
+    const { error: archiveError } = await context.supabase.rpc("archive_candidate", {
+      p_id: candidate.id,
+    });
     if (archiveError) throw new Error(archiveError.message);
     return { ok: true };
   });
@@ -51,10 +50,9 @@ export const archiveJob = createServerFn({ method: "POST" })
       .eq("job_id", job.id);
     if (scoresError) throw new Error(scoresError.message);
 
-    const { error: archiveError } = await context.supabase
-      .from("jobs")
-      .update({ excluido: true, excluido_em: new Date().toISOString() })
-      .eq("id", job.id);
+    const { error: archiveError } = await context.supabase.rpc("archive_job", {
+      p_id: job.id,
+    });
     if (archiveError) throw new Error(archiveError.message);
     return { ok: true };
   });
