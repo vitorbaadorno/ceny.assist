@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] Recuperação completa de senha
-- [ ] Categoria e elegibilidade de Jovem Aprendiz
-- [ ] Exclusão lógica de candidatos e vagas
-- [ ] Autocomplete de cidades com Google Maps
-- [ ] Validar os fluxos principais
+- [x] Recuperação completa de senha
+- [x] Categoria e elegibilidade de Jovem Aprendiz
+- [x] Exclusão lógica de candidatos e vagas
+- [x] Autocomplete de cidades com Google Maps
+- [x] Validar os fluxos principais
