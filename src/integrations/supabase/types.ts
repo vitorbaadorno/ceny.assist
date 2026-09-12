@@ -14,7 +14,221 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      candidate_scores: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          detalhes_matching: Json
+          id: string
+          job_id: string
+          score: number
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          detalhes_matching?: Json
+          id?: string
+          job_id: string
+          score?: number
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          detalhes_matching?: Json
+          id?: string
+          job_id?: string
+          score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_scores_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_scores_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidates: {
+        Row: {
+          anos_experiencia: number | null
+          arquivo_nome: string | null
+          arquivo_original_path: string | null
+          created_at: string
+          created_by: string | null
+          dados_extraidos: Json
+          email: string | null
+          id: string
+          localizacao: string | null
+          nome: string | null
+          observacoes: string | null
+          processing_error: string | null
+          processing_status: string
+          skills: string[]
+          status: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          anos_experiencia?: number | null
+          arquivo_nome?: string | null
+          arquivo_original_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados_extraidos?: Json
+          email?: string | null
+          id?: string
+          localizacao?: string | null
+          nome?: string | null
+          observacoes?: string | null
+          processing_error?: string | null
+          processing_status?: string
+          skills?: string[]
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anos_experiencia?: number | null
+          arquivo_nome?: string | null
+          arquivo_original_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados_extraidos?: Json
+          email?: string | null
+          id?: string
+          localizacao?: string | null
+          nome?: string | null
+          observacoes?: string | null
+          processing_error?: string | null
+          processing_status?: string
+          skills?: string[]
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_reports: {
+        Row: {
+          conteudo: Json
+          created_at: string
+          created_by: string | null
+          enviado_em: string | null
+          enviado_para: string | null
+          id: string
+          job_id: string
+          pdf_path: string | null
+          resumo: string | null
+        }
+        Insert: {
+          conteudo?: Json
+          created_at?: string
+          created_by?: string | null
+          enviado_em?: string | null
+          enviado_para?: string | null
+          id?: string
+          job_id: string
+          pdf_path?: string | null
+          resumo?: string | null
+        }
+        Update: {
+          conteudo?: Json
+          created_at?: string
+          created_by?: string | null
+          enviado_em?: string | null
+          enviado_para?: string | null
+          id?: string
+          job_id?: string
+          pdf_path?: string | null
+          resumo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_reports_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          experiencia_minima: number
+          formacao_exigida: string | null
+          id: string
+          localizacao: string | null
+          requisitos_desejaveis: string[]
+          requisitos_obrigatorios: string[]
+          status: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          experiencia_minima?: number
+          formacao_exigida?: string | null
+          id?: string
+          localizacao?: string | null
+          requisitos_desejaveis?: string[]
+          requisitos_obrigatorios?: string[]
+          status?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          experiencia_minima?: number
+          formacao_exigida?: string | null
+          id?: string
+          localizacao?: string | null
+          requisitos_desejaveis?: string[]
+          requisitos_obrigatorios?: string[]
+          status?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
