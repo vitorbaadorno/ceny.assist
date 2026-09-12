@@ -141,7 +141,11 @@ function JobDetail() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => removeJob.mutate()} disabled={removeJob.isPending}>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => removeJob.mutate()}
+                  disabled={removeJob.isPending}
+                >
                   Excluir vaga
                 </AlertDialogAction>
               </AlertDialogFooter>

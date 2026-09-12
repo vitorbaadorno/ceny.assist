@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getResumeUrl, processResume } from "@/lib/resumes.functions";
@@ -65,6 +66,7 @@ function CandidateDetail() {
   const signUrl = useServerFn(getResumeUrl);
   const reprocess = useServerFn(processResume);
   const archive = useServerFn(archiveCandidate);
+  const [city, setCity] = useState("");
 
   const { data: candidate, isLoading } = useQuery({
     queryKey: ["candidate", id],
@@ -74,6 +76,10 @@ function CandidateDetail() {
       return data;
     },
   });
+
+  useEffect(() => {
+    if (candidate) setCity(candidate.localizacao ?? "");
+  }, [candidate]);
 
   const updateCandidate = useMutation({
     mutationFn: async (patch: { status?: string; observacoes?: string; localizacao?: string | null; data_nascimento?: string | null }) => {
@@ -173,7 +179,11 @@ function CandidateDetail() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={() => removeCandidate.mutate()} disabled={removeCandidate.isPending}>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => removeCandidate.mutate()}
+                  disabled={removeCandidate.isPending}
+                >
                   Excluir currículo
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -245,8 +255,9 @@ function CandidateDetail() {
               <Label htmlFor="cidade-candidato">Cidade</Label>
               <CityAutocomplete
                 id="cidade-candidato"
-                value={candidate.localizacao ?? ""}
-                onChange={(localizacao) => updateCandidate.mutate({ localizacao: localizacao || null })}
+                value={city}
+                onChange={setCity}
+                onSelect={(localizacao) => updateCandidate.mutate({ localizacao })}
               />
             </div>
           </CardContent>

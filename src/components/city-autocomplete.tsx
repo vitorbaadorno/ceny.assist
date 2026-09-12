@@ -13,11 +13,13 @@ export function CityAutocomplete({
   id,
   value,
   onChange,
+  onSelect,
   placeholder = "Digite uma cidade",
 }: {
   id?: string;
   value: string;
   onChange: (value: string) => void;
+  onSelect?: (value: string) => void;
   placeholder?: string;
 }) {
   const suggest = useServerFn(suggestCities);
@@ -63,6 +65,7 @@ export function CityAutocomplete({
       const result = await resolve({ data: { placeId: item.placeId, sessionToken: token.current } });
       setSelected(true);
       onChange(result.city);
+      onSelect?.(result.city);
       setSuggestions([]);
       setOpen(false);
       token.current = crypto.randomUUID();
