@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAiJson, type InputPart } from "@/lib/ai.server";
+import type { Json } from "@/integrations/supabase/types";
 
 const extractionSchema = {
   type: "object",
@@ -147,7 +148,7 @@ export const processResume = createServerFn({ method: "POST" })
           localizacao: extraction.localizacao,
           skills: extraction.skills ?? [],
           anos_experiencia: extraction.anos_experiencia_total,
-          dados_extraidos: extraction as unknown as Record<string, unknown>,
+          dados_extraidos: extraction as unknown as Json,
           processing_status: needsReview ? "revisao_manual" : "concluido",
           processing_error: null,
         })

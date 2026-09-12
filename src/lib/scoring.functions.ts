@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { scoreCandidate } from "@/lib/scoring";
+import type { Json } from "@/integrations/supabase/types";
 
 export const rankJobCandidates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -28,7 +29,7 @@ export const rankJobCandidates = createServerFn({ method: "POST" })
         candidate_id: candidate.id,
         job_id: job.id,
         score,
-        detalhes_matching: details as unknown as Record<string, unknown>,
+        detalhes_matching: details as unknown as Json,
       };
     });
 
