@@ -1,0 +1,23 @@
+{
+  "project": "wikerxujjvmoksrmjywo",
+  "at": "2026-10-24T01:25:43.368Z",
+  "passed": 15,
+  "tests": [
+    "REST returns only own company",
+    "REST hides guessed foreign UUID",
+    "REST blocks AI output tampering",
+    "REST blocks direct score insertion",
+    "Storage downloads own original",
+    "Storage blocks foreign download",
+    "Storage blocks foreign signed URL",
+    "Storage signs authorized original",
+    "Storage prevents original replacement",
+    "Storage prevents cross-company deletion",
+    "RPC rejects cross-company archive",
+    "Deployed worker rejects foreign company",
+    "Deployed worker rejects forged actor and score input",
+    "Deployed worker ranks authorized company",
+    "Deployed worker rejects anonymous request"
+  ],
+  "ranked": 1
+}

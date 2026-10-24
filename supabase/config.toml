@@ -1,0 +1,14 @@
+project_id = "wikerxujjvmoksrmjywo"
+
+[api]
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[functions.ceny-worker]
+# JWT is verified with auth.getUser in the function, compatible with signing keys.
+verify_jwt = false
