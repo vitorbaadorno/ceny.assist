@@ -51,6 +51,7 @@ function createSupabaseClient() {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
+      detectSessionInUrl: false,
       persistSession: true,
       autoRefreshToken: true,
     },

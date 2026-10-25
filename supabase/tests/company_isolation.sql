@@ -44,7 +44,7 @@ insert into private.legacy_records(source_system,source_table,source_id,payload)
 set local role anon;
 select pg_temp.denied('anonymous candidates','select * from public.candidates');
 select pg_temp.denied('anonymous profiles','select * from public.profiles');
-select pg_temp.denied('anonymous companies','select public.create_company(''Attack'')');
+select pg_temp.denied('anonymous companies','select public.create_company(''Attack'',''Attacker'')');
 select pg_temp.ok('anonymous storage hidden',(select count(*)=0 from storage.objects where bucket_id='resumes'));
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('owner_a'),'role','authenticated')::text,true);
@@ -76,11 +76,19 @@ with changed as(update storage.objects set name='fake' where bucket_id='resumes'
 select pg_temp.ok('original cannot be replaced',(select count(*)=0 from changed));
 select pg_temp.denied('other company object upload',$q$insert into storage.objects(bucket_id,name) values('resumes',pg_temp.id('b')::text || '/' || gen_random_uuid()::text || '/original')$q$);
 select pg_temp.denied('unlinked object upload',$q$insert into storage.objects(bucket_id,name) values('resumes',pg_temp.id('a')::text || '/' || gen_random_uuid()::text || '/original')$q$);
-select public.manage_company_member(pg_temp.id('a'),pg_temp.id('outsider'),'viewer');
-select pg_temp.ok('owner can add member',(select count(*)=1 from public.company_members where user_id=pg_temp.id('outsider')));
+select pg_temp.denied('direct membership bypass denied',$q$select public.manage_company_member(pg_temp.id('a'),pg_temp.id('outsider'),'viewer')$q$);
+select set_config('test.invitation',public.invite_company_member(pg_temp.id('a'),pg_temp.id('outsider')::text||'@isolation-test.invalid','viewer')::text,true);
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('outsider'),'role','authenticated')::text,true);
+set local role authenticated;
+select public.accept_company_invitation(current_setting('test.invitation')::uuid);
+reset role;
+select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('owner_a'),'role','authenticated')::text,true);
+set local role authenticated;
+select pg_temp.ok('accepted invite adds member',(select count(*)=1 from public.company_members where user_id=pg_temp.id('outsider')));
 select public.manage_company_member(pg_temp.id('a'),pg_temp.id('outsider'),null);
 select pg_temp.ok('owner can revoke member',(select count(*)=0 from public.company_members where user_id=pg_temp.id('outsider')));
-select set_config('test.created_company',public.create_company('Test new company')::text,true);
+select set_config('test.created_company',public.create_company('Test new company','Responsible Person')::text,true);
 select pg_temp.ok('company creation gives caller ownership',private.has_role(current_setting('test.created_company')::uuid,array['owner']));
 reset role;
 

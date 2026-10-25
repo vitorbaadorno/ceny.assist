@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { KeyRound } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { PASSWORD_HELP, PASSWORD_MIN_LENGTH, passwordError } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -26,37 +28,18 @@ function ResetPasswordPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
-  const [checking, setChecking] = useState(true);
-  const [validRecovery, setValidRecovery] = useState(false);
+  const { loading: checking, recoverySession: validRecovery, authError, signOut } = useAuth();
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const hashRecovery = new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery";
-    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === "PASSWORD_RECOVERY" || (hashRecovery && session)) setValidRecovery(true);
-      setChecking(false);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setValidRecovery(hashRecovery && Boolean(data.session));
-      setChecking(false);
-    });
-    return () => {
-      active = false;
-      subscription.subscription.unsubscribe();
-    };
-  }, []);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (password !== confirmation) {
-      toast.error("As senhas não coincidem.");
+    const invalid = passwordError(password, confirmation);
+    if (invalid) {
+      toast.error(invalid);
       return;
     }
-    if (password.length < 8) {
-      toast.error("A senha deve ter pelo menos 8 caracteres.");
+    if (!validRecovery) {
+      toast.error("Solicite um novo link de recuperação.");
       return;
     }
     setBusy(true);
@@ -66,9 +49,15 @@ function ResetPasswordPage() {
       setBusy(false);
       return;
     }
-    await supabase.auth.signOut();
-    toast.success("Senha redefinida. Entre com a nova senha.");
-    navigate({ to: "/auth" });
+    try {
+      await signOut();
+      toast.success("Senha redefinida. Entre com a nova senha.");
+      navigate({ to: "/auth" });
+    } catch {
+      /* AuthProvider keeps the data hidden and offers a sign-out retry. */
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -83,14 +72,16 @@ function ResetPasswordPage() {
         <Card>
           <CardHeader>
             <CardTitle>Crie uma nova senha</CardTitle>
-            <CardDescription>Use pelo menos 8 caracteres.</CardDescription>
+            <CardDescription>{PASSWORD_HELP}</CardDescription>
           </CardHeader>
           <CardContent>
             {checking ? (
               <p className="text-sm text-muted-foreground">Validando link...</p>
             ) : !validRecovery ? (
               <div className="space-y-4">
-                <p className="text-sm text-destructive">Este link é inválido ou expirou.</p>
+                <p className="text-sm text-destructive">
+                  {authError ?? "Este link é inválido, já foi utilizado ou expirou."}
+                </p>
                 <Button asChild variant="outline" className="w-full">
                   <Link to="/auth">Solicitar um novo link</Link>
                 </Button>
@@ -99,11 +90,27 @@ function ResetPasswordPage() {
               <form className="space-y-4" onSubmit={submit}>
                 <div className="space-y-2">
                   <Label htmlFor="new-password">Nova senha</Label>
-                  <Input id="new-password" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <Input
+                    id="new-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={PASSWORD_MIN_LENGTH}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirmar nova senha</Label>
-                  <Input id="confirm-password" type="password" minLength={8} value={confirmation} onChange={(e) => setConfirmation(e.target.value)} required />
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={PASSWORD_MIN_LENGTH}
+                    value={confirmation}
+                    onChange={(e) => setConfirmation(e.target.value)}
+                    required
+                  />
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
                   {busy ? "Salvando..." : "Salvar nova senha"}

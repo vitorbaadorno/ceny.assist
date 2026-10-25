@@ -1,0 +1,56 @@
+name: Accounts and company isolation
+on:
+  push:
+    branches: [ceny-versaonova]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Typecheck and unit authorization tests
+        run: |
+          bun run typecheck
+          bun run test
+      - name: Start disposable Supabase and mail catcher
+        run: |
+          mkdir -p artifacts
+          supabase start
+          supabase status -o json > artifacts/local-supabase.json
+      - name: Database isolation and accounts tests
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_isolation.sql > artifacts/company-isolation.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/accounts_permissions.sql > artifacts/accounts-permissions.txt
+      - name: Real signup, confirmation, login, recovery and expired links
+        run: node tests/isolated-auth.mjs
+      - name: Build application
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_PUBLISHABLE_KEY: local-test-placeholder
+        run: bun run build
+      - name: Preserve test results without credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accounts-test-results
+          path: |
+            artifacts/company-isolation.txt
+            artifacts/accounts-permissions.txt
+            artifacts/auth-results.json
+      - name: Stop disposable test environment
+        if: always()
+        run: supabase stop --no-backup

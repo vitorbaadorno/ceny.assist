@@ -160,6 +160,50 @@ export type Database = {
         }
         Relationships: []
       }
+      company_invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          revoked_at: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          revoked_at?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          revoked_at?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_members: {
         Row: {
           company_id: string
@@ -324,6 +368,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_company_invitation: { Args: { p_id: string }; Returns: string }
       archive_candidate: {
         Args: { p_company: string; p_id: string }
         Returns: undefined
@@ -332,11 +377,31 @@ export type Database = {
         Args: { p_company: string; p_id: string }
         Returns: undefined
       }
-      create_company: { Args: { p_name: string }; Returns: string }
+      configure_company_recovery: {
+        Args: { p_company: string; p_email: string }
+        Returns: string
+      }
+      create_company:
+        | { Args: { p_name: string }; Returns: string }
+        | { Args: { p_name: string; p_responsible: string }; Returns: string }
+      invite_company_member: {
+        Args: { p_company: string; p_email: string; p_role: string }
+        Returns: string
+      }
       manage_company_member: {
-        Args: { p_company: string; p_role: string; p_user: string }
+        Args: { p_company: string; p_role: string | null; p_user: string }
         Returns: undefined
       }
+      my_company_invitations: {
+        Args: never
+        Returns: {
+          company_name: string
+          expires_at: string
+          id: string
+          role: string
+        }[]
+      }
+      recover_company_access: { Args: { p_code: string }; Returns: string }
       replace_job_scores: {
         Args: {
           p_actor: string
@@ -346,6 +411,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      revoke_company_invitation: { Args: { p_id: string }; Returns: undefined }
       save_candidate_extraction: {
         Args: {
           p_actor: string
@@ -489,3 +555,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

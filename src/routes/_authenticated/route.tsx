@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Briefcase, LogOut, Upload, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
@@ -34,15 +35,16 @@ function CompanyLayout() {
     selectCompany,
   } = useCompany();
   const [settings, setSettings] = useState(false);
-  const { session, loading, user, signOut } = useAuth();
+  const { session, loading, user, signOut, recoverySession } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
 
   useEffect(() => {
     if (!loading && !session) navigate({ to: "/auth" });
-  }, [loading, session, navigate]);
+    if (!loading && recoverySession) navigate({ to: "/reset-password" });
+  }, [loading, session, navigate, recoverySession]);
 
-  if (loading || !session) {
+  if (loading || !session || recoverySession) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
         Carregando...
@@ -64,8 +66,9 @@ function CompanyLayout() {
             className="block w-full rounded border bg-background text-foreground p-2"
             value={companyId}
             onChange={(e) => {
-              void selectCompany(e.target.value);
-              navigate({ to: "/" });
+              void selectCompany(e.target.value)
+                .then(() => navigate({ to: "/" }))
+                .catch((error) => toast.error(error.message));
             }}
           >
             {!companyId && <option value="">Nenhuma empresa</option>}
@@ -107,8 +110,12 @@ function CompanyLayout() {
             size="sm"
             className="w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             onClick={async () => {
-              await signOut();
-              navigate({ to: "/auth" });
+              try {
+                await signOut();
+                navigate({ to: "/auth" });
+              } catch {
+                /* AuthProvider displays retry and hides company data. */
+              }
             }}
           >
             <LogOut className="size-4" /> Sair

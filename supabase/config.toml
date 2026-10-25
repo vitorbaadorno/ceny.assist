@@ -6,8 +6,28 @@ extra_search_path = ["public", "extensions"]
 max_rows = 1000
 
 [auth]
+site_url = "http://127.0.0.1:8080"
+additional_redirect_urls = ["http://127.0.0.1:8080/auth", "http://127.0.0.1:8080/reset-password", "http://localhost:8080/auth", "http://localhost:8080/reset-password"]
 enable_signup = true
 enable_anonymous_sign_ins = false
+minimum_password_length = 12
+password_requirements = "lower_upper_letters_digits_symbols"
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "1s"
+otp_expiry = 3600
+
+# Disposable CLI/CI mail catcher only; hosted Auth settings are configured separately.
+[auth.rate_limit]
+email_sent = 30
+
+[inbucket]
+enabled = true
+port = 54324
 
 [functions.ceny-worker]
 # JWT is verified with auth.getUser in the function, compatible with signing keys.

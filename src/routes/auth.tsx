@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheck } from "lucide-react";
+import { PASSWORD_HELP, PASSWORD_MIN_LENGTH, passwordError } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -31,24 +32,34 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const [mode, setMode] = useState<"signin" | "signup" | "recovery">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "recovery" | "confirm">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [nome, setNome] = useState("");
   const [busy, setBusy] = useState(false);
-  const { session, loading } = useAuth();
+  const { session, loading, authError, recoverySession } = useAuth();
   const navigate = useNavigate();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && session) navigate({ to: "/" });
-  }, [loading, session, navigate]);
+    if (!loading && session && !authError)
+      navigate({ to: recoverySession ? "/reset-password" : "/" });
+  }, [loading, session, navigate, authError, recoverySession]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === "recovery") {
+      if (mode === "confirm") {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email,
+          options: { emailRedirectTo: `${window.location.origin}/auth` },
+        });
+        if (error) throw error;
+        toast.success("Se houver uma conta pendente, você receberá um novo link de confirmação.");
+      } else if (mode === "recovery") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
@@ -57,16 +68,21 @@ function AuthPage() {
           "Se o e-mail estiver cadastrado, você receberá um link para redefinir a senha.",
         );
       } else if (mode === "signup") {
+        const invalid = passwordError(password, confirmation);
+        if (invalid) throw new Error(invalid);
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: `${window.location.origin}/auth`,
             data: { full_name: nome },
           },
         });
         if (error) throw error;
         toast.success("Conta criada! Verifique seu e-mail para confirmar o acesso.");
+        setPassword("");
+        setConfirmation("");
+        setMode("confirm");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -104,17 +120,30 @@ function AuthPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Recuperar senha"}
+              {mode === "signin"
+                ? "Entrar"
+                : mode === "signup"
+                  ? "Criar conta"
+                  : mode === "confirm"
+                    ? "Confirmar e-mail"
+                    : "Recuperar senha"}
             </CardTitle>
             <CardDescription>
               {mode === "signin"
                 ? "Use seu e-mail corporativo para acessar o sistema."
                 : mode === "signup"
                   ? "Cadastre um novo usuário da equipe de RH."
-                  : "Informe seu e-mail para receber o link de redefinição."}
+                  : mode === "confirm"
+                    ? "Confirme seu e-mail para configurar sua empresa ou aceitar um convite."
+                    : "Informe seu e-mail para receber o link de redefinição."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {authError && (
+              <p role="alert" className="text-sm text-destructive">
+                {authError}
+              </p>
+            )}
             <form className="space-y-4" onSubmit={handleSubmit}>
               {mode === "signup" && (
                 <div className="space-y-2">
@@ -137,7 +166,7 @@ function AuthPage() {
                   required
                 />
               </div>
-              {mode !== "recovery" && (
+              {(mode === "signin" || mode === "signup") && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-3">
                     <Label htmlFor="password">Senha</Label>
@@ -155,25 +184,46 @@ function AuthPage() {
                   <Input
                     id="password"
                     type="password"
-                    minLength={6}
+                    minLength={mode === "signup" ? PASSWORD_MIN_LENGTH : undefined}
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
               )}
-              <Button type="submit" className="w-full" disabled={busy}>
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">{PASSWORD_HELP}</p>
+                  <Label htmlFor="confirmation">Confirmar senha</Label>
+                  <Input
+                    id="confirmation"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmation}
+                    onChange={(e) => setConfirmation(e.target.value)}
+                    required
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Criar uma conta não libera dados de outras empresas. Você precisará de um
+                    convite.
+                  </p>
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={busy || loading}>
                 {busy
                   ? "Aguarde..."
                   : mode === "signin"
                     ? "Entrar"
                     : mode === "signup"
                       ? "Criar conta"
-                      : "Enviar link"}
+                      : mode === "confirm"
+                        ? "Reenviar confirmação"
+                        : "Enviar link"}
               </Button>
             </form>
 
-            {mode !== "recovery" && (
+            {mode === "signin" && (
               <>
                 <div className="relative py-1 text-center text-xs text-muted-foreground">
                   <span className="bg-card px-2">ou</span>
@@ -193,6 +243,16 @@ function AuthPage() {
             >
               {mode === "signin" ? "Não tem conta? Criar acesso" : "Voltar para entrar"}
             </Button>
+            {mode === "signin" && (
+              <Button
+                type="button"
+                variant="link"
+                className="w-full"
+                onClick={() => setMode("confirm")}
+              >
+                Não recebi a confirmação de e-mail
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,0 +1,124 @@
+-- Disposable fixtures, rolled back even on success. Run only in an authorized database.
+begin;
+create temp table account_ids(name text primary key,id uuid default gen_random_uuid());
+insert into account_ids(name) values ('owner'),('admin'),('rh'),('viewer'),('invitee'),('other'),('unconfirmed'),('company');
+grant select on account_ids to authenticated,anon;
+create function pg_temp.id(text) returns uuid language sql as $$ select id from account_ids where name=$1 $$;
+create function pg_temp.email(text) returns text language sql as $$ select pg_temp.id($1)::text||'@accounts-test.invalid' $$;
+create function pg_temp.login(p_name text,p_recent boolean default true) returns void language plpgsql as $$ begin
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',pg_temp.id(p_name),'role','authenticated','amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now() - case when p_recent then interval '1 minute' else interval '1 hour' end))))::text,true);
+end $$;
+create temp table account_results(name text,passed boolean);
+grant insert,select on account_results to authenticated,anon;
+create function pg_temp.ok(p_name text,p_ok boolean) returns void language plpgsql as $$ begin
+  if p_ok is distinct from true then raise exception 'FAILED: %',p_name; end if;
+  insert into account_results values(p_name,true);
+end $$;
+create function pg_temp.denied(p_name text,p_sql text,p_state text default '42501') returns void language plpgsql as $$ begin
+  begin execute p_sql;
+  exception when others then
+    if sqlstate=p_state then insert into account_results values(p_name,true); return; end if;
+    raise;
+  end;
+  raise exception 'FAILED, unexpectedly allowed: %',p_name;
+end $$;
+insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data,aud,role)
+  select id,pg_temp.email(name),case when name='unconfirmed' then null else now() end,'{"full_name":"Account test"}','authenticated','authenticated'
+  from account_ids where name<>'company';
+insert into public.companies(id,name) values(pg_temp.id('company'),'Accounts test company');
+insert into public.company_members(company_id,user_id,role) select pg_temp.id('company'),id,case name when 'rh' then 'recruiter' else name end from account_ids where name in ('owner','admin','rh','viewer');
+
+set local role anon;
+select pg_temp.denied('anonymous cannot enumerate invites','select * from public.my_company_invitations()');
+reset role;
+set local role authenticated;
+select pg_temp.login('unconfirmed');
+select pg_temp.denied('unconfirmed cannot onboard',$q$select public.create_company('Company','Responsible')$q$);
+select pg_temp.login('owner');
+select pg_temp.denied('responsible is mandatory',$q$select public.create_company('Company',' ')$q$,'P0001');
+select pg_temp.denied('old onboarding disabled',$q$select public.create_company('Company')$q$);
+select set_config('test.company',public.create_company('New test company','Responsible Test')::text,true);
+select pg_temp.ok('onboarding gives ownership',private.has_role(current_setting('test.company')::uuid,array['owner']));
+select pg_temp.ok('onboarding saves responsible name',(select full_name='Responsible Test' from public.profiles where id=auth.uid()));
+select pg_temp.denied('new member cannot bypass acceptance',$q$select public.manage_company_member(pg_temp.id('company'),pg_temp.id('invitee'),'admin')$q$);
+select pg_temp.denied('cannot directly insert membership',$q$insert into public.company_members(company_id,user_id,role) values(pg_temp.id('company'),pg_temp.id('invitee'),'admin')$q$);
+select pg_temp.denied('cannot directly write invitations',$q$insert into public.company_invitations(company_id,email,role,invited_by) values(pg_temp.id('company'),'attack@test.invalid','admin',auth.uid())$q$);
+
+select pg_temp.login('viewer');
+select pg_temp.denied('viewer cannot invite',$q$select public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'viewer')$q$);
+select pg_temp.login('rh');
+select pg_temp.denied('RH cannot invite',$q$select public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'viewer')$q$);
+select pg_temp.login('admin');
+select pg_temp.denied('admin cannot appoint admin',$q$select public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'admin')$q$);
+select pg_temp.denied('admin cannot remove owner',$q$select public.manage_company_member(pg_temp.id('company'),pg_temp.id('owner'),null)$q$);
+select set_config('test.invite',public.invite_company_member(pg_temp.id('company'),upper(pg_temp.email('invitee')),'recruiter')::text,true);
+select pg_temp.login('invitee');
+select pg_temp.ok('invite grants no access before acceptance',not private.has_role(pg_temp.id('company')));
+select pg_temp.ok('verified email sees invitation',(select count(*)=1 from public.my_company_invitations()));
+select pg_temp.ok('invitee cannot enumerate other invitations',(select count(*)=0 from public.company_invitations));
+select pg_temp.login('other');
+select pg_temp.ok('wrong email sees no invitations',(select count(*)=0 from public.my_company_invitations()));
+select pg_temp.denied('wrong email cannot accept',$q$select public.accept_company_invitation(current_setting('test.invite')::uuid)$q$);
+select pg_temp.login('invitee');
+select public.accept_company_invitation(current_setting('test.invite')::uuid);
+select pg_temp.ok('acceptance grants only invited role',private.has_role(pg_temp.id('company'),array['recruiter']));
+select pg_temp.denied('invitation cannot be reused',$q$select public.accept_company_invitation(current_setting('test.invite')::uuid)$q$);
+select pg_temp.login('owner');
+select public.manage_company_member(pg_temp.id('company'),pg_temp.id('invitee'),'viewer');
+select pg_temp.login('invitee');
+select pg_temp.ok('role change is immediate',not private.has_role(pg_temp.id('company'),array['recruiter']) and private.has_role(pg_temp.id('company'),array['viewer']));
+select pg_temp.login('owner');
+select public.manage_company_member(pg_temp.id('company'),pg_temp.id('invitee'),null);
+select pg_temp.login('invitee');
+select pg_temp.ok('revocation blocks existing JWT',not private.has_role(pg_temp.id('company')));
+select pg_temp.denied('old accepted invite cannot restore access',$q$select public.accept_company_invitation(current_setting('test.invite')::uuid)$q$);
+
+select pg_temp.login('owner');
+select set_config('test.expired',public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'viewer')::text,true);
+reset role;
+update public.company_invitations set expires_at=now()-interval '1 second' where id=current_setting('test.expired')::uuid;
+set local role authenticated;
+select pg_temp.login('invitee');
+select pg_temp.denied('expired invite rejected',$q$select public.accept_company_invitation(current_setting('test.expired')::uuid)$q$);
+select pg_temp.login('owner');
+select set_config('test.revoked',public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'viewer')::text,true);
+select public.revoke_company_invitation(current_setting('test.revoked')::uuid);
+select pg_temp.login('invitee');
+select pg_temp.denied('revoked invite rejected',$q$select public.accept_company_invitation(current_setting('test.revoked')::uuid)$q$);
+select pg_temp.login('admin');
+select set_config('test.stale_inviter',public.invite_company_member(pg_temp.id('company'),pg_temp.email('invitee'),'viewer')::text,true);
+select pg_temp.login('owner');
+select public.manage_company_member(pg_temp.id('company'),pg_temp.id('admin'),'recruiter');
+select pg_temp.login('invitee');
+select pg_temp.denied('demoted inviter grants no access',$q$select public.accept_company_invitation(current_setting('test.stale_inviter')::uuid)$q$);
+
+select pg_temp.login('owner',false);
+select pg_temp.denied('recovery setup requires recent authentication',$q$select public.configure_company_recovery(pg_temp.id('company'),pg_temp.email('other'))$q$);
+select pg_temp.login('rh');
+select pg_temp.denied('RH cannot configure recovery',$q$select public.configure_company_recovery(pg_temp.id('company'),pg_temp.email('other'))$q$);
+select pg_temp.denied('recovery hashes inaccessible','select * from private.company_recovery');
+select pg_temp.login('owner');
+select set_config('test.old_code',public.configure_company_recovery(pg_temp.id('company'),pg_temp.email('other')),true);
+select set_config('test.code',public.configure_company_recovery(pg_temp.id('company'),pg_temp.email('other')),true);
+select pg_temp.login('other');
+select pg_temp.denied('rotation invalidates prior code',$q$select public.recover_company_access(current_setting('test.old_code'))$q$);
+select pg_temp.login('invitee');
+select pg_temp.denied('code alone without designated email denied',$q$select public.recover_company_access(current_setting('test.code'))$q$);
+select pg_temp.login('other',false);
+select pg_temp.denied('recovery requires recent authentication',$q$select public.recover_company_access(current_setting('test.code'))$q$);
+select pg_temp.login('other');
+select pg_temp.denied('email alone without code denied',$q$select public.recover_company_access(pg_temp.id('company')::text||'.'||repeat('0',64))$q$);
+select public.recover_company_access(current_setting('test.code'));
+select pg_temp.ok('recovery restores owner',private.has_role(pg_temp.id('company'),array['owner']));
+select pg_temp.denied('recovery code single use',$q$select public.recover_company_access(current_setting('test.code'))$q$);
+select pg_temp.login('owner');
+select pg_temp.ok('former owner loses company access',not private.has_role(pg_temp.id('company')));
+select pg_temp.login('other');
+select set_config('test.revoked_code',public.configure_company_recovery(pg_temp.id('company'),pg_temp.email('viewer')),true);
+select public.manage_company_member(pg_temp.id('company'),pg_temp.id('viewer'),null);
+select pg_temp.login('viewer');
+select pg_temp.denied('removed custodian cannot regain access',$q$select public.recover_company_access(current_setting('test.revoked_code'))$q$);
+reset role;
+select pg_temp.ok('administrative changes are audited',(select count(*)>=10 from private.access_events where company_id=pg_temp.id('company')));
+select jsonb_build_object('suite','accounts_permissions','passed',count(*),'results',jsonb_agg(to_jsonb(account_results))) from account_results;
+rollback;

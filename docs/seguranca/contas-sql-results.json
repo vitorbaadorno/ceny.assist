@@ -1,0 +1,158 @@
+{
+  "suite": "accounts_permissions",
+  "passed": 38,
+  "results": [
+    {
+      "name": "anonymous cannot enumerate invites",
+      "passed": true
+    },
+    {
+      "name": "unconfirmed cannot onboard",
+      "passed": true
+    },
+    {
+      "name": "responsible is mandatory",
+      "passed": true
+    },
+    {
+      "name": "old onboarding disabled",
+      "passed": true
+    },
+    {
+      "name": "onboarding gives ownership",
+      "passed": true
+    },
+    {
+      "name": "onboarding saves responsible name",
+      "passed": true
+    },
+    {
+      "name": "new member cannot bypass acceptance",
+      "passed": true
+    },
+    {
+      "name": "cannot directly insert membership",
+      "passed": true
+    },
+    {
+      "name": "cannot directly write invitations",
+      "passed": true
+    },
+    {
+      "name": "viewer cannot invite",
+      "passed": true
+    },
+    {
+      "name": "RH cannot invite",
+      "passed": true
+    },
+    {
+      "name": "admin cannot appoint admin",
+      "passed": true
+    },
+    {
+      "name": "admin cannot remove owner",
+      "passed": true
+    },
+    {
+      "name": "invite grants no access before acceptance",
+      "passed": true
+    },
+    {
+      "name": "verified email sees invitation",
+      "passed": true
+    },
+    {
+      "name": "invitee cannot enumerate other invitations",
+      "passed": true
+    },
+    {
+      "name": "wrong email sees no invitations",
+      "passed": true
+    },
+    {
+      "name": "wrong email cannot accept",
+      "passed": true
+    },
+    {
+      "name": "acceptance grants only invited role",
+      "passed": true
+    },
+    {
+      "name": "invitation cannot be reused",
+      "passed": true
+    },
+    {
+      "name": "role change is immediate",
+      "passed": true
+    },
+    {
+      "name": "revocation blocks existing JWT",
+      "passed": true
+    },
+    {
+      "name": "old accepted invite cannot restore access",
+      "passed": true
+    },
+    {
+      "name": "expired invite rejected",
+      "passed": true
+    },
+    {
+      "name": "revoked invite rejected",
+      "passed": true
+    },
+    {
+      "name": "demoted inviter grants no access",
+      "passed": true
+    },
+    {
+      "name": "recovery setup requires recent authentication",
+      "passed": true
+    },
+    {
+      "name": "RH cannot configure recovery",
+      "passed": true
+    },
+    {
+      "name": "recovery hashes inaccessible",
+      "passed": true
+    },
+    {
+      "name": "rotation invalidates prior code",
+      "passed": true
+    },
+    {
+      "name": "code alone without designated email denied",
+      "passed": true
+    },
+    {
+      "name": "recovery requires recent authentication",
+      "passed": true
+    },
+    {
+      "name": "email alone without code denied",
+      "passed": true
+    },
+    {
+      "name": "recovery restores owner",
+      "passed": true
+    },
+    {
+      "name": "recovery code single use",
+      "passed": true
+    },
+    {
+      "name": "former owner loses company access",
+      "passed": true
+    },
+    {
+      "name": "removed custodian cannot regain access",
+      "passed": true
+    },
+    {
+      "name": "administrative changes are audited",
+      "passed": true
+    }
+  ]
+}
