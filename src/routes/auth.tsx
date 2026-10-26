@@ -96,14 +96,6 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
-    if (error) toast.error("Google não configurado nesta conta. Entre com e-mail e senha.");
-  }
-
   return (
     <main className="flex min-h-screen items-center justify-center bg-secondary px-4 py-12">
       <div className="w-full max-w-md">
@@ -222,18 +214,6 @@ function AuthPage() {
                         : "Enviar link"}
               </Button>
             </form>
-
-            {mode === "signin" && (
-              <>
-                <div className="relative py-1 text-center text-xs text-muted-foreground">
-                  <span className="bg-card px-2">ou</span>
-                  <div className="absolute inset-x-0 top-1/2 -z-10 h-px bg-border" />
-                </div>
-                <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
-                  Continuar com Google
-                </Button>
-              </>
-            )}
 
             <Button
               type="button"
