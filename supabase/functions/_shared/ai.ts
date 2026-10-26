@@ -30,6 +30,7 @@ export async function callAiJson<T>(options: {
   if (!apiKey) throw new AiGatewayError(401, "Serviço de IA não configurado.");
 
   const response = await fetch(GATEWAY_URL, {
+    signal: AbortSignal.timeout(90000),
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -74,6 +75,10 @@ export async function callAiJson<T>(options: {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
+    if (buffer.length > 1_000_000 || text.length > 1_000_000) {
+      await reader.cancel();
+      throw new AiGatewayError(502, "Resposta da IA excedeu o limite.");
+    }
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
     for (const line of lines) {

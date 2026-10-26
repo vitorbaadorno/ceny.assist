@@ -363,6 +363,145 @@ export type Database = {
         }
         Relationships: []
       }
+      resume_batch_items: {
+        Row: {
+          batch_id: string
+          document_id: string
+          slot: number
+        }
+        Insert: {
+          batch_id: string
+          document_id: string
+          slot: number
+        }
+        Update: {
+          batch_id?: string
+          document_id?: string
+          slot?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_batch_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "resume_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "resume_batch_items_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "resume_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resume_batches: {
+        Row: {
+          company_id: string
+          created_at: string
+          file_count: number
+          id: string
+          source: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          file_count: number
+          id?: string
+          source: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          file_count?: number
+          id?: string
+          source?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resume_documents: {
+        Row: {
+          ai_started_at: string | null
+          byte_size: number
+          candidate_id: string
+          company_id: string
+          created_at: string
+          error_message: string | null
+          filename: string
+          finished_at: string | null
+          id: string
+          mime_type: string
+          operation_token: string
+          page_count: number
+          sha256: string
+          source: string
+          state: string
+          stored_at: string | null
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          ai_started_at?: string | null
+          byte_size: number
+          candidate_id: string
+          company_id: string
+          created_at?: string
+          error_message?: string | null
+          filename: string
+          finished_at?: string | null
+          id?: string
+          mime_type: string
+          operation_token?: string
+          page_count: number
+          sha256: string
+          source: string
+          state?: string
+          stored_at?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          ai_started_at?: string | null
+          byte_size?: number
+          candidate_id?: string
+          company_id?: string
+          created_at?: string
+          error_message?: string | null
+          filename?: string
+          finished_at?: string | null
+          id?: string
+          mime_type?: string
+          operation_token?: string
+          page_count?: number
+          sha256?: string
+          source?: string
+          state?: string
+          stored_at?: string | null
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resume_documents_company_id_candidate_id_fkey"
+            columns: ["company_id", "candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["company_id", "id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -377,6 +516,21 @@ export type Database = {
         Args: { p_company: string; p_id: string }
         Returns: undefined
       }
+      begin_resume_batch: {
+        Args: { p_company: string; p_count: number; p_source: string }
+        Returns: string
+      }
+      claim_resume_cleanup: {
+        Args: { p_actor: string; p_company: string }
+        Returns: {
+          document_id: string
+          object_path: string
+        }[]
+      }
+      claim_resume_extraction: {
+        Args: { p_actor: string; p_candidate: string; p_company: string }
+        Returns: Json
+      }
       configure_company_recovery: {
         Args: { p_company: string; p_email: string }
         Returns: string
@@ -384,6 +538,32 @@ export type Database = {
       create_company:
         | { Args: { p_name: string }; Returns: string }
         | { Args: { p_name: string; p_responsible: string }; Returns: string }
+      finish_resume_cleanup: {
+        Args: { p_company: string; p_document: string }
+        Returns: undefined
+      }
+      finish_resume_extraction: {
+        Args: {
+          p_actor: string
+          p_candidate: string
+          p_company: string
+          p_error?: string
+          p_extraction: Json
+          p_status: string
+          p_token: string
+        }
+        Returns: undefined
+      }
+      finish_resume_upload: {
+        Args: {
+          p_actor: string
+          p_company: string
+          p_document: string
+          p_error?: string
+          p_token: string
+        }
+        Returns: undefined
+      }
       invite_company_member: {
         Args: { p_company: string; p_email: string; p_role: string }
         Returns: string
@@ -410,6 +590,20 @@ export type Database = {
           p_scores: Json
         }
         Returns: undefined
+      }
+      reserve_resume: {
+        Args: {
+          p_actor: string
+          p_batch: string
+          p_company: string
+          p_filename: string
+          p_mime: string
+          p_pages: number
+          p_sha: string
+          p_size: number
+          p_slot: number
+        }
+        Returns: Json
       }
       revoke_company_invitation: { Args: { p_id: string }; Returns: undefined }
       save_candidate_extraction: {

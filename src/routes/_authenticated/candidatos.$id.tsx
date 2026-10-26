@@ -69,6 +69,20 @@ function CandidateDetail() {
   const reprocess = useServerFn(processResume);
   const archive = useServerFn(archiveCandidate);
   const [city, setCity] = useState("");
+  const { data: document } = useQuery({
+    queryKey: ["resume-document", companyId, id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resume_documents")
+        .select("state,source,uploaded_by,created_at,error_message")
+        .eq("company_id", companyId)
+        .eq("candidate_id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 5000,
+  });
 
   const {
     data: candidate,
@@ -119,9 +133,12 @@ function CandidateDetail() {
 
   const rerun = useMutation({
     mutationFn: async () => reprocess({ data: { companyId, candidateId: id } }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["candidate", companyId, id] });
-      toast.success("Currículo relido pela IA.");
+      queryClient.invalidateQueries({ queryKey: ["resume-document", companyId, id] });
+      queryClient.invalidateQueries({ queryKey: ["candidates", companyId] });
+      if (result.status === "concluido") toast.success("Leitura concluída.");
+      else toast.info("Confira o estado de leitura do documento.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -190,10 +207,11 @@ function CandidateDetail() {
           <Button
             variant="outline"
             size="sm"
-            disabled={!canEdit || rerun.isPending}
+            disabled={!canEdit || rerun.isPending || document?.state !== "uploaded"}
             onClick={() => rerun.mutate()}
           >
-            <RefreshCw className="size-4" /> {rerun.isPending ? "Lendo..." : "Reprocessar"}
+            <RefreshCw className="size-4" />{" "}
+            {rerun.isPending ? "Lendo..." : "Iniciar leitura pendente"}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>

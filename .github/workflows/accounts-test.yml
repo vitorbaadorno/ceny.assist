@@ -35,6 +35,16 @@ jobs:
         run: |
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_isolation.sql > artifacts/company-isolation.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/accounts_permissions.sql > artifacts/accounts-permissions.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_intake.sql > artifacts/resume-intake.txt
+      - name: Validate real file intake and Storage
+        run: |
+          supabase functions serve ceny-worker > artifacts/edge-test.log 2>&1 &
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:54321/functions/v1/ceny-worker)
+            if [ "$code" = "401" ]; then break; fi
+            sleep 2
+          done
+          node tests/isolated-uploads.mjs
       - name: Real signup, confirmation, login, recovery and expired links
         run: node tests/isolated-auth.mjs
       - name: Build application
@@ -51,6 +61,8 @@ jobs:
             artifacts/company-isolation.txt
             artifacts/accounts-permissions.txt
             artifacts/auth-results.json
+            artifacts/resume-intake.txt
+            artifacts/upload-results.json
       - name: Stop disposable test environment
         if: always()
         run: supabase stop --no-backup

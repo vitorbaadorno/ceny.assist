@@ -5,6 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { z } from "zod";
 import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
 import { isYoungApprenticeEligible } from "../supabase/functions/_shared/age.ts";
+import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
 
 // Evaluate the actual handlers with instrumented database/network boundaries.
 function load(file, names, dependencies = {}) {
@@ -71,7 +72,13 @@ function db(fixtures = {}, rpcError = null) {
     },
     async rpc(name, args) {
       calls.push({ rpc: name, args });
-      return { error: rpcError };
+      return {
+        error: rpcError,
+        data:
+          name === "claim_resume_extraction"
+            ? { owned: true, token: "test-token", state: "reading" }
+            : null,
+      };
     },
     storage: {
       from(bucket) {
@@ -240,7 +247,34 @@ const loadExtraction = (callAiJson) =>
     requireCompanyRole,
     z,
     callAiJson,
+    validateFile: async () => ({ mime: "application/pdf", pages: 1 }),
+    FileRejected,
+    FILE_LIMITS,
+    Deno: { env: { get: () => "test-only-provider" } },
   }).processResume;
+test("a lost or repeated extraction request cannot invoke AI twice", async () => {
+  const supabase = db({
+    company_members: member("recruiter"),
+    candidates: {
+      data: {
+        id: candidateId,
+        arquivo_original_path: "authorized/original",
+        arquivo_nome: "fixture.pdf",
+      },
+      error: null,
+    },
+  });
+  let calls = 0;
+  const admin = db();
+  admin.rpc = async () => ({ data: { owned: false, state: "reading" }, error: null });
+  const result = await loadExtraction(async () => {
+    calls++;
+    return extraction;
+  })({ companyId, candidateId }, { supabase, admin, userId });
+  assert.equal(result.status, "reading");
+  assert.equal(calls, 0);
+  assert.ok(!supabase.calls.some((c) => c.download));
+});
 test("viewer cannot download a resume for privileged AI processing", async () => {
   const supabase = db({ company_members: member("viewer") }),
     admin = db();
@@ -273,8 +307,8 @@ test("AI persistence uses validated output and verified actor and company", asyn
     { supabase, admin, userId },
   );
   assert.equal(result.status, "concluido");
-  const write = admin.calls.find((c) => c.rpc);
-  assert.equal(write.rpc, "save_candidate_extraction");
+  const write = admin.calls.find((c) => c.rpc === "finish_resume_extraction");
+  assert.equal(write.rpc, "finish_resume_extraction");
   assert.equal(write.args.p_actor, userId);
   assert.equal(write.args.p_company, companyId);
   assert.deepEqual(write.args.p_extraction, extraction);
@@ -298,7 +332,7 @@ test("invalid provider output never becomes an AI result", async () => {
       { supabase, admin, userId },
     ),
   );
-  assert.equal(admin.calls.length, 1);
-  assert.equal(admin.calls[0].args.p_status, "erro");
-  assert.deepEqual(admin.calls[0].args.p_extraction, {});
+  assert.equal(admin.calls.length, 2);
+  assert.equal(admin.calls[1].args.p_status, "erro");
+  assert.deepEqual(admin.calls[1].args.p_extraction, {});
 });

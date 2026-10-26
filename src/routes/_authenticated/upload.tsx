@@ -1,179 +1,364 @@
 import { useCompany } from "@/hooks/useCompany";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { processResume } from "@/lib/resumes.functions";
+import {
+  FILE_ACCEPT,
+  FILE_LIMITS,
+  checkFileEnvelope,
+  documentState,
+  invokeResume,
+  sendResume,
+  uploadSummary,
+  type UploadState,
+} from "@/lib/resume-upload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2, FileText, Loader2, XCircle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/upload")({
-  head: () => ({
-    meta: [
-      { title: "Enviar currículos | Triagem de Currículos" },
-      {
-        name: "description",
-        content:
-          "Envie currículos em PDF ou foto e deixe a IA extrair nome, contato, formação, experiências e habilidades automaticamente.",
-      },
-      { property: "og:title", content: "Enviar currículos | Triagem de Currículos" },
-      {
-        property: "og:description",
-        content: "Upload em lote de currículos em PDF ou imagem com leitura automática por IA.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Enviar currículos | Ceny" }] }),
   component: UploadPage,
 });
-
 type Item = {
-  name: string;
-  state: "enviando" | "lendo" | "ok" | "revisao" | "erro";
-  message?: string;
+  file: File;
+  state: UploadState;
+  message?: string | undefined;
+  duplicate?: boolean;
+  candidateId?: string;
+  documentId?: string;
+};
+const labels: Record<UploadState, string> = {
+  aguardando: "Aguardando envio",
+  enviando: "Enviando e validando",
+  enviado: "Enviado — aguardando leitura",
+  lendo: "Em leitura",
+  ok: "Concluído",
+  revisao: "Precisa de revisão",
+  erro: "Erro",
+};
+const sources = {
+  selecao_local: "Arquivo local",
+  email: "Recebido por e-mail",
+  indicacao: "Indicação",
+  outro: "Outra origem",
 };
 
 function UploadPage() {
   const { companyId, canEdit, canAdmin } = useCompany();
-  const [items, setItems] = useState<Item[]>([]);
-  const [busy, setBusy] = useState(false);
-  const navigate = useNavigate();
-  const runExtraction = useServerFn(processResume);
-
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setBusy(true);
-    const list = Array.from(files);
-    setItems(list.map((file) => ({ name: file.name, state: "enviando" as const })));
-
-    const update = (index: number, patch: Partial<Item>) =>
-      setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
-
-    for (let index = 0; index < list.length; index++) {
-      const file = list[index]!;
-      try {
-        if (!canEdit) throw new Error("Sem permissão para enviar currículos.");
-        if (
-          !["application/pdf", "image/jpeg", "image/png"].includes(file.type) ||
-          !file.size ||
-          file.size > 10 * 1024 * 1024
-        ) {
-          throw new Error("Envie PDF, JPG ou PNG de até 10 MB.");
+  const queryClient = useQueryClient();
+  const [items, setItems] = useState<Item[]>([]),
+    [busy, setBusy] = useState(false),
+    [finished, setFinished] = useState(false);
+  const [source, setSource] = useState<keyof typeof sources>("selecao_local");
+  const active = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      active.current?.abort();
+    },
+    [],
+  );
+  const history = useQuery({
+    queryKey: ["resume-documents", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resume_documents")
+        .select("*")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 5000,
+  });
+  useEffect(() => {
+    if (!history.data) return;
+    setItems((current) =>
+      current.map((item) => {
+        const doc = history.data.find((d) => d.id === item.documentId);
+        if (!doc || !["completed", "review", "error"].includes(doc.state)) return item;
+        return {
+          ...item,
+          state: documentState(doc.state),
+          message: doc.error_message ?? item.message,
+        };
+      }),
+    );
+  }, [history.data]);
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["candidates", companyId] }),
+      queryClient.invalidateQueries({ queryKey: ["resume-documents", companyId] }),
+    ]);
+  function selectFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setFinished(false);
+    if (files.length > FILE_LIMITS.files) {
+      setItems([]);
+      toast.error("Selecione no máximo 5 arquivos por envio.");
+      return;
+    }
+    setItems(
+      Array.from(files, (file) => {
+        try {
+          checkFileEnvelope(file.name, file.size);
+          return { file, state: "aguardando" as const };
+        } catch (e) {
+          return { file, state: "erro" as const, message: (e as Error).message };
         }
-        const { data: candidate, error: insertError } = await supabase
-          .from("candidates")
-          .insert({
-            id: crypto.randomUUID(),
-            company_id: companyId,
-            nome: file.name,
-            arquivo_nome: file.name,
-          })
-          .select("id, arquivo_original_path")
-          .single();
-        if (insertError || !candidate)
-          throw new Error(insertError?.message ?? "Falha ao registrar.");
-        const { error: uploadError } = await supabase.storage
-          .from("resumes")
-          .upload(candidate.arquivo_original_path!, file, {
-            contentType: file.type,
-            upsert: false,
-          });
-        if (uploadError)
-          throw new Error(
-            "Arquivo não enviado. O registro poderá ser arquivado pelo administrador: " +
-              uploadError.message,
+      }),
+    );
+  }
+  async function start() {
+    if (busy || !canEdit || !items.length) return;
+    const controller = new AbortController();
+    active.current = controller;
+    setBusy(true);
+    setFinished(false);
+    let result = items.map((i) => ({ ...i }));
+    const update = (index: number, patch: Partial<Item>) => {
+      result = result.map((item, i) => (i === index ? { ...item, ...patch } : item));
+      if (!controller.signal.aborted) setItems(result);
+    };
+    try {
+      const { data: batchId, error } = await supabase.rpc("begin_resume_batch", {
+        p_company: companyId,
+        p_count: items.length,
+        p_source: source,
+      });
+      if (error || !batchId)
+        throw new Error("Não foi possível iniciar o envio. Confira seu acesso à empresa.");
+      // Opportunistic reconciliation is also available explicitly to administrators.
+      await invokeResume(
+        { action: "cleanup", companyId },
+        AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]),
+      ).catch(() => {});
+      for (let i = 0; i < result.length; i++) {
+        if (controller.signal.aborted) break;
+        const item = result[i]!;
+        if (item.state === "erro") continue;
+        let accepted = false;
+        try {
+          update(i, { state: "enviando" });
+          const response = await sendResume(
+            item.file,
+            companyId,
+            batchId,
+            i,
+            AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]),
           );
-
-        update(index, { state: "lendo" });
-        const result = await runExtraction({ data: { companyId, candidateId: candidate.id } });
-        update(index, { state: result.status === "revisao_manual" ? "revisao" : "ok" });
-      } catch (error) {
-        update(index, {
-          state: "erro",
-          message: error instanceof Error ? error.message : "Falha no envio.",
-        });
+          accepted = true;
+          update(i, {
+            state: documentState(response.state),
+            candidateId: response.candidateId,
+            documentId: response.documentId,
+            duplicate: response.duplicate,
+            message: response.message,
+          });
+          await refresh();
+          if (controller.signal.aborted) break;
+          if (response.state === "uploaded") {
+            update(i, { state: "lendo" });
+            const read = await invokeResume<{ status: string; message?: string }>(
+              { action: "extract", companyId, candidateId: response.candidateId },
+              AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]),
+            );
+            update(i, { state: documentState(read.status), message: read.message });
+          }
+        } catch (e) {
+          if (controller.signal.aborted) break;
+          let state: UploadState = "erro";
+          if (accepted && result[i]?.documentId) {
+            const { data } = await supabase
+              .from("resume_documents")
+              .select("state")
+              .eq("id", result[i]!.documentId!)
+              .eq("company_id", companyId)
+              .maybeSingle();
+            if (data) state = documentState(data.state);
+          }
+          update(i, {
+            state,
+            message:
+              e instanceof Error
+                ? e.message
+                : "Falha no envio. Confira o histórico antes de repetir.",
+          });
+        } finally {
+          if (!controller.signal.aborted) await refresh();
+        }
+      }
+    } catch (e) {
+      result = result.map((i) =>
+        i.state === "aguardando" ? { ...i, state: "erro", message: (e as Error).message } : i,
+      );
+      if (!controller.signal.aborted) setItems(result);
+    } finally {
+      if (!controller.signal.aborted) {
+        setBusy(false);
+        setFinished(true);
+        const s = uploadSummary(result);
+        if (s.failed === result.length)
+          toast.error("Nenhum arquivo foi concluído. Confira os motivos de recusa.");
+        else if (s.failed || s.review || s.pending)
+          toast.warning("Lote finalizado com pendências. Confira o resumo.");
+        else toast.success(`${s.completed} currículo(s) concluído(s).`);
       }
     }
-
-    setBusy(false);
-    toast.info("Envio finalizado. Confira o resultado de cada arquivo.");
   }
-
+  async function reconcile() {
+    try {
+      const result = await invokeResume<{ removed: number; failed: number }>({
+        action: "cleanup",
+        companyId,
+      });
+      await refresh();
+      if (result.failed)
+        toast.error(
+          `${result.failed} arquivo(s) ainda não puderam ser removidos. Tente novamente mais tarde.`,
+        );
+      else
+        toast.info(
+          `Conferência concluída: ${result.removed} arquivo(s) temporário(s) removido(s).`,
+        );
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+  const summary = uploadSummary(items);
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Enviar currículos</h1>
+        <h1 className="text-2xl font-semibold">Enviar currículos</h1>
         <p className="text-sm text-muted-foreground">
-          Aceita PDF e fotos de currículos impressos (JPG, PNG). Você pode selecionar vários de uma
-          vez.
+          PDF, Word DOCX, JPG e PNG. Até 5 arquivos por envio, 10 MB por arquivo e 20 páginas por
+          documento.
         </p>
       </header>
-
       <Card>
         <CardHeader>
           <CardTitle>Selecionar arquivos</CardTitle>
           <CardDescription>
-            Cada arquivo vira um candidato e é lido automaticamente pela IA.
+            Imagens: até 8 megapixels. DOCX: páginas declaradas/estimadas, até 60.000 caracteres e
+            20 MB descompactados. DOC, arquivos com senha, macros ou conteúdo ativo são recusados.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <label className="block text-sm">
+            Origem dos currículos
+            <select
+              className="ml-3 rounded border bg-background p-2"
+              value={source}
+              disabled={busy || !canEdit}
+              onChange={(e) => setSource(e.target.value as keyof typeof sources)}
+            >
+              {Object.entries(sources).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
           <Input
+            aria-label="Selecionar currículos"
             type="file"
             multiple
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept={FILE_ACCEPT}
             disabled={!canEdit || busy}
-            onChange={(e) => handleFiles(e.target.files)}
+            onChange={(e) => {
+              selectFiles(e.target.files);
+              e.target.value = "";
+            }}
           />
+          <p className="text-sm text-muted-foreground">
+            Arquivos idênticos já enviados para esta empresa reutilizam o registro existente, sem
+            nova leitura por IA.
+          </p>
+          <Button
+            disabled={!canEdit || busy || !items.some((i) => i.state === "aguardando")}
+            onClick={start}
+          >
+            {busy ? "Processando lote…" : "Iniciar envio"}
+          </Button>
           {busy && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Processando os arquivos, não feche a
-              página.
+            <p role="status" className="text-sm">
+              Mantenha esta página aberta. Ao sair ou trocar de empresa, os próximos envios são
+              cancelados; o histórico preserva os já recebidos.
             </p>
           )}
         </CardContent>
       </Card>
-
-      {items.length > 0 && (
+      {!!items.length && (
         <Card>
           <CardHeader>
-            <CardTitle>Andamento</CardTitle>
+            <CardTitle>Andamento do lote</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3" aria-live="polite">
             {items.map((item, index) => (
-              <div key={`${item.name}-${index}`} className="flex items-start gap-3 text-sm">
-                {item.state === "ok" ? (
-                  <CheckCircle2 className="mt-0.5 size-4 text-success" />
-                ) : item.state === "erro" ? (
-                  <XCircle className="mt-0.5 size-4 text-destructive" />
-                ) : item.state === "revisao" ? (
-                  <FileText className="mt-0.5 size-4 text-warning" />
-                ) : (
-                  <Loader2 className="mt-0.5 size-4 animate-spin text-muted-foreground" />
-                )}
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{item.name}</p>
-                  <p className="text-muted-foreground">
-                    {item.state === "enviando" && "Enviando arquivo..."}
-                    {item.state === "lendo" && "IA lendo o currículo..."}
-                    {item.state === "ok" && "Dados extraídos com sucesso."}
-                    {item.state === "revisao" && "Extraído, mas precisa de revisão manual."}
-                    {item.state === "erro" && item.message}
-                  </p>
-                </div>
+              <div key={index} className="border-b pb-2 text-sm">
+                <p className="break-all font-medium">{item.file.name}</p>
+                <p className={item.state === "erro" ? "text-destructive" : "text-muted-foreground"}>
+                  {labels[item.state]}
+                  {item.duplicate ? " · Registro existente, sem duplicação" : ""}
+                </p>
+                {item.message && <p>{item.message}</p>}
               </div>
             ))}
-            {!busy && (
-              <Button variant="outline" onClick={() => navigate({ to: "/" })}>
-                Ver candidatos
-              </Button>
+            {finished && (
+              <p role="status" className="font-medium">
+                Resumo: {summary.completed} concluído(s), {summary.failed} com erro,{" "}
+                {summary.review} para revisão e {summary.pending} pendente(s). {summary.duplicates}{" "}
+                arquivo(s) já existente(s).
+              </p>
             )}
+            <Button asChild variant="outline">
+              <Link to="/">Ver candidatos</Link>
+            </Button>
           </CardContent>
         </Card>
       )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de recebimento</CardTitle>
+          <CardDescription>
+            Últimos 50 documentos da empresa. O registro inclui responsável pelo envio, data e
+            origem. A lista é atualizada a cada 5 segundos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {canAdmin && (
+            <Button variant="outline" onClick={reconcile}>
+              Conferir e limpar envios interrompidos
+            </Button>
+          )}
+          {history.isError && <p role="alert">Não foi possível carregar o histórico.</p>}
+          {history.data?.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nenhum documento recebido ainda.</p>
+          )}
+          {history.data?.map((doc) => (
+            <div key={doc.id} className="border-b pb-3 text-sm">
+              <Link
+                className="font-medium underline"
+                to="/candidatos/$id"
+                params={{ id: doc.candidate_id }}
+              >
+                {doc.filename}
+              </Link>
+              <p>
+                {labels[documentState(doc.state)]} · {sources[doc.source as keyof typeof sources]}
+              </p>
+              <p className="break-all text-muted-foreground">
+                {new Date(doc.created_at).toLocaleString("pt-BR")} · Usuário:{" "}
+                {doc.uploaded_by ?? "Conta removida"}
+              </p>
+              {doc.error_message && <p>{doc.error_message}</p>}
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

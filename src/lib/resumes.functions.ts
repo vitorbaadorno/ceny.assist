@@ -16,10 +16,15 @@ export const processResume = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.functions.invoke("ceny-worker", {
       body: { action: "extract", ...data },
     });
-    if (error)
+    if (error) {
+      if (error.context instanceof Response) {
+        const detail = await error.context.json().catch(() => null);
+        if (typeof detail?.error === "string") throw new Error(detail.error);
+      }
       throw new Error(
         "Não foi possível processar o currículo. Verifique se o serviço de IA está configurado.",
       );
+    }
     return result as { status: string };
   });
 
@@ -32,14 +37,16 @@ export const getResumeUrl = createServerFn({ method: "POST" })
     await requireCompanyRole(context.supabase, context.userId, data.companyId);
     const { data: candidate, error: loadError } = await context.supabase
       .from("candidates")
-      .select("arquivo_original_path")
+      .select("arquivo_original_path, arquivo_nome")
       .eq("company_id", data.companyId)
       .eq("id", data.candidateId)
       .single();
     if (loadError || !candidate?.arquivo_original_path) throw new Error("Currículo indisponível.");
     const { data: signed, error } = await context.supabase.storage
       .from("resumes")
-      .createSignedUrl(candidate.arquivo_original_path, 60);
+      .createSignedUrl(candidate.arquivo_original_path, 60, {
+        download: candidate.arquivo_nome ?? "curriculo",
+      });
     if (error || !signed) throw new Error("Não foi possível gerar o link do currículo.");
     return { url: signed.signedUrl };
   });
