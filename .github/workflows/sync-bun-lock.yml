@@ -10,7 +10,7 @@ permissions:
   contents: write
 jobs:
   sync-and-validate:
-    if: "!contains(github.event.head_commit.message, 'sync Bun lockfile')"
+    if: ${{ !contains(github.event.head_commit.message, 'sync Bun lockfile') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
