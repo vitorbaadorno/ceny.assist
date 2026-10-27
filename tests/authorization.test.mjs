@@ -6,11 +6,20 @@ import { z } from "zod";
 import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
 import { isYoungApprenticeEligible } from "../supabase/functions/_shared/age.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
+import { extractionFixture } from "./extraction-fixture.mjs";
+import {
+  validateExtraction,
+  extractionSchema,
+} from "../supabase/functions/_shared/extraction-quality.ts";
+import {
+  EXTRACTION_INSTRUCTIONS,
+  EXTRACTION_REQUEST,
+} from "../supabase/functions/_shared/extraction-prompt.ts";
 
 // Evaluate the actual handlers with instrumented database/network boundaries.
 function load(file, names, dependencies = {}) {
   let code = stripTypeScriptTypes(fs.readFileSync(file, "utf8"));
-  code = code.replace(/^import .*?;?\r?\n/gm, "").replaceAll("export ", "");
+  code = code.replace(/^import\b[\s\S]*?;\s*/gm, "").replaceAll("export ", "");
   return new Function(...Object.keys(dependencies), code + `\nreturn { ${names.join(",")} };`)(
     ...Object.values(dependencies),
   );
@@ -250,13 +259,17 @@ const loadExtraction = (callAiJson) =>
     validateFile: async () => ({ mime: "application/pdf", pages: 1 }),
     FileRejected,
     FILE_LIMITS,
+    validateExtraction,
+    extractionSchema,
+    EXTRACTION_INSTRUCTIONS,
+    EXTRACTION_REQUEST,
   });
 test("extraction endpoint enqueues without downloading or calling AI", async () => {
   const supabase = db({ company_members: member("recruiter") });
   let calls = 0;
   const result = await loadExtraction(async () => {
     calls++;
-    return extraction;
+    return extractionFixture();
   }).processResume({ companyId, candidateId }, { supabase, admin: db(), userId });
   assert.equal(result.status, "queued");
   assert.equal(calls, 0);
@@ -279,10 +292,11 @@ test("extraction validates AI output and propagates cancellation", async () => {
   const signal = new AbortController().signal;
   const result = await loadExtraction(async (options) => {
     assert.equal(options.signal, signal);
-    return extraction;
+    return extractionFixture();
   }).extractResume(new Uint8Array([1]), "fixture.pdf", signal);
   assert.equal(result.status, "concluido");
-  assert.deepEqual(result.extraction, extraction);
+  assert.equal(result.extraction.nome_completo, "Ana Teste");
+  assert.equal(result.extraction.schema_version, "2");
 });
 test("invalid provider output never becomes an AI result", async () => {
   await assert.rejects(

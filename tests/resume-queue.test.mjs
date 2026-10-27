@@ -23,7 +23,7 @@ test("failure classification separates retry, HR intervention, revoked access an
 
 function worker({ extract, configured = true, timeout = false } = {}) {
   const code = stripTypeScriptTypes(fs.readFileSync("supabase/functions/_shared/queue.ts", "utf8"))
-    .replace(/^import .*?;?\r?\n/gm, "")
+    .replace(/^import\b[\s\S]*?;\s*/gm, "")
     .replaceAll("export ", "");
   class AiGatewayError extends Error {
     constructor(status, message) {
@@ -38,6 +38,11 @@ function worker({ extract, configured = true, timeout = false } = {}) {
     FileRejected,
     FILE_LIMITS,
     classifyFailure,
+    MODEL: "fixture-model",
+    PROMPT_VERSION: "fixture-v2",
+    EXTRACTION_INSTRUCTIONS: "fixture",
+    EXTRACTION_REQUEST: "fixture",
+    extractionSchema: {},
     Deno: { env: { get: () => (configured ? "test-key" : undefined) } },
     setTimeout: (fn, ms) => {
       assert.equal(ms, 120000);

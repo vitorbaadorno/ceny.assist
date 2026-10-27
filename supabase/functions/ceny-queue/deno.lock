@@ -111,7 +111,8 @@
       "npm:jpeg-js@0.4.4",
       "npm:pdf-lib@1.17.1",
       "npm:pngjs@7.0.0",
-      "npm:saxes@6.0.0"
+      "npm:saxes@6.0.0",
+      "npm:zod@3.25.76"
     ]
   }
 }

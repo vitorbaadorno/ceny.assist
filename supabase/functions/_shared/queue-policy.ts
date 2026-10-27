@@ -19,7 +19,7 @@ export function classifyFailure(error: unknown): { kind: FailureKind; message: s
       kind: "permanent",
       message: "O provedor recusou o documento. O RH precisa revisar ou substituir o original.",
     };
-  if (e.name === "ZodError" || e.name === "SyntaxError")
+  if (e.name === "ZodError" || e.name === "SyntaxError" || e.name === "ExtractionRejected")
     return {
       kind: "permanent",
       message: "A IA retornou dados inválidos. É necessária conferência do RH.",

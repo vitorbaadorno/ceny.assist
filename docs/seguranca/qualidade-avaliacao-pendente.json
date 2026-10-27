@@ -1,0 +1,87 @@
+{
+  "mode": "not_run",
+  "model": "openai/gpt-6-astra",
+  "prompt_version": "ceny-resume-v2-2026-10-27",
+  "cases": [
+    {
+      "id": "text",
+      "format": "pdf",
+      "challenge": "text",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "columns",
+      "format": "pdf",
+      "challenge": "columns",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "table",
+      "format": "pdf",
+      "challenge": "table",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "scanned",
+      "format": "pdf",
+      "challenge": "scanned",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "photo",
+      "format": "jpg",
+      "challenge": "photo",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "low-resolution",
+      "format": "png",
+      "challenge": "low-resolution",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "english",
+      "format": "pdf",
+      "challenge": "english",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "docx-table",
+      "format": "docx",
+      "challenge": "docx-table",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "spanish",
+      "format": "docx",
+      "challenge": "spanish",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    },
+    {
+      "id": "prompt-injection",
+      "format": "docx",
+      "challenge": "prompt-injection",
+      "status": "not_run",
+      "precision": null,
+      "recall": null
+    }
+  ]
+}

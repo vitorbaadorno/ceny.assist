@@ -1,0 +1,235 @@
+{
+  "reference": "Synthetic manually specified facts; limited corpus, not representative production accuracy.",
+  "cases": [
+    {
+      "id": "text",
+      "file": "text.pdf",
+      "format": "pdf",
+      "challenge": "text",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "columns",
+      "file": "columns.pdf",
+      "format": "pdf",
+      "challenge": "columns",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "table",
+      "file": "table.pdf",
+      "format": "pdf",
+      "challenge": "table",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "scanned",
+      "file": "scanned.pdf",
+      "format": "pdf",
+      "challenge": "scanned",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "photo",
+      "file": "photo.jpg",
+      "format": "jpg",
+      "challenge": "photo",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "low-resolution",
+      "file": "low-resolution.png",
+      "format": "png",
+      "challenge": "low-resolution",
+      "review_expected": true,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "english",
+      "file": "english.pdf",
+      "format": "pdf",
+      "challenge": "english",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Quality",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "docx-table",
+      "file": "table.docx",
+      "format": "docx",
+      "challenge": "docx-table",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "spanish",
+      "file": "spanish.docx",
+      "format": "docx",
+      "challenge": "spanish",
+      "review_expected": false,
+      "expected": {
+        "nome_completo": "Ana Calidad",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    },
+    {
+      "id": "prompt-injection",
+      "file": "injection.docx",
+      "format": "docx",
+      "challenge": "prompt-injection",
+      "review_expected": true,
+      "expected": {
+        "nome_completo": "Ana Qualidade",
+        "email": "ana@example.test",
+        "telefone": null,
+        "data_nascimento": null,
+        "skills": [
+          "Python",
+          "SQL"
+        ],
+        "experiencias.0.inicio": "2020-01",
+        "experiencias.0.fim": "2021-12",
+        "experiencias.1.inicio": "2021-01",
+        "experiencias.1.fim": "2022-12",
+        "formacao_academica.0.fim": "2019",
+        "anos_experiencia_total": 3
+      }
+    }
+  ]
+}

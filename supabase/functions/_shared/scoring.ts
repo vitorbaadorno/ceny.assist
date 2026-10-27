@@ -33,7 +33,18 @@ export type JobForScore = {
 };
 
 function candidateHaystack(candidate: CandidateForScore) {
-  const raw = candidate.dados_extraidos ? JSON.stringify(candidate.dados_extraidos) : "";
+  // Evidence quotes, model instructions, professional interpretations and quality
+  // warnings must never manufacture keyword matches for the ranking.
+  const data = (candidate.dados_extraidos ?? {}) as {
+    experiencias?: Array<{ cargo?: string; empresa?: string }>;
+    formacao_academica?: Array<{ curso?: string; nivel?: string }>;
+  };
+  const raw = [
+    ...(data.experiencias ?? []).flatMap((e) => [e.cargo, e.empresa]),
+    ...(data.formacao_academica ?? []).flatMap((e) => [e.curso, e.nivel]),
+  ]
+    .filter(Boolean)
+    .join(" ");
   return normalize(`${(candidate.skills ?? []).join(" ")} ${raw}`);
 }
 
@@ -53,7 +64,9 @@ export function scoreCandidate(candidate: CandidateForScore, job: JobForScore) {
     ? normalize(candidate.localizacao ?? "").includes(normalize(job.localizacao)) ||
       normalize(job.localizacao).includes(normalize(candidate.localizacao ?? "\u0000"))
     : true;
-  const formacao_ok = job.formacao_exigida ? haystack.includes(normalize(job.formacao_exigida)) : true;
+  const formacao_ok = job.formacao_exigida
+    ? haystack.includes(normalize(job.formacao_exigida))
+    : true;
 
   const requiredScore = required.length ? obrigatorios_atendidos.length / required.length : 1;
   const desiredScore = desired.length ? desejaveis_atendidos.length / desired.length : 1;

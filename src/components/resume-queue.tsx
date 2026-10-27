@@ -148,12 +148,36 @@ export function CandidateQueue({
             {job.resume_job_attempts
               .sort((a, b) => a.attempt - b.attempt)
               .map((a) => (
-                <p className="mt-2 text-xs" key={a.attempt}>
-                  Tentativa {a.attempt} · {new Date(a.started_at).toLocaleString("pt-BR")} ·{" "}
-                  {jobLabels[a.outcome] ??
-                    (a.outcome === "interrupted" ? "Interrompida pelo sistema" : a.outcome)}
-                  {a.message ? ` · ${a.message}` : ""}
-                </p>
+                <div className="mt-2 space-y-1 text-xs" key={a.attempt}>
+                  <p>
+                    Tentativa {a.attempt} · {new Date(a.started_at).toLocaleString("pt-BR")} ·{" "}
+                    {jobLabels[a.outcome] ??
+                      (a.outcome === "interrupted" ? "Interrompida pelo sistema" : a.outcome)}
+                    {a.message ? ` · ${a.message}` : ""}
+                  </p>
+                  <p>
+                    Modelo: {a.model_reported ?? a.model_requested ?? "Não registrado"} · Duração:{" "}
+                    {a.duration_ms === null
+                      ? "Não informada"
+                      : `${(a.duration_ms / 1000).toFixed(1)} s`}
+                  </p>
+                  <p>
+                    Consumo informado pelo provedor: {a.input_tokens ?? "Não informado"} tokens de
+                    entrada · {a.output_tokens ?? "Não informado"} de saída ·{" "}
+                    {a.total_tokens ?? "Não informado"} no total.
+                  </p>
+                  {a.prompt_version && (
+                    <details>
+                      <summary className="cursor-pointer">
+                        Instruções usadas: {a.prompt_version}
+                      </summary>
+                      <p className="break-all">Identificador: {a.prompt_hash}</p>
+                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">
+                        {a.prompt_snapshot}
+                      </pre>
+                    </details>
+                  )}
+                </div>
               ))}
           </details>
         )}

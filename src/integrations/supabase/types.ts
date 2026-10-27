@@ -534,30 +534,63 @@ export type Database = {
       resume_job_attempts: {
         Row: {
           attempt: number;
+          duration_ms: number | null;
           error_kind: string | null;
+          extraction: Json | null;
           finished_at: string | null;
+          input_tokens: number | null;
           job_id: string;
           message: string | null;
+          model_reported: string | null;
+          model_requested: string | null;
           outcome: string;
+          output_tokens: number | null;
+          prompt_hash: string | null;
+          prompt_snapshot: string | null;
+          prompt_version: string | null;
+          response_id: string | null;
           started_at: string;
+          total_tokens: number | null;
         };
         Insert: {
           attempt: number;
+          duration_ms?: number | null;
           error_kind?: string | null;
+          extraction?: Json | null;
           finished_at?: string | null;
+          input_tokens?: number | null;
           job_id: string;
           message?: string | null;
+          model_reported?: string | null;
+          model_requested?: string | null;
           outcome?: string;
+          output_tokens?: number | null;
+          prompt_hash?: string | null;
+          prompt_snapshot?: string | null;
+          prompt_version?: string | null;
+          response_id?: string | null;
           started_at?: string;
+          total_tokens?: number | null;
         };
         Update: {
           attempt?: number;
+          duration_ms?: number | null;
           error_kind?: string | null;
+          extraction?: Json | null;
           finished_at?: string | null;
+          input_tokens?: number | null;
           job_id?: string;
           message?: string | null;
+          model_reported?: string | null;
+          model_requested?: string | null;
           outcome?: string;
+          output_tokens?: number | null;
+          prompt_hash?: string | null;
+          prompt_snapshot?: string | null;
+          prompt_version?: string | null;
+          response_id?: string | null;
           started_at?: string;
+          total_tokens?: number | null;
         };
         Relationships: [
           {
@@ -788,6 +821,10 @@ export type Database = {
           id: string;
           role: string;
         }[];
+      };
+      record_resume_analysis: {
+        Args: { p_job: string; p_metadata: Json; p_token: string };
+        Returns: boolean;
       };
       record_resume_entry: {
         Args: {

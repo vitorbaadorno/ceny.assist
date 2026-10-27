@@ -1,19 +1,13 @@
+import { AiGatewayError, readAiStream, type AiReceipt } from "./ai-stream.ts";
+export { AiGatewayError } from "./ai-stream.ts";
 // Server-only helper for Lovable AI Gateway (Responses API).
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/responses";
-const MODEL = "openai/gpt-6-astra";
+export const MODEL = "openai/gpt-6-astra";
 
 export type InputPart =
   | { type: "input_text"; text: string }
-  | { type: "input_image"; image_url: string }
+  | { type: "input_image"; image_url: string; detail?: "high" }
   | { type: "input_file"; filename: string; file_data: string };
-
-export class AiGatewayError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 /**
  * Calls the gateway with a strict JSON schema and returns the parsed object.
@@ -26,6 +20,7 @@ export async function callAiJson<T>(options: {
   schema: Record<string, unknown>;
   effort?: "low" | "medium" | "high";
   signal?: AbortSignal;
+  onReceipt?: (receipt: AiReceipt) => void;
 }): Promise<T> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new AiGatewayError(401, "Serviço de IA não configurado.");
@@ -42,6 +37,7 @@ export async function callAiJson<T>(options: {
     },
     body: JSON.stringify({
       model: MODEL,
+      store: false,
       stream: true,
       instructions: options.instructions,
       input: [{ role: "user", content: options.parts }],
@@ -69,45 +65,6 @@ export async function callAiJson<T>(options: {
     );
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let text = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    if (buffer.length > 1_000_000 || text.length > 1_000_000) {
-      await reader.cancel();
-      throw new AiGatewayError(502, "Resposta da IA excedeu o limite.");
-    }
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (!payload || payload === "[DONE]") continue;
-      try {
-        const event = JSON.parse(payload) as {
-          type?: string;
-          delta?: string;
-          response?: { output_text?: string };
-        };
-        if (event.type === "response.output_text.delta" && typeof event.delta === "string") {
-          text += event.delta;
-        } else if (event.type === "response.completed" && event.response?.output_text) {
-          if (!text) text = event.response.output_text;
-        }
-      } catch {
-        // ignore malformed keep-alive chunks
-      }
-    }
-  }
-
-  if (!text.trim()) {
-    throw new AiGatewayError(502, "A IA não retornou dados legíveis do currículo.");
-  }
-
-  return JSON.parse(text) as T;
+  const result = await readAiStream(response.body, options.onReceipt);
+  return result.value as T;
 }

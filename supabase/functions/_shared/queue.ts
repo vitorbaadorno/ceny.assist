@@ -1,7 +1,14 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.116.0";
 import type { Database, Json } from "./database.ts";
 import { extractResume } from "./resumes.ts";
-import { AiGatewayError } from "./ai.ts";
+import { AiGatewayError, MODEL } from "./ai.ts";
+import {
+  PROMPT_VERSION,
+  EXTRACTION_INSTRUCTIONS,
+  EXTRACTION_REQUEST,
+} from "./extraction-prompt.ts";
+import { extractionSchema } from "./extraction-quality.ts";
+import type { AiReceipt } from "./ai-stream.ts";
 import { FileRejected, FILE_LIMITS } from "./file-policy.ts";
 import { classifyFailure } from "./queue-policy.ts";
 type Job = Database["public"]["Tables"]["resume_jobs"]["Row"];
@@ -29,6 +36,31 @@ export async function runResumeJob(admin: Client, job: Job) {
     120000,
   );
   const signal = controller.signal;
+  let receipt: AiReceipt | undefined;
+  const audit = async (initial = false) => {
+    const { data, error } = await admin.rpc("record_resume_analysis", {
+      p_job: job.id,
+      p_token: job.lease_token!,
+      p_metadata: {
+        ...(initial
+          ? {
+              model_requested: MODEL,
+              prompt_version: PROMPT_VERSION,
+              prompt_snapshot: JSON.stringify({
+                instructions: EXTRACTION_INSTRUCTIONS,
+                request: EXTRACTION_REQUEST,
+                schema: extractionSchema,
+                reasoning: "low",
+                image_detail: "high",
+                store: false,
+              }),
+            }
+          : {}),
+        ...receipt,
+      },
+    });
+    if (error || !data) throw new Error("Não foi possível registrar a análise.");
+  };
   const phase = async (value: string) => {
     signal.throwIfAborted();
     const { data, error } = await abortable(
@@ -43,6 +75,7 @@ export async function runResumeJob(admin: Client, job: Job) {
     }
   };
   try {
+    await abortable(audit(true), signal);
     if (!Deno.env.get("LOVABLE_API_KEY")) throw new AiGatewayError(401, "Configuração ausente.");
     await phase("downloading");
     const { data: document, error: docError } = await abortable(
@@ -67,7 +100,13 @@ export async function runResumeJob(admin: Client, job: Job) {
     await phase("validating");
     const bytes = new Uint8Array(await abortable(file.arrayBuffer(), signal));
     await phase("reading");
-    const result = await abortable(extractResume(bytes, document.filename, signal), signal);
+    const result = await abortable(
+      extractResume(bytes, document.filename, signal, (value) => {
+        receipt = value;
+      }),
+      signal,
+    );
+    await abortable(audit(), signal);
     await phase("saving");
     const { data: saved, error } = await abortable(
       admin.rpc("settle_resume_job", {
@@ -81,6 +120,7 @@ export async function runResumeJob(admin: Client, job: Job) {
     if (error) throw new Error("Falha temporária de persistência.");
     return { id: job.id, saved: !!saved };
   } catch (error) {
+    if (receipt) await audit().catch(() => {});
     const failure = classifyFailure(error);
     const { error: saveError } = await admin.rpc("settle_resume_job", {
       p_job: job.id,

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getResumeUrl } from "@/lib/resumes.functions";
 import { CandidateQueue } from "@/components/resume-queue";
+import { CandidateAnalysis } from "@/components/candidate-analysis";
 import { archiveCandidate } from "@/lib/records.functions";
 import { calculateAge, isYoungApprenticeEligible } from "@/lib/age";
 import { Button } from "@/components/ui/button";
@@ -209,6 +210,7 @@ function CandidateDetail() {
       </header>
 
       <CandidateQueue companyId={companyId} candidateId={id} canEdit={canEdit} />
+      <CandidateAnalysis value={candidate.dados_extraidos} />
       {candidate.processing_error && (
         <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           {candidate.processing_error}
@@ -251,7 +253,10 @@ function CandidateDetail() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Experiência estimada: {candidate.anos_experiencia ?? 0} ano(s)
+              Experiência calculada:{" "}
+              {candidate.anos_experiencia === null
+                ? "Não informada"
+                : `${candidate.anos_experiencia} ano(s)`}
             </p>
             <div className="space-y-2 border-t pt-4">
               <Label htmlFor="data-nascimento">Data de nascimento</Label>

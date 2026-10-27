@@ -214,8 +214,11 @@ async function docx(bytes: Uint8Array) {
     breaks = 0,
     declared = 0,
     inPages = false,
-    root = false;
+    root = false,
+    cellDepth = 0;
   for (const [name, content] of files) {
+    const isTextPart = name === "word/document.xml" || /^word\/(header|footer)\d+\.xml$/.test(name);
+    if (isTextPart && name !== "word/document.xml") text += "\n";
     if (/vba|embeddings|activeX|oleObject|\.exe$|\.bin$/i.test(name))
       reject("DOCX com macros ou objetos incorporados não é aceito.");
     if (!name.endsWith("/") && !name.endsWith(".xml") && !name.endsWith(".rels")) {
@@ -251,16 +254,19 @@ async function docx(bytes: Uint8Array) {
             reject("DOCX contém referências externas não permitidas.");
           if (["altChunk", "object", "fldSimple", "instrText"].includes(tag.local))
             reject("DOCX com campos ativos ou conteúdo incorporado não é aceito.");
-          if (name === "word/document.xml" && tag.uri === wordNs) {
-            if (tag.local === "document") root = true;
+          if (isTextPart && tag.uri === wordNs) {
+            if (tag.local === "document" && name === "word/document.xml") root = true;
+            if (tag.local === "tc") cellDepth++;
             if (tag.local === "t") inText = true;
+            if (tag.local === "tab") text += "\t";
+            if (tag.local === "br" && attrs["type"] !== "page") text += "\n";
             if (tag.local === "br" && attrs["type"] === "page") breaks++;
             if (tag.local === "lastRenderedPageBreak") breaks++;
           }
           if (name === "docProps/app.xml" && tag.local === "Pages") inPages = true;
         },
         (value) => {
-          if (name === "word/document.xml" && inText) {
+          if (isTextPart && inText) {
             text += value;
             if (text.length > FILE_LIMITS.text) reject("DOCX excede 60.000 caracteres.");
           }
@@ -271,7 +277,13 @@ async function docx(bytes: Uint8Array) {
         },
         (tag) => {
           if (tag.local === "t") inText = false;
-          if (name === "word/document.xml" && tag.local === "p") text += "\n";
+          if (isTextPart && tag.local === "p") text += cellDepth ? " " : "\n";
+          if (isTextPart && tag.local === "tc") {
+            text += " | ";
+            cellDepth = Math.max(0, cellDepth - 1);
+          }
+          if (isTextPart && tag.local === "tr") text += "\n";
+          if (text.length > FILE_LIMITS.text) reject("DOCX excede 60.000 caracteres.");
           if (tag.local === "Pages") inPages = false;
         },
       );
@@ -398,7 +410,7 @@ async function pdf(bytes: Uint8Array) {
 export async function validateFile(
   name: string,
   bytes: Uint8Array,
-): Promise<{ mime: string; pages: number; text?: string }> {
+): Promise<{ mime: string; pages: number; text?: string; warnings?: string[] }> {
   checkFileEnvelope(name, bytes.length);
   try {
     const ext = name.toLowerCase().split(".").pop();
@@ -412,13 +424,17 @@ export async function validateFile(
       bytes[bytes.length - 2] === 255 &&
       bytes[bytes.length - 1] === 217
     ) {
-      jpeg.decode(bytes, {
+      const decoded = jpeg.decode(bytes, {
         useTArray: true,
         tolerantDecoding: false,
         maxResolutionInMP: 8,
         maxMemoryUsageInMB: 64,
       });
-      return { mime: "image/jpeg", pages: 1 };
+      return {
+        mime: "image/jpeg",
+        pages: 1,
+        warnings: Math.min(decoded.width, decoded.height) < 600 ? ["baixa_resolucao"] : [],
+      };
     }
     if (
       ext === "png" &&
@@ -449,7 +465,11 @@ export async function validateFile(
       }
       if (!ended || offset !== bytes.length) reject("PNG incompleto ou com conteúdo adicional.");
       PNG.sync.read(Buffer.from(bytes), { checkCRC: true });
-      return { mime: "image/png", pages: 1 };
+      return {
+        mime: "image/png",
+        pages: 1,
+        warnings: Math.min(w, h) < 600 ? ["baixa_resolucao"] : [],
+      };
     }
     reject(
       "O conteúdo real não corresponde ao formato informado. Use PDF, DOCX, JPG ou PNG válidos.",
