@@ -38,5 +38,8 @@ Reservas e deduplicação evitam processamento simultâneo e duplicação por re
 - TypeScript da aplicação, Deno das duas funções e build de produção verificados localmente.
 - Integração descartável no GitHub testa envio/Storage reais, três aquisições concorrentes e execução por cron depois de logout, sem credencial de IA.
 - Advisor de segurança: somente 4 avisos informativos de tabelas privadas intencionalmente fechadas, incluindo a configuração do agendador. [Descrição do aviso](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy).
+- [GitHub Actions 40427538641](https://github.com/vitorbaadorno/ceny.assist/actions/runs/40427538641), commit `7ea030b`: todas as etapas passaram, incluindo 37 testes de código, 10 cenários de envio/fila/Storage, 16 cenários de autenticação, quatro suítes SQL e build.
+- Publicação conferida: `ceny-worker` versão 4 e `ceny-queue` versão 1. As quatro migrations desta etapa estão aplicadas. O cron real retornou HTTP 200 e o trabalho sintético passou a `blocked/configuration` na primeira tentativa, confirmando ausência da chave de IA e funcionamento do caminho de bloqueio. Nenhum currículo foi enviado ao provedor. Conta, empresa e trabalho sintéticos foram removidos, com contagens residuais zero.
+- `main` remota conferida em `58df482099e187f25ef2c154789321df8b0b1815`, sem alteração.
 
 Referências: [agendamento de Edge Functions](https://supabase.com/docs/guides/functions/schedule-functions), [limites Edge](https://supabase.com/docs/guides/functions/limits), [Vault](https://supabase.com/docs/guides/database/vault).
