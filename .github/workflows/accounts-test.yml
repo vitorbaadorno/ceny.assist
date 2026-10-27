@@ -38,6 +38,7 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_intake.sql > artifacts/resume-intake.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_queue.sql > artifacts/resume-queue.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_analysis.sql > artifacts/resume-analysis.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_review.sql > artifacts/candidate-review.txt
       - name: Validate real file intake and Storage
         run: |
           supabase functions serve > artifacts/edge-test.log 2>&1 &
@@ -49,6 +50,8 @@ jobs:
           node tests/isolated-uploads.mjs
       - name: Real signup, confirmation, login, recovery and expired links
         run: node tests/isolated-auth.mjs
+      - name: Concurrent human review and AI correction preservation
+        run: node tests/isolated-reviews.mjs
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
@@ -66,6 +69,8 @@ jobs:
             artifacts/resume-intake.txt
             artifacts/resume-queue.txt
             artifacts/resume-analysis.txt
+            artifacts/candidate-review.txt
+            artifacts/review-results.json
             artifacts/upload-results.json
       - name: Stop disposable test environment
         if: always()

@@ -74,10 +74,11 @@ function JobDetail() {
 
   const { data: scores = [], isLoading } = useQuery({
     queryKey: ["job-scores", companyId, id],
+    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidate_scores")
-        .select("score, detalhes_matching, candidates(*)")
+        .select("score, detalhes_matching, stale, candidate_version, candidates(*)")
         .eq("company_id", companyId)
         .eq("job_id", id)
         .order("score", { ascending: false });
@@ -220,6 +221,7 @@ function JobDetail() {
           {filtered.map((row) => {
             const candidate = row.candidates!;
             const details = (row.detalhes_matching ?? {}) as unknown as MatchDetails;
+            const outdated = row.stale || row.candidate_version !== candidate.data_version;
             return (
               <Card key={candidate.id}>
                 <CardContent className="space-y-3 py-5">
@@ -235,9 +237,17 @@ function JobDetail() {
                       <span className="text-sm text-muted-foreground">
                         {candidate.localizacao ?? "Local não informado"}
                       </span>
-                      <Badge>{Math.round(row.score)}% de aderência</Badge>
+                      <Badge variant={outdated ? "outline" : "default"}>
+                        {Math.round(row.score)}% de aderência{outdated ? " · desatualizada" : ""}
+                      </Badge>
                     </div>
                   </div>
+                  {outdated && (
+                    <p role="status" className="text-sm text-amber-800 dark:text-amber-300">
+                      Os dados do candidato foram corrigidos. Calcule a aderência novamente antes de
+                      usar esta avaliação.
+                    </p>
+                  )}
                   <Progress value={Number(row.score)} />
                   <div className="grid gap-1 text-xs md:grid-cols-2">
                     <p className="text-success">

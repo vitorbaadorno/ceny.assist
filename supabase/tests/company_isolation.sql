@@ -70,8 +70,7 @@ select pg_temp.denied('cross company membership',$q$select public.manage_company
 select pg_temp.denied('owner cannot be demoted',$q$select public.manage_company_member(pg_temp.id('a'),pg_temp.id('owner_a'),'viewer')$q$);
 select pg_temp.denied('client cannot save AI',$q$select public.save_candidate_extraction(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ca'),'{}','concluido')$q$);
 select pg_temp.denied('client cannot save scores',$q$select public.replace_job_scores(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),'[]')$q$);
-with changed as(update public.candidates set observacoes='Attack' where id=pg_temp.id('cb') returning id)
-select pg_temp.ok('other company update affects zero',(select count(*)=0 from changed));
+select pg_temp.denied('other company review denied',$q$select public.save_candidate_review(pg_temp.id('b'),pg_temp.id('cb'),0,'{"observacoes":"Attack"}')$q$);
 with changed as(update storage.objects set name='fake' where bucket_id='resumes' returning id)
 select pg_temp.ok('original cannot be replaced',(select count(*)=0 from changed));
 select pg_temp.denied('other company object upload',$q$insert into storage.objects(bucket_id,name) values('resumes',pg_temp.id('b')::text || '/' || gen_random_uuid()::text || '/original')$q$);
@@ -95,8 +94,8 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('recruiter'),'role','authenticated')::text,true);
 set local role authenticated;
 select pg_temp.ok('recruiter profiles limited to self',(select count(*)=1 from public.profiles));
-with changed as(update public.candidates set observacoes='Allowed note' where id=pg_temp.id('ca') returning id)
-select pg_temp.ok('recruiter edits own company note',(select count(*)=1 from changed));
+select public.save_candidate_review(pg_temp.id('a'),pg_temp.id('ca'),0,'{"observacoes":"Allowed note"}');
+select pg_temp.ok('recruiter edits own company note',(select observacoes='Allowed note' from public.candidates where id=pg_temp.id('ca')));
 select pg_temp.denied('recruiter cannot archive',$q$select public.archive_candidate(pg_temp.id('a'),pg_temp.id('ca'))$q$);
 select pg_temp.denied('recruiter cannot escalate',$q$select public.manage_company_member(pg_temp.id('a'),pg_temp.id('recruiter'),'admin')$q$);
 with changed as(delete from storage.objects where bucket_id='resumes' returning id)
@@ -106,8 +105,7 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('viewer'),'role','authenticated')::text,true);
 set local role authenticated;
 select pg_temp.ok('viewer can read own company',(select count(*)=1 from public.candidates));
-with changed as(update public.candidates set observacoes='Attack' returning id)
-select pg_temp.ok('viewer cannot edit',(select count(*)=0 from changed));
+select pg_temp.denied('viewer cannot edit',$q$select public.save_candidate_review(pg_temp.id('a'),pg_temp.id('ca'),1,'{"observacoes":"Attack"}')$q$);
 select pg_temp.denied('viewer cannot create job',$q$insert into public.jobs(company_id,titulo) values(pg_temp.id('a'),'Attack')$q$);
 reset role;
 

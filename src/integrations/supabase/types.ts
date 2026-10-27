@@ -8,35 +8,85 @@ export type Database = {
   };
   public: {
     Tables: {
+      candidate_revisions: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          candidate_id: string;
+          changes: Json;
+          company_id: string;
+          created_at: string;
+          id: string;
+          version: number;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          candidate_id: string;
+          changes: Json;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          version: number;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          candidate_id?: string;
+          changes?: Json;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_revisions_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       candidate_scores: {
         Row: {
           candidate_id: string;
+          candidate_version: number | null;
           company_id: string;
           created_at: string;
           detalhes_matching: Json;
           id: string;
           job_id: string;
           score: number;
+          stale: boolean;
           updated_at: string;
         };
         Insert: {
           candidate_id: string;
+          candidate_version?: number | null;
           company_id: string;
           created_at?: string;
           detalhes_matching?: Json;
           id?: string;
           job_id: string;
           score: number;
+          stale?: boolean;
           updated_at?: string;
         };
         Update: {
           candidate_id?: string;
+          candidate_version?: number | null;
           company_id?: string;
           created_at?: string;
           detalhes_matching?: Json;
           id?: string;
           job_id?: string;
           score?: number;
+          stale?: boolean;
           updated_at?: string;
         };
         Relationships: [
@@ -62,10 +112,13 @@ export type Database = {
           arquivo_nome: string | null;
           arquivo_original_path: string | null;
           company_id: string;
+          correcoes_rh: Json;
           created_at: string;
           created_by: string | null;
+          dados_efetivos: Json;
           dados_extraidos: Json;
           data_nascimento: string | null;
+          data_version: number;
           deleted_at: string | null;
           email: string | null;
           excluido: boolean;
@@ -75,6 +128,10 @@ export type Database = {
           observacoes: string | null;
           processing_error: string | null;
           processing_status: string;
+          review_status: string;
+          review_version: number;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
           skills: string[];
           status: string;
           telefone: string | null;
@@ -85,10 +142,13 @@ export type Database = {
           arquivo_nome?: string | null;
           arquivo_original_path?: string | null;
           company_id: string;
+          correcoes_rh?: Json;
           created_at?: string;
           created_by?: string | null;
+          dados_efetivos?: Json;
           dados_extraidos?: Json;
           data_nascimento?: string | null;
+          data_version?: number;
           deleted_at?: string | null;
           email?: string | null;
           excluido?: boolean;
@@ -98,6 +158,10 @@ export type Database = {
           observacoes?: string | null;
           processing_error?: string | null;
           processing_status?: string;
+          review_status?: string;
+          review_version?: number;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
           skills?: string[];
           status?: string;
           telefone?: string | null;
@@ -108,10 +172,13 @@ export type Database = {
           arquivo_nome?: string | null;
           arquivo_original_path?: string | null;
           company_id?: string;
+          correcoes_rh?: Json;
           created_at?: string;
           created_by?: string | null;
+          dados_efetivos?: Json;
           dados_extraidos?: Json;
           data_nascimento?: string | null;
+          data_version?: number;
           deleted_at?: string | null;
           email?: string | null;
           excluido?: boolean;
@@ -121,6 +188,10 @@ export type Database = {
           observacoes?: string | null;
           processing_error?: string | null;
           processing_status?: string;
+          review_status?: string;
+          review_version?: number;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
           skills?: string[];
           status?: string;
           telefone?: string | null;
@@ -239,6 +310,7 @@ export type Database = {
           job_id: string;
           pdf_path: string | null;
           resumo: string | null;
+          stale: boolean;
         };
         Insert: {
           company_id: string;
@@ -251,6 +323,7 @@ export type Database = {
           job_id: string;
           pdf_path?: string | null;
           resumo?: string | null;
+          stale?: boolean;
         };
         Update: {
           company_id?: string;
@@ -263,6 +336,7 @@ export type Database = {
           job_id?: string;
           pdf_path?: string | null;
           resumo?: string | null;
+          stale?: boolean;
         };
         Relationships: [
           {
@@ -905,6 +979,17 @@ export type Database = {
           p_status: string;
         };
         Returns: undefined;
+      };
+      save_candidate_review: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_complete?: boolean;
+          p_confirmed?: boolean;
+          p_expected_version: number;
+          p_patch: Json;
+        };
+        Returns: Json;
       };
       settle_resume_job: {
         Args: {
