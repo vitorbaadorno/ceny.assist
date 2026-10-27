@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - fix/tanstack-start-xss
+  pull_request:
+    branches:
+      - ceny-versaonova
 permissions:
   contents: write
 jobs:
