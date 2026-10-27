@@ -40,11 +40,9 @@ select pg_temp.ok('new batch same bytes reuses candidate',public.reserve_resume(
 select pg_temp.denied('slot cannot be overwritten',$q$select public.reserve_resume(pg_temp.id('owner'),pg_temp.id('company'),pg_temp.id('batch'),0,repeat('b',64),'b.pdf','application/pdf',10,1)$q$);
 select pg_temp.denied('wrong completion token rejected',$q$select public.finish_resume_upload(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'documentId')::uuid,gen_random_uuid())$q$);
 select public.finish_resume_upload(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'documentId')::uuid,(current_setting('test.reservation')::jsonb->>'token')::uuid);
-select set_config('test.claim',public.claim_resume_extraction(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'candidateId')::uuid)::text,true);
-select pg_temp.ok('first extraction owns one-use claim',(current_setting('test.claim')::jsonb->>'owned')::boolean);
-select pg_temp.ok('simultaneous extraction rejected',not(public.claim_resume_extraction(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'candidateId')::uuid)->>'owned')::boolean);
-select public.finish_resume_extraction(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'candidateId')::uuid,(current_setting('test.claim')::jsonb->>'token')::uuid,'{}','erro','Synthetic failure');
-select pg_temp.ok('ambiguous AI failure never recharged',not(public.claim_resume_extraction(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'candidateId')::uuid)->>'owned')::boolean);
+select pg_temp.ok('accepted document automatically queued',(select count(*)=1 from public.resume_jobs where company_id=pg_temp.id('company') and state='queued'));
+select pg_temp.denied('synchronous processing cannot bypass queue',$q$select public.claim_resume_extraction(pg_temp.id('owner'),pg_temp.id('company'),(current_setting('test.reservation')::jsonb->>'candidateId')::uuid)$q$);
+select pg_temp.ok('duplicate upload created only one job',(select count(*)=1 from public.resume_jobs where company_id=pg_temp.id('company')));
 reset role;
 select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('other'),'role','authenticated')::text,true);
 set local role authenticated;

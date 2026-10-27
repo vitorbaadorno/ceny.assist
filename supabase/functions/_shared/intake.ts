@@ -39,7 +39,7 @@ export async function cleanupResumes(companyId: string, context: WorkerContext) 
   return { removed, failed };
 }
 
-export async function receiveResume(
+async function receiveValidatedResume(
   request: Request,
   data: { companyId: string; batchId: string; slot: number; filename: string },
   context: WorkerContext,
@@ -119,21 +119,44 @@ export async function receiveResume(
       duplicate: false,
     };
   } catch {
-    // The document/candidate already exist. Even a crash or failed compensation
-    // leaves a tracked reference which reconciliation can safely clean later.
-    const { error: removeError } = await context.admin.storage
-      .from("resumes")
-      .remove([record.path]);
-    if (!removeError)
-      await context.admin.rpc("finish_resume_upload", {
-        p_actor: context.userId,
-        p_company: data.companyId,
-        p_document: record.documentId,
-        p_token: record.token,
-        p_error: "O armazenamento falhou. Selecione o arquivo novamente.",
-      });
+    // A lost confirmation may already have committed and queued this original.
+    // Keep the tracked reference; reconciliation excludes jobs and waits beyond
+    // the upload lifetime before deleting anything through the Storage API.
     throw new FileRejected(
       "O envio não foi confirmado. O registro foi preservado para conciliação; tente novamente após conferir o andamento.",
     );
+  }
+}
+
+export async function receiveResume(
+  request: Request,
+  data: { companyId: string; batchId: string; slot: number; filename: string },
+  context: WorkerContext,
+) {
+  try {
+    const result = await receiveValidatedResume(request, data, context);
+    if (result.state !== "receiving")
+      await context.admin.rpc("record_resume_entry", {
+        p_actor: context.userId,
+        p_company: data.companyId,
+        p_batch: data.batchId,
+        p_slot: data.slot,
+        p_filename: data.filename.slice(0, 180),
+        p_state: ["error", "cleaning"].includes(result.state) ? "rejected" : "received",
+        p_message: result.message,
+      });
+    return result;
+  } catch (error) {
+    if (error instanceof FileRejected)
+      await context.admin.rpc("record_resume_entry", {
+        p_actor: context.userId,
+        p_company: data.companyId,
+        p_batch: data.batchId,
+        p_slot: data.slot,
+        p_filename: data.filename.slice(0, 180),
+        p_state: "rejected",
+        p_message: error.message,
+      });
+    throw error;
   }
 }

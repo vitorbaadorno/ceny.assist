@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { BatchHistory } from "@/components/resume-queue";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "Enviar currículos | Ceny" }] }),
@@ -79,7 +80,7 @@ function UploadPage() {
     setItems((current) =>
       current.map((item) => {
         const doc = history.data.find((d) => d.id === item.documentId);
-        if (!doc || !["completed", "review", "error"].includes(doc.state)) return item;
+        if (!doc) return item;
         return {
           ...item,
           state: documentState(doc.state),
@@ -92,6 +93,7 @@ function UploadPage() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ["candidates", companyId] }),
       queryClient.invalidateQueries({ queryKey: ["resume-documents", companyId] }),
+      queryClient.invalidateQueries({ queryKey: ["resume-batches", companyId] }),
     ]);
   function selectFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -124,9 +126,9 @@ function UploadPage() {
       if (!controller.signal.aborted) setItems(result);
     };
     try {
-      const { data: batchId, error } = await supabase.rpc("begin_resume_batch", {
+      const { data: batchId, error } = await supabase.rpc("begin_resume_batch_files", {
         p_company: companyId,
-        p_count: items.length,
+        p_files: items.map((item) => ({ name: item.file.name.slice(0, 180) })),
         p_source: source,
       });
       if (error || !batchId)
@@ -139,7 +141,15 @@ function UploadPage() {
       for (let i = 0; i < result.length; i++) {
         if (controller.signal.aborted) break;
         const item = result[i]!;
-        if (item.state === "erro") continue;
+        if (item.state === "erro") {
+          await supabase.rpc("reject_resume_entry", {
+            p_company: companyId,
+            p_batch: batchId,
+            p_slot: i,
+            p_message: item.message ?? "Arquivo recusado.",
+          });
+          continue;
+        }
         let accepted = false;
         try {
           update(i, { state: "enviando" });
@@ -160,14 +170,6 @@ function UploadPage() {
           });
           await refresh();
           if (controller.signal.aborted) break;
-          if (response.state === "uploaded") {
-            update(i, { state: "lendo" });
-            const read = await invokeResume<{ status: string; message?: string }>(
-              { action: "extract", companyId, candidateId: response.candidateId },
-              AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]),
-            );
-            update(i, { state: documentState(read.status), message: read.message });
-          }
         } catch (e) {
           if (controller.signal.aborted) break;
           let state: UploadState = "erro";
@@ -203,8 +205,10 @@ function UploadPage() {
         const s = uploadSummary(result);
         if (s.failed === result.length)
           toast.error("Nenhum arquivo foi concluído. Confira os motivos de recusa.");
-        else if (s.failed || s.review || s.pending)
-          toast.warning("Lote finalizado com pendências. Confira o resumo.");
+        else if (s.failed || s.review)
+          toast.warning("Envios finalizados com pendências. Confira o resumo.");
+        else if (s.pending)
+          toast.info("Arquivos recebidos. A leitura continuará em segundo plano.");
         else toast.success(`${s.completed} currículo(s) concluído(s).`);
       }
     }
@@ -281,12 +285,12 @@ function UploadPage() {
             disabled={!canEdit || busy || !items.some((i) => i.state === "aguardando")}
             onClick={start}
           >
-            {busy ? "Processando lote…" : "Iniciar envio"}
+            {busy ? "Enviando lote…" : "Iniciar envio"}
           </Button>
           {busy && (
             <p role="status" className="text-sm">
-              Mantenha esta página aberta. Ao sair ou trocar de empresa, os próximos envios são
-              cancelados; o histórico preserva os já recebidos.
+              Aguarde o recebimento dos arquivos. Os já recebidos continuam em leitura mesmo ao
+              fechar a página; os ainda não recebidos precisarão ser selecionados novamente.
             </p>
           )}
         </CardContent>
@@ -320,6 +324,7 @@ function UploadPage() {
           </CardContent>
         </Card>
       )}
+      <BatchHistory companyId={companyId} canEdit={canEdit} />
       <Card>
         <CardHeader>
           <CardTitle>Histórico de recebimento</CardTitle>

@@ -2,6 +2,8 @@
 
 Implementação em `ceny-versaonova`, no Supabase novo `wikerxujjvmoksrmjywo`. A `main` permanece preservada.
 
+Atualização: a leitura passou a usar a [fila persistente](fila-curriculos.md), com agendamento independente, retentativas limitadas e reprocessamento explícito. As descrições abaixo de reserva única sem repetição e de início manual por falta de configuração registram o comportamento da etapa anterior; o comportamento atual está no documento da fila.
+
 ## Formatos e limites
 
 - PDF, Word DOCX, JPEG/JPG e PNG. DOC, DOCM, arquivos com senha, macros, anexos executáveis, scripts e referências externas ativas são recusados.

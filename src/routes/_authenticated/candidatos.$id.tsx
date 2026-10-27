@@ -5,7 +5,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getResumeUrl, processResume } from "@/lib/resumes.functions";
+import { getResumeUrl } from "@/lib/resumes.functions";
+import { CandidateQueue } from "@/components/resume-queue";
 import { archiveCandidate } from "@/lib/records.functions";
 import { calculateAge, isYoungApprenticeEligible } from "@/lib/age";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, FileDown, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, FileDown, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,23 +67,8 @@ function CandidateDetail() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const signUrl = useServerFn(getResumeUrl);
-  const reprocess = useServerFn(processResume);
   const archive = useServerFn(archiveCandidate);
   const [city, setCity] = useState("");
-  const { data: document } = useQuery({
-    queryKey: ["resume-document", companyId, id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resume_documents")
-        .select("state,source,uploaded_by,created_at,error_message")
-        .eq("company_id", companyId)
-        .eq("candidate_id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    refetchInterval: 5000,
-  });
 
   const {
     data: candidate,
@@ -90,6 +76,7 @@ function CandidateDetail() {
     error: loadError,
   } = useQuery({
     queryKey: ["candidate", companyId, id],
+    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidates")
@@ -127,18 +114,6 @@ function CandidateDetail() {
       queryClient.invalidateQueries({ queryKey: ["candidate", companyId, id] });
       queryClient.invalidateQueries({ queryKey: ["candidates", companyId] });
       toast.success("Candidato atualizado.");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const rerun = useMutation({
-    mutationFn: async () => reprocess({ data: { companyId, candidateId: id } }),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["candidate", companyId, id] });
-      queryClient.invalidateQueries({ queryKey: ["resume-document", companyId, id] });
-      queryClient.invalidateQueries({ queryKey: ["candidates", companyId] });
-      if (result.status === "concluido") toast.success("Leitura concluída.");
-      else toast.info("Confira o estado de leitura do documento.");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -204,15 +179,6 @@ function CandidateDetail() {
           <Button variant="outline" size="sm" onClick={openResume}>
             <FileDown className="size-4" /> Currículo original
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!canEdit || rerun.isPending || document?.state !== "uploaded"}
-            onClick={() => rerun.mutate()}
-          >
-            <RefreshCw className="size-4" />{" "}
-            {rerun.isPending ? "Lendo..." : "Iniciar leitura pendente"}
-          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button disabled={!canAdmin} variant="destructive" size="sm">
@@ -242,6 +208,7 @@ function CandidateDetail() {
         </div>
       </header>
 
+      <CandidateQueue companyId={companyId} candidateId={id} canEdit={canEdit} />
       {candidate.processing_error && (
         <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           {candidate.processing_error}

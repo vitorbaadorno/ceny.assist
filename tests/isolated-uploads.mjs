@@ -146,18 +146,21 @@ try {
     });
     assert.ok(error);
   });
-  await check("missing AI configuration keeps document uploaded and uncharged", async () => {
-    const r = await action({ action: "extract", candidateId: accepted[1].candidateId });
-    assert.equal(r.status, 422);
-    assert.match(r.body.error, /não está configurada/);
-    const { data } = await user
-      .from("resume_documents")
-      .select("state,ai_started_at")
-      .eq("id", accepted[1].documentId)
-      .single();
-    assert.equal(data.state, "uploaded");
-    assert.equal(data.ai_started_at, null);
-  });
+  await check(
+    "compatibility extraction endpoint only enqueues and never waits for AI",
+    async () => {
+      const r = await action({ action: "extract", candidateId: accepted[1].candidateId });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.status, "queued");
+      const { data } = await user
+        .from("resume_documents")
+        .select("state,ai_started_at")
+        .eq("id", accepted[1].documentId)
+        .single();
+      assert.equal(data.state, "uploaded");
+      assert.equal(data.ai_started_at, null);
+    },
+  );
   await check("reconciliation deletes stale unlinked object through Storage API", async () => {
     const path = `${company}/${randomUUID()}/original`;
     const { error } = await admin.storage
@@ -185,6 +188,65 @@ try {
       .from("resumes")
       .download(`${company}/${accepted[0].candidateId}/original`);
     assert.ifError(keptError);
+  });
+  await check("concurrent dispatchers reserve at most two documents per company", async () => {
+    const responses = await Promise.all([
+      admin.rpc("claim_resume_jobs"),
+      admin.rpc("claim_resume_jobs"),
+      admin.rpc("claim_resume_jobs"),
+    ]);
+    responses.forEach((r) => assert.ifError(r.error));
+    const claimed = responses.flatMap((r) => r.data);
+    assert.equal(claimed.length, 2);
+    assert.equal(new Set(claimed.map((j) => j.document_id)).size, 2);
+    for (const job of claimed) {
+      const { error } = await admin.rpc("settle_resume_job", {
+        p_job: job.id,
+        p_token: job.lease_token,
+        p_outcome: "error",
+        p_kind: "configuration",
+        p_message: "Synthetic missing configuration",
+      });
+      assert.ifError(error);
+    }
+  });
+  await check("scheduler rejects callers without its private credential", async () => {
+    for (const token of ["", "a".repeat(64)]) {
+      const response = await fetch(`${config.API_URL}/functions/v1/ceny-queue`, {
+        method: "POST",
+        headers: { "x-ceny-queue-token": token, apikey: config.ANON_KEY },
+      });
+      assert.equal(response.status, 401);
+    }
+  });
+  await check("cron processes stored work after the user logs out", async () => {
+    await user.auth.signOut();
+    execFileSync(
+      "psql",
+      [
+        config.DB_URL,
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "select private.configure_resume_dispatch('http://kong:8000/functions/v1/ceny-queue');",
+      ],
+      { stdio: "pipe" },
+    );
+    const deadline = Date.now() + 150000;
+    let jobs;
+    do {
+      const response = await admin.from("resume_jobs").select("*").eq("company_id", company);
+      assert.ifError(response.error);
+      jobs = response.data;
+      if (jobs.length === 4 && jobs.every((j) => j.state === "blocked")) break;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } while (Date.now() < deadline);
+    assert.equal(jobs.length, 4);
+    assert.ok(
+      jobs.every((j) => j.state === "blocked" && j.attempts === 1),
+      JSON.stringify(jobs.map((j) => ({ state: j.state, attempts: j.attempts }))),
+    );
+    assert.ok(jobs.every((j) => j.error_kind === "configuration"));
   });
 } finally {
   // Entire database and Storage are discarded by the workflow, including failures.

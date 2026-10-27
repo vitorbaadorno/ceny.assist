@@ -1,0 +1,318 @@
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+type Job = Tables<"resume_jobs">;
+export const jobLabels: Record<string, string> = {
+  queued: "Na fila",
+  running: "Em leitura",
+  retry_wait: "Aguardando nova tentativa",
+  succeeded: "Concluído",
+  review: "Revisão do RH necessária",
+  failed: "Tentativas esgotadas",
+  blocked: "Configuração necessária",
+  cancelled: "Cancelado",
+};
+const phaseLabels: Record<string, string> = {
+  downloading: "Obtendo original",
+  validating: "Conferindo documento",
+  reading: "Extraindo informações",
+  saving: "Salvando resultado",
+};
+export const isActiveJob = (job?: Job | null) =>
+  !!job && ["queued", "running", "retry_wait"].includes(job.state);
+
+export function JobProgress({ job }: { job: Job }) {
+  return (
+    <div className="space-y-1 text-sm" role="status">
+      <p className="font-medium">
+        {jobLabels[job.state] ?? job.state}
+        {job.state === "running" ? ` · ${phaseLabels[job.phase] ?? "Processando"}` : ""}
+      </p>
+      <p>
+        Leitura {job.generation} · Tentativa {job.attempts} de 3
+      </p>
+      {job.state === "retry_wait" && (
+        <p>Nova tentativa a partir de {new Date(job.available_at).toLocaleString("pt-BR")}.</p>
+      )}
+      {job.message && <p>{job.message}</p>}
+      {job.state === "blocked" && (
+        <p>O administrador precisa corrigir a configuração antes de repetir.</p>
+      )}
+      {job.state === "review" && (
+        <p>Confira e corrija os dados do candidato antes de solicitar outra leitura.</p>
+      )}
+    </div>
+  );
+}
+
+export function CandidateQueue({
+  companyId,
+  candidateId,
+  canEdit,
+}: {
+  companyId: string;
+  candidateId: string;
+  canEdit: boolean;
+}) {
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["candidate-queue", companyId, candidateId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resume_jobs")
+        .select("*,resume_job_attempts(*)")
+        .eq("company_id", companyId)
+        .eq("candidate_id", candidateId)
+        .order("generation", { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data[0] ?? null;
+    },
+    refetchInterval: 5000,
+  });
+  const job = query.data;
+  const action = useMutation({
+    mutationFn: async (mode: "retry" | "cancel" | "reprocess") => {
+      const response =
+        mode === "reprocess"
+          ? await supabase.rpc("request_resume_job", {
+              p_company: companyId,
+              p_candidate: candidateId,
+              p_mode: mode,
+              p_request: crypto.randomUUID(),
+            })
+          : await supabase.rpc("control_resume_job", {
+              p_company: companyId,
+              p_job: job!.id,
+              p_action: mode,
+            });
+      if (response.error) throw response.error;
+      return mode;
+    },
+    onSuccess: async (mode) => {
+      await client.invalidateQueries({ queryKey: ["candidate-queue", companyId, candidateId] });
+      await client.invalidateQueries({ queryKey: ["candidate", companyId, candidateId] });
+      toast.info(mode === "cancel" ? "Leitura cancelada." : "Leitura adicionada à fila.");
+    },
+    onError: () =>
+      toast.error("Não foi possível alterar a leitura. Atualize a página e confira seu acesso."),
+  });
+  if (query.isError) return <p role="alert">Não foi possível consultar a fila de leitura.</p>;
+  if (!job) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Leitura do currículo</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <JobProgress job={job} />
+        <p className="text-xs text-muted-foreground">
+          A leitura continua ao sair desta página. Até 2 documentos simultâneos por empresa e 2
+          minutos por tentativa.
+        </p>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            {["queued", "retry_wait"].includes(job.state) && (
+              <Button
+                variant="outline"
+                disabled={action.isPending}
+                onClick={() => action.mutate("cancel")}
+              >
+                Cancelar leitura pendente
+              </Button>
+            )}
+            {["failed", "blocked"].includes(job.state) && (
+              <Button disabled={action.isPending} onClick={() => action.mutate("retry")}>
+                Repetir leitura que falhou
+              </Button>
+            )}
+            {["succeeded", "review", "cancelled"].includes(job.state) && (
+              <Button
+                variant="outline"
+                disabled={action.isPending}
+                onClick={() => action.mutate("reprocess")}
+              >
+                Reprocessar currículo
+              </Button>
+            )}
+          </div>
+        )}
+        {!!job.resume_job_attempts.length && (
+          <details>
+            <summary className="cursor-pointer text-sm">Tentativas desta leitura</summary>
+            {job.resume_job_attempts
+              .sort((a, b) => a.attempt - b.attempt)
+              .map((a) => (
+                <p className="mt-2 text-xs" key={a.attempt}>
+                  Tentativa {a.attempt} · {new Date(a.started_at).toLocaleString("pt-BR")} ·{" "}
+                  {jobLabels[a.outcome] ??
+                    (a.outcome === "interrupted" ? "Interrompida pelo sistema" : a.outcome)}
+                  {a.message ? ` · ${a.message}` : ""}
+                </p>
+              ))}
+          </details>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdit: boolean }) {
+  const client = useQueryClient();
+  const query = useQuery({
+    queryKey: ["resume-batches", companyId],
+    queryFn: async () => {
+      const batches = await supabase
+        .from("resume_batches")
+        .select("*,resume_batch_entries(*),resume_batch_items(*)")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (batches.error) throw batches.error;
+      const ids = [
+        ...new Set(batches.data.flatMap((b) => b.resume_batch_items.map((i) => i.document_id))),
+      ];
+      const jobs = ids.length
+        ? await supabase
+            .from("resume_jobs")
+            .select("*")
+            .eq("company_id", companyId)
+            .in("document_id", ids)
+            .order("generation", { ascending: false })
+        : { data: [], error: null };
+      if (jobs.error) throw jobs.error;
+      return batches.data.map((b) => ({
+        ...b,
+        entries: b.resume_batch_entries
+          .sort((a, c) => a.slot - c.slot)
+          .map((entry) => {
+            const doc = b.resume_batch_items.find((i) => i.slot === entry.slot);
+            return { ...entry, job: jobs.data?.find((j) => j.document_id === doc?.document_id) };
+          }),
+      }));
+    },
+    refetchInterval: 5000,
+  });
+  const action = useMutation({
+    mutationFn: async ({ batch, mode }: { batch: string; mode: "retry" | "cancel" }) => {
+      const { error } = await supabase.rpc("control_resume_batch", {
+        p_company: companyId,
+        p_batch: batch,
+        p_action: mode,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: ["resume-batches", companyId] }),
+    onError: () => toast.error("Não foi possível alterar o lote. Atualize e confira seu acesso."),
+  });
+  const entryLabels: Record<string, string> = {
+    waiting: "Aguardando recebimento",
+    rejected: "Arquivo recusado",
+    missing: "Envio interrompido: selecione o arquivo novamente",
+    cancelled: "Envio cancelado",
+    received: "Recebido",
+  };
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Histórico de lotes</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <p className="text-sm text-muted-foreground">
+          Últimos 20 lotes. Atualização a cada 5 segundos. Falhas de leitura podem ser repetidas sem
+          enviar o arquivo novamente; arquivos não recebidos precisam ser selecionados novamente.
+        </p>
+        {query.isError && <p role="alert">Não foi possível consultar os lotes.</p>}
+        {query.data?.length === 0 && <p>Nenhum lote enviado.</p>}
+        {query.data?.map((batch) => {
+          const counts = { completed: 0, review: 0, failed: 0, cancelled: 0, pending: 0 };
+          for (const entry of batch.entries) {
+            if (entry.state === "cancelled" || entry.job?.state === "cancelled") counts.cancelled++;
+            else if (entry.job?.state === "succeeded") counts.completed++;
+            else if (entry.job?.state === "review") counts.review++;
+            else if (
+              ["rejected", "missing"].includes(entry.state) ||
+              ["failed", "blocked"].includes(entry.job?.state ?? "")
+            )
+              counts.failed++;
+            else counts.pending++;
+          }
+          return (
+            <div className="space-y-3 border-t pt-3" key={batch.id}>
+              <p className="font-medium">
+                {new Date(batch.created_at).toLocaleString("pt-BR")} · {batch.file_count} arquivo(s)
+              </p>
+              <p className="text-sm">
+                {counts.completed} concluído(s), {counts.failed} com falha, {counts.review} para
+                revisão, {counts.cancelled} cancelado(s) e {counts.pending} pendente(s).
+              </p>
+              {canEdit && (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={
+                      action.isPending ||
+                      !batch.entries.some((e) => ["failed", "blocked"].includes(e.job?.state ?? ""))
+                    }
+                    onClick={() => action.mutate({ batch: batch.id, mode: "retry" })}
+                  >
+                    Repetir apenas leituras que falharam
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={
+                      action.isPending ||
+                      !batch.entries.some(
+                        (e) =>
+                          e.state === "waiting" ||
+                          ["queued", "retry_wait"].includes(e.job?.state ?? ""),
+                      )
+                    }
+                    onClick={() => action.mutate({ batch: batch.id, mode: "cancel" })}
+                  >
+                    Cancelar pendentes
+                  </Button>
+                </div>
+              )}
+              <details>
+                <summary className="cursor-pointer text-sm">Consultar arquivos do lote</summary>
+                {!batch.entries.length && (
+                  <p className="text-sm">
+                    Lote anterior ao histórico detalhado. Consulte os documentos abaixo.
+                  </p>
+                )}
+                {batch.entries.map((entry) => (
+                  <div className="mt-3 rounded border p-3" key={entry.slot}>
+                    <p className="break-all font-medium">{entry.filename}</p>
+                    {entry.job && entry.state !== "cancelled" ? (
+                      <>
+                        <JobProgress job={entry.job} />
+                        <Link
+                          className="text-sm underline"
+                          to="/candidatos/$id"
+                          params={{ id: entry.job.candidate_id }}
+                        >
+                          Ver candidato
+                        </Link>
+                      </>
+                    ) : (
+                      <p className="text-sm">
+                        {entryLabels[entry.state]}
+                        {entry.message ? ` · ${entry.message}` : ""}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </details>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}

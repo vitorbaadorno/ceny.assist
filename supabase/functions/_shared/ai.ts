@@ -25,12 +25,15 @@ export async function callAiJson<T>(options: {
   schemaName: string;
   schema: Record<string, unknown>;
   effort?: "low" | "medium" | "high";
+  signal?: AbortSignal;
 }): Promise<T> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new AiGatewayError(401, "Serviço de IA não configurado.");
 
   const response = await fetch(GATEWAY_URL, {
-    signal: AbortSignal.timeout(90000),
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(90000)])
+      : AbortSignal.timeout(90000),
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -55,14 +58,14 @@ export async function callAiJson<T>(options: {
   });
 
   if (!response.ok || !response.body) {
-    const detail = await response.text().catch(() => "");
+    await response.body?.cancel().catch(() => {});
     throw new AiGatewayError(
       response.status,
       response.status === 429
         ? "Muitas solicitações à IA no momento. Tente novamente em instantes."
         : response.status === 402
           ? "Os créditos de IA acabaram. Adicione créditos para continuar."
-          : `Falha na leitura por IA (${response.status}). ${detail.slice(0, 300)}`,
+          : `Falha na leitura por IA (${response.status}).`,
     );
   }
 

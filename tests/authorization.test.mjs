@@ -243,96 +243,53 @@ const extraction = {
   campos_incertos: [],
 };
 const loadExtraction = (callAiJson) =>
-  load("supabase/functions/_shared/resumes.ts", ["processResume"], {
+  load("supabase/functions/_shared/resumes.ts", ["processResume", "extractResume"], {
     requireCompanyRole,
     z,
     callAiJson,
     validateFile: async () => ({ mime: "application/pdf", pages: 1 }),
     FileRejected,
     FILE_LIMITS,
-    Deno: { env: { get: () => "test-only-provider" } },
-  }).processResume;
-test("a lost or repeated extraction request cannot invoke AI twice", async () => {
-  const supabase = db({
-    company_members: member("recruiter"),
-    candidates: {
-      data: {
-        id: candidateId,
-        arquivo_original_path: "authorized/original",
-        arquivo_nome: "fixture.pdf",
-      },
-      error: null,
-    },
   });
+test("extraction endpoint enqueues without downloading or calling AI", async () => {
+  const supabase = db({ company_members: member("recruiter") });
   let calls = 0;
-  const admin = db();
-  admin.rpc = async () => ({ data: { owned: false, state: "reading" }, error: null });
   const result = await loadExtraction(async () => {
     calls++;
     return extraction;
-  })({ companyId, candidateId }, { supabase, admin, userId });
-  assert.equal(result.status, "reading");
+  }).processResume({ companyId, candidateId }, { supabase, admin: db(), userId });
+  assert.equal(result.status, "queued");
   assert.equal(calls, 0);
   assert.ok(!supabase.calls.some((c) => c.download));
+  const enqueue = supabase.calls.find((c) => c.rpc === "request_resume_job");
+  assert.equal(enqueue.args.p_company, companyId);
+  assert.equal(enqueue.args.p_candidate, candidateId);
+  assert.equal(enqueue.args.p_mode, "normal");
 });
-test("viewer cannot download a resume for privileged AI processing", async () => {
-  const supabase = db({ company_members: member("viewer") }),
-    admin = db();
-  let aiCalls = 0;
+test("viewer cannot enqueue privileged AI processing", async () => {
+  const supabase = db({ company_members: member("viewer") });
   await assert.rejects(
-    loadExtraction(async () => {
-      aiCalls++;
-      return extraction;
-    })({ companyId, candidateId }, { supabase, admin, userId }),
+    loadExtraction(() => {
+      throw Error("must not call");
+    }).processResume({ companyId, candidateId }, { supabase, admin: db(), userId }),
   );
-  assert.equal(aiCalls, 0);
-  assert.equal(admin.calls.length, 0);
-  assert.ok(!supabase.calls.some((c) => c.download));
+  assert.ok(!supabase.calls.some((c) => c.rpc || c.download));
 });
-test("AI persistence uses validated output and verified actor and company", async () => {
-  const supabase = db({
-      company_members: member("recruiter"),
-      candidates: {
-        data: {
-          id: candidateId,
-          arquivo_original_path: "authorized/original",
-          arquivo_nome: "fixture.pdf",
-        },
-        error: null,
-      },
-    }),
-    admin = db();
-  const result = await loadExtraction(async () => extraction)(
-    { companyId, candidateId },
-    { supabase, admin, userId },
-  );
+test("extraction validates AI output and propagates cancellation", async () => {
+  const signal = new AbortController().signal;
+  const result = await loadExtraction(async (options) => {
+    assert.equal(options.signal, signal);
+    return extraction;
+  }).extractResume(new Uint8Array([1]), "fixture.pdf", signal);
   assert.equal(result.status, "concluido");
-  const write = admin.calls.find((c) => c.rpc === "finish_resume_extraction");
-  assert.equal(write.rpc, "finish_resume_extraction");
-  assert.equal(write.args.p_actor, userId);
-  assert.equal(write.args.p_company, companyId);
-  assert.deepEqual(write.args.p_extraction, extraction);
+  assert.deepEqual(result.extraction, extraction);
 });
 test("invalid provider output never becomes an AI result", async () => {
-  const supabase = db({
-      company_members: member("recruiter"),
-      candidates: {
-        data: {
-          id: candidateId,
-          arquivo_original_path: "authorized/original",
-          arquivo_nome: "fixture.pdf",
-        },
-        error: null,
-      },
-    }),
-    admin = db();
   await assert.rejects(
-    loadExtraction(async () => ({ ...extraction, confianca: 10 }))(
-      { companyId, candidateId },
-      { supabase, admin, userId },
+    loadExtraction(async () => ({ ...extraction, confianca: 10 })).extractResume(
+      new Uint8Array([1]),
+      "fixture.pdf",
+      new AbortController().signal,
     ),
   );
-  assert.equal(admin.calls.length, 2);
-  assert.equal(admin.calls[1].args.p_status, "erro");
-  assert.deepEqual(admin.calls[1].args.p_extraction, {});
 });

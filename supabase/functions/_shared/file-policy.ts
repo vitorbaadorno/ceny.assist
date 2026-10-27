@@ -8,7 +8,7 @@ export const FILE_LIMITS = {
 } as const;
 export const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export const FILE_ACCEPT = ".pdf,.docx,.jpg,.jpeg,.png";
-export class FileRejected extends Error {}
+export class FileRejected extends Error { override name='FileRejected'; }
 export function checkFileEnvelope(name: string, size: number) {
   if (!size) throw new FileRejected("O arquivo está vazio.");
   if (size > FILE_LIMITS.bytes) throw new FileRejected("O arquivo ultrapassa 10 MB.");
