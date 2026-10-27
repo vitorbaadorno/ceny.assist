@@ -27,8 +27,11 @@ O original pode ser aberto ao lado do formulário (PDF/imagem) ou em outra aba. 
 ## Verificação
 
 - 29 verificações SQL da revisão passaram no banco novo dentro de uma transação revertida, cobrindo autorização, validação, histórico, conflito, conclusão, reprocessamento, nulidade confirmada e avaliações desatualizadas.
-- TypeScript, build de produção e Deno da função atualizada passaram localmente. A suíte de código também passou.
+- TypeScript, build de produção e Deno da função atualizada passaram localmente. Os 61 testes de código passaram.
 - O teste `tests/isolated-reviews.mjs` executa duas gravações simultâneas, preservação de correções após uma extração sintética e retirada de acesso, no Supabase descartável do CI. Não chama o provedor de IA.
+- [GitHub Actions 40604620312](https://github.com/vitorbaadorno/ceny.assist/actions/runs/40604620312), commit `f4dadc2`: todas as etapas concluídas com sucesso, incluindo 61 testes de código, seis suítes SQL, dez cenários de envio/fila/Storage, 16 cenários de autenticação, três cenários de revisão concorrente e build. O ambiente descartável foi encerrado.
+- Prévia visual com o componente real e APIs simuladas localmente: cidade digitada livremente, estado de alteração pendente e recálculo de janeiro/2020 a dezembro/2022 em três anos conferidos. [Captura da prévia fictícia](revisao-interface-local.png). Essa inspeção não foi um teste de login ou gravação no banco remoto.
+- `main` remota conferida em `58df482099e187f25ef2c154789321df8b0b1815`, sem alteração.
 - Migration aplicada: `20261027172744_candidate_human_review.sql`. Função publicada: `ceny-worker` versão 6. A fila existente utiliza as novas regras de persistência do banco.
 - A criação de uma conta temporária para teste visual no Supabase remoto foi bloqueada pela revisão automática, por criar dados persistentes e credenciais. Essa operação não foi executada. Os testes de gravação usam transação revertida ou ambiente descartável.
 - O advisor não apontou novos problemas de segurança. Permanecem os quatro avisos informativos das tabelas privadas fechadas e o aviso preexistente de [proteção contra senhas vazadas desativada](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
