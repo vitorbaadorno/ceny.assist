@@ -2,6 +2,8 @@
 
 Implementada na branch `ceny-versaonova` e no Supabase `wikerxujjvmoksrmjywo`. A `main` foi preservada. Esta etapa substitui a leitura síncrona descrita no histórico de envio de currículos.
 
+A etapa seguinte acrescenta [validação da leitura, evidências e auditoria das análises](qualidade-leitura.md). Os números de testes e versões abaixo registram a publicação original da fila.
+
 ## Comportamento
 
 - Confirmar o armazenamento cria o trabalho na mesma transação. A leitura independe da página, da aba e da sessão de login. Arquivos ainda não recebidos precisam ser selecionados novamente; o servidor não consegue recuperar bytes que ficaram no computador.
