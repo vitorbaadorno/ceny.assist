@@ -35,6 +35,8 @@ insert into public.candidates(id,company_id,nome,processing_status,created_by) v
   (pg_temp.id('ca'),pg_temp.id('a'),'Candidate A','concluido',pg_temp.id('owner_a')),
   (pg_temp.id('cb'),pg_temp.id('b'),'Candidate B','concluido',pg_temp.id('owner_b'));
 insert into public.jobs(id,company_id,titulo) values(pg_temp.id('ja'),pg_temp.id('a'),'Job A'),(pg_temp.id('jb'),pg_temp.id('b'),'Job B');
+update public.jobs set descricao='Descrição de teste com requisito SQL.',criteria='[{"kind":"skill","text":"SQL","min_years":null,"required":true,"weight":5,"source":null}]';
+update public.jobs set approved_hash=private.job_hash(private.job_payload(titulo,descricao,categoria,criteria));
 insert into public.candidate_scores(company_id,candidate_id,job_id,score) values
   (pg_temp.id('a'),pg_temp.id('ca'),pg_temp.id('ja'),70),(pg_temp.id('b'),pg_temp.id('cb'),pg_temp.id('jb'),80);
 insert into public.job_reports(company_id,job_id,resumo) values(pg_temp.id('a'),pg_temp.id('ja'),'Report A'),(pg_temp.id('b'),pg_temp.id('jb'),'Report B');
@@ -69,7 +71,7 @@ select pg_temp.denied('cross company job archive',$q$select public.archive_job(p
 select pg_temp.denied('cross company membership',$q$select public.manage_company_member(pg_temp.id('b'),pg_temp.id('outsider'),'admin')$q$);
 select pg_temp.denied('owner cannot be demoted',$q$select public.manage_company_member(pg_temp.id('a'),pg_temp.id('owner_a'),'viewer')$q$);
 select pg_temp.denied('client cannot save AI',$q$select public.save_candidate_extraction(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ca'),'{}','concluido')$q$);
-select pg_temp.denied('client cannot save scores',$q$select public.replace_job_scores(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),'[]')$q$);
+select pg_temp.denied('client cannot save scores',$q$select public.replace_job_scores_v2(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),(select version from public.jobs where id=pg_temp.id('ja')),(select approved_hash from public.jobs where id=pg_temp.id('ja')),'[]')$q$);
 select pg_temp.denied('other company review denied',$q$select public.save_candidate_review(pg_temp.id('b'),pg_temp.id('cb'),0,'{"observacoes":"Attack"}')$q$);
 with changed as(update storage.objects set name='fake' where bucket_id='resumes' returning id)
 select pg_temp.ok('original cannot be replaced',(select count(*)=0 from changed));
@@ -126,7 +128,7 @@ select pg_temp.denied('legacy cannot be marked imported before attribution', $q$
 select pg_temp.denied('composite candidate/job FK prevents crossing',$q$insert into public.candidate_scores(company_id,candidate_id,job_id,score) values(pg_temp.id('a'),pg_temp.id('cb'),pg_temp.id('ja'),90)$q$,'23503');
 select pg_temp.denied('report/job company FK',$q$insert into public.job_reports(company_id,job_id) values(pg_temp.id('a'),pg_temp.id('jb'))$q$,'23503');
 select pg_temp.denied('backend rejects unauthorized actor',$q$select public.replace_job_scores(pg_temp.id('viewer'),pg_temp.id('a'),pg_temp.id('ja'),'[]')$q$);
-select public.replace_job_scores(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),jsonb_build_array(jsonb_build_object('candidate_id',pg_temp.id('ca'),'score',82,'detalhes_matching','{}'::jsonb)));
+select public.replace_job_scores_v2(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),(select version from public.jobs where id=pg_temp.id('ja')),(select approved_hash from public.jobs where id=pg_temp.id('ja')),jsonb_build_array(jsonb_build_object('candidate_id',pg_temp.id('ca'),'score',82,'candidate_version',(select data_version from public.candidates where id=pg_temp.id('ca')),'detalhes_matching','{}'::jsonb)));
 select pg_temp.ok('trusted backend persists score',(select score=82 from public.candidate_scores where candidate_id=pg_temp.id('ca')));
 reset role;
 

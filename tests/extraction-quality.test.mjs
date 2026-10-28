@@ -108,6 +108,10 @@ test("evidence quotes and inferred summary cannot manufacture ranking matches", 
       evidencias: [{ trecho: "Python" }],
     },
   };
-  const result = scoreCandidate(candidate, { requisitos_obrigatorios: ["Python"] });
+  const result = scoreCandidate(candidate, {
+    criteria: [
+      { kind: "skill", text: "Python", min_years: null, required: true, weight: 5, source: null },
+    ],
+  });
   assert.deepEqual(result.details.obrigatorios_atendidos, []);
 });

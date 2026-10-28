@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { z } from "zod";
+import { validateJobPayload } from "../supabase/functions/_shared/job-criteria.ts";
 import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
 import { isYoungApprenticeEligible } from "../supabase/functions/_shared/age.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
@@ -112,6 +113,18 @@ const companyId = "11111111-1111-4111-8111-111111111111";
 const candidateId = "22222222-2222-4222-8222-222222222222";
 const jobId = "33333333-3333-4333-8333-333333333333";
 const userId = "44444444-4444-4444-8444-444444444444";
+const approvedJob = {
+  id: jobId,
+  titulo: "Analista",
+  descricao: "Atendimento profissional de sistemas",
+  categoria: "regular",
+  status: "aberta",
+  approved_hash: "hash",
+  version: 2,
+  criteria: [
+    { kind: "skill", text: "SQL", min_years: null, required: true, weight: 5, source: null },
+  ],
+};
 const member = (role) => ({ data: { role }, error: null });
 const { getResumeUrl } = load("src/lib/resumes.functions.ts", ["getResumeUrl"], {
   createServerFn,
@@ -128,6 +141,7 @@ const { archiveCandidate } = load("src/lib/records.functions.ts", ["archiveCandi
 const { rankCandidates } = load("supabase/functions/_shared/ranking.ts", ["rankCandidates"], {
   requireCompanyRole,
   scoreCandidate,
+  validateJobPayload,
   isYoungApprenticeEligible,
 });
 
@@ -195,7 +209,7 @@ test("viewer cannot trigger ranking or use privileged persistence", async () => 
 test("ranking uses scoped RLS reads and server-derived scores, with verified actor", async () => {
   const supabase = db({
       company_members: member("recruiter"),
-      jobs: { data: { id: jobId, categoria: "regular" }, error: null },
+      jobs: { data: approvedJob, error: null },
       candidates: { data: [{ id: candidateId, skills: [], dados_extraidos: {} }], error: null },
     }),
     admin = db();
@@ -207,19 +221,19 @@ test("ranking uses scoped RLS reads and server-derived scores, with verified act
   for (const c of supabase.calls.filter((c) => ["jobs", "candidates"].includes(c.table)))
     assert.ok(c.filters.some(([k, v]) => k === "company_id" && v === companyId));
   const write = admin.calls.find((c) => c.rpc);
-  assert.equal(write.rpc, "replace_job_scores");
+  assert.equal(write.rpc, "replace_job_scores_v2");
   assert.equal(write.args.p_actor, userId);
   assert.equal(write.args.p_company, companyId);
   assert.equal(write.args.p_scores[0].candidate_id, candidateId);
   assert.equal(
     write.args.p_scores[0].score,
-    scoreCandidate({ skills: [], dados_extraidos: {} }, { categoria: "regular" }).score,
+    scoreCandidate({ skills: [], dados_extraidos: {} }, approvedJob).score,
   );
 });
 test("backend refuses success if final database check detects revocation", async () => {
   const supabase = db({
       company_members: member("admin"),
-      jobs: { data: { id: jobId }, error: null },
+      jobs: { data: approvedJob, error: null },
       candidates: { data: [], error: null },
     }),
     admin = db({}, new Error("Acesso revogado"));

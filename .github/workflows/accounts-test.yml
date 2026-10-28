@@ -40,6 +40,7 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_analysis.sql > artifacts/resume-analysis.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_review.sql > artifacts/candidate-review.txt
       - name: Validate real file intake and Storage
+        # All SQL fixtures run in rolled-back transactions.
         run: |
           supabase functions serve > artifacts/edge-test.log 2>&1 &
           for i in $(seq 1 30); do
@@ -52,6 +53,10 @@ jobs:
         run: node tests/isolated-auth.mjs
       - name: Concurrent human review and AI correction preservation
         run: node tests/isolated-reviews.mjs
+      - name: Job governance and approved criteria
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/job_governance.sql > artifacts/job-governance.txt
+          node tests/isolated-jobs.mjs
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
@@ -71,6 +76,8 @@ jobs:
             artifacts/resume-analysis.txt
             artifacts/candidate-review.txt
             artifacts/review-results.json
+            artifacts/job-governance.txt
+            artifacts/job-results.json
             artifacts/upload-results.json
       - name: Stop disposable test environment
         if: always()

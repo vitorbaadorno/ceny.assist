@@ -1,6 +1,7 @@
 import { requireCompanyRole } from "./access.ts";
 import { scoreCandidate } from "./scoring.ts";
 import { isYoungApprenticeEligible } from "./age.ts";
+import { validateJobPayload } from "./job-criteria.ts";
 import type { Json, WorkerContext } from "./context.ts";
 export async function rankCandidates(
   data: { companyId: string; jobId: string },
@@ -20,6 +21,17 @@ export async function rankCandidates(
     .eq("id", data.jobId)
     .single();
   if (jobError || !job) throw new Error("Vaga não encontrada.");
+  if (job.status !== "aberta" || !job.approved_hash)
+    throw new Error("Reabra a vaga e aprove os critérios antes de avaliar.");
+  validateJobPayload(
+    {
+      titulo: job.titulo,
+      descricao: job.descricao ?? "",
+      categoria: job.categoria as "regular" | "jovem_aprendiz",
+      criteria: job.criteria as never,
+    },
+    true,
+  );
 
   const candidates: Array<{
     id: string;
@@ -65,10 +77,12 @@ export async function rankCandidates(
   });
 
   const supabaseAdmin = context.admin;
-  const { error } = await supabaseAdmin.rpc("replace_job_scores", {
+  const { error } = await supabaseAdmin.rpc("replace_job_scores_v2", {
     p_actor: context.userId,
     p_company: data.companyId,
     p_job: job.id,
+    p_job_version: job.version,
+    p_criteria_hash: job.approved_hash,
     p_scores: rows as unknown as Json,
   });
   if (error) throw new Error(error.message);

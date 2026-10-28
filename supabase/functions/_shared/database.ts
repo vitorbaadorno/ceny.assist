@@ -58,9 +58,11 @@ export type Database = {
           candidate_version: number | null;
           company_id: string;
           created_at: string;
+          criteria_hash: string | null;
           detalhes_matching: Json;
           id: string;
           job_id: string;
+          job_version: number | null;
           score: number;
           stale: boolean;
           updated_at: string;
@@ -70,9 +72,11 @@ export type Database = {
           candidate_version?: number | null;
           company_id: string;
           created_at?: string;
+          criteria_hash?: string | null;
           detalhes_matching?: Json;
           id?: string;
           job_id: string;
+          job_version?: number | null;
           score: number;
           stale?: boolean;
           updated_at?: string;
@@ -82,9 +86,11 @@ export type Database = {
           candidate_version?: number | null;
           company_id?: string;
           created_at?: string;
+          criteria_hash?: string | null;
           detalhes_matching?: Json;
           id?: string;
           job_id?: string;
+          job_version?: number | null;
           score?: number;
           stale?: boolean;
           updated_at?: string;
@@ -348,12 +354,98 @@ export type Database = {
           },
         ];
       };
+      job_revisions: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          after_data: Json;
+          before_data: Json | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          job_id: string;
+          version: number;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          after_data: Json;
+          before_data?: Json | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          job_id: string;
+          version: number;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          after_data?: Json;
+          before_data?: Json | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          job_id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "job_revisions_company_id_job_id_fkey";
+            columns: ["company_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      job_templates: {
+        Row: {
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+          payload: Json;
+        };
+        Insert: {
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+          payload: Json;
+        };
+        Update: {
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+          payload?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "job_templates_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       jobs: {
         Row: {
+          approved_at: string | null;
+          approved_by: string | null;
+          approved_hash: string | null;
           categoria: string;
           company_id: string;
           created_at: string;
           created_by: string | null;
+          criteria: Json;
           deleted_at: string | null;
           descricao: string | null;
           excluido: boolean;
@@ -366,12 +458,18 @@ export type Database = {
           status: string;
           titulo: string;
           updated_at: string;
+          updated_by: string | null;
+          version: number;
         };
         Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          approved_hash?: string | null;
           categoria?: string;
           company_id: string;
           created_at?: string;
           created_by?: string | null;
+          criteria?: Json;
           deleted_at?: string | null;
           descricao?: string | null;
           excluido?: boolean;
@@ -384,12 +482,18 @@ export type Database = {
           status?: string;
           titulo: string;
           updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
         };
         Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          approved_hash?: string | null;
           categoria?: string;
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
+          criteria?: Json;
           deleted_at?: string | null;
           descricao?: string | null;
           excluido?: boolean;
@@ -402,6 +506,8 @@ export type Database = {
           status?: string;
           titulo?: string;
           updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -853,6 +959,10 @@ export type Database = {
       create_company:
         | { Args: { p_name: string }; Returns: string }
         | { Args: { p_name: string; p_responsible: string }; Returns: string };
+      create_job_template: {
+        Args: { p_company: string; p_name: string; p_payload: Json };
+        Returns: string;
+      };
       finish_resume_cleanup: {
         Args: { p_company: string; p_document: string };
         Returns: undefined;
@@ -931,6 +1041,17 @@ export type Database = {
         };
         Returns: undefined;
       };
+      replace_job_scores_v2: {
+        Args: {
+          p_actor: string;
+          p_company: string;
+          p_criteria_hash: string;
+          p_job: string;
+          p_job_version: number;
+          p_scores: Json;
+        };
+        Returns: undefined;
+      };
       request_resume_job: {
         Args: {
           p_candidate: string;
@@ -988,6 +1109,25 @@ export type Database = {
           p_confirmed?: boolean;
           p_expected_version: number;
           p_patch: Json;
+        };
+        Returns: Json;
+      };
+      save_job: {
+        Args: {
+          p_approve?: boolean;
+          p_company: string;
+          p_expected_version: number;
+          p_job: string | null;
+          p_payload: Json;
+        };
+        Returns: Json;
+      };
+      set_job_status: {
+        Args: {
+          p_company: string;
+          p_expected_version: number;
+          p_job: string;
+          p_status: string;
         };
         Returns: Json;
       };

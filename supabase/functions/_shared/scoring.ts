@@ -1,3 +1,5 @@
+import { criterionKey, normalizeCriteria, type JobCriterion } from "./job-criteria.ts";
+
 export type MatchDetails = {
   obrigatorios_atendidos: string[];
   obrigatorios_faltantes: string[];
@@ -6,15 +8,11 @@ export type MatchDetails = {
   experiencia_ok: boolean;
   localizacao_ok: boolean;
   formacao_ok: boolean;
+  formula: "weighted-v2";
+  pontuacao_antes_limite: number;
+  limite_obrigatorio_aplicado: boolean;
+  criterios: Array<JobCriterion & { atendido: boolean; proporcao: number; pontos: number }>;
 };
-
-const normalize = (value: string) =>
-  value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-
 export type CandidateForScore = {
   skills?: string[] | null;
   localizacao?: string | null;
@@ -22,73 +20,91 @@ export type CandidateForScore = {
   dados_extraidos?: unknown;
   data_nascimento?: string | null;
 };
+export type JobForScore = { criteria?: unknown; categoria?: string | null };
 
-export type JobForScore = {
-  requisitos_obrigatorios?: string[] | null;
-  requisitos_desejaveis?: string[] | null;
-  experiencia_minima?: number | null;
-  formacao_exigida?: string | null;
-  localizacao?: string | null;
-  categoria?: string | null;
-};
-
-function candidateHaystack(candidate: CandidateForScore) {
-  // Evidence quotes, model instructions, professional interpretations and quality
-  // warnings must never manufacture keyword matches for the ranking.
-  const data = (candidate.dados_extraidos ?? {}) as {
-    experiencias?: Array<{ cargo?: string; empresa?: string }>;
-    formacao_academica?: Array<{ curso?: string; nivel?: string }>;
-  };
-  const raw = [
-    ...(data.experiencias ?? []).flatMap((e) => [e.cargo, e.empresa]),
-    ...(data.formacao_academica ?? []).flatMap((e) => [e.curso, e.nivel]),
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return normalize(`${(candidate.skills ?? []).join(" ")} ${raw}`);
+// Token boundaries distinguish Java from JavaScript and C from C++ / C#.
+function phraseMatch(facts: string[], criterion: string) {
+  const escaped = criterionKey(criterion).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(?:^|[^\\p{L}\\p{N}+#])${escaped}(?=$|[^\\p{L}\\p{N}+#])`, "u");
+  return facts.some((fact) => typeof fact === "string" && pattern.test(criterionKey(fact)));
 }
-
 export function scoreCandidate(candidate: CandidateForScore, job: JobForScore) {
-  const haystack = candidateHaystack(candidate);
-  const required = (job.requisitos_obrigatorios ?? []).filter(Boolean);
-  const desired = (job.requisitos_desejaveis ?? []).filter(Boolean);
-
-  const hits = (list: string[]) => list.filter((item) => haystack.includes(normalize(item)));
-
-  const obrigatorios_atendidos = hits(required);
-  const desejaveis_atendidos = hits(desired);
-  const anos = candidate.anos_experiencia ?? 0;
-  const minimo = job.experiencia_minima ?? 0;
-  const experiencia_ok = anos >= minimo;
-  const localizacao_ok = job.localizacao
-    ? normalize(candidate.localizacao ?? "").includes(normalize(job.localizacao)) ||
-      normalize(job.localizacao).includes(normalize(candidate.localizacao ?? "\u0000"))
-    : true;
-  const formacao_ok = job.formacao_exigida
-    ? haystack.includes(normalize(job.formacao_exigida))
-    : true;
-
-  const requiredScore = required.length ? obrigatorios_atendidos.length / required.length : 1;
-  const desiredScore = desired.length ? desejaveis_atendidos.length / desired.length : 1;
-
-  let score =
-    requiredScore * 55 +
-    desiredScore * 20 +
-    (experiencia_ok ? 10 : minimo > 0 ? Math.min(anos / minimo, 1) * 10 : 10) +
-    (localizacao_ok ? 8 : 0) +
-    (formacao_ok ? 7 : 0);
-
-  score = Math.round(Math.max(0, Math.min(100, score)));
-
-  const details: MatchDetails = {
-    obrigatorios_atendidos,
-    obrigatorios_faltantes: required.filter((item) => !obrigatorios_atendidos.includes(item)),
-    desejaveis_atendidos,
-    desejaveis_faltantes: desired.filter((item) => !desejaveis_atendidos.includes(item)),
-    experiencia_ok,
-    localizacao_ok,
-    formacao_ok,
+  const criteria = normalizeCriteria(job.criteria);
+  if (
+    !criteria.some(
+      (c) =>
+        c.kind === "skill" ||
+        c.kind === "education" ||
+        (c.kind === "experience" && c.min_years! > 0),
+    )
+  )
+    throw new Error("Critérios insuficientes para avaliar candidatos.");
+  const data = (candidate.dados_extraidos ?? {}) as {
+    experiencias?: Array<{ cargo?: string }>;
+    formacao_academica?: Array<{ curso?: string; nivel?: string }>;
+    idiomas?: Array<string | { idioma?: string }>;
+    certificacoes?: Array<string | { nome?: string }>;
   };
-
+  const education = (data.formacao_academica ?? []).flatMap((item) => [
+    item.curso ?? "",
+    item.nivel ?? "",
+  ]);
+  // Only factual, effective fields: no evidence quotes, interpretations or instructions.
+  const facts = [
+    ...(candidate.skills ?? []),
+    ...(data.experiencias ?? []).map((e) => e.cargo ?? ""),
+    ...education,
+    ...(data.idiomas ?? []).map((i) => (typeof i === "string" ? i : (i.idioma ?? ""))),
+    ...(data.certificacoes ?? []).map((c) => (typeof c === "string" ? c : (c.nome ?? ""))),
+  ];
+  const total = criteria.reduce((sum, c) => sum + c.weight, 0);
+  const evaluated = criteria.map((c) => {
+    let fraction: number;
+    if (c.kind === "experience") {
+      const years = candidate.anos_experiencia;
+      fraction =
+        typeof years !== "number" || !Number.isFinite(years) || years < 0
+          ? 0
+          : c.min_years === 0
+            ? 1
+            : Math.min(years / c.min_years!, 1);
+    } else
+      fraction = Number(
+        phraseMatch(
+          c.kind === "education"
+            ? education
+            : c.kind === "location"
+              ? [candidate.localizacao ?? ""]
+              : facts,
+          c.text,
+        ),
+      );
+    return {
+      ...c,
+      atendido: fraction === 1,
+      proporcao: fraction,
+      pontos: (100 * c.weight * fraction) / total,
+    };
+  });
+  const matched = (required: boolean, hit: boolean) =>
+    evaluated
+      .filter((c) => c.required === required && c.atendido === hit)
+      .map((c) => (c.kind === "experience" ? `${c.text}: ${c.min_years} anos` : c.text));
+  const raw = evaluated.reduce((sum, c) => sum + c.pontos, 0);
+  const cap = evaluated.some((c) => c.required && !c.atendido);
+  const score = Math.round(Math.max(0, Math.min(cap ? 49 : 100, raw)));
+  const details: MatchDetails = {
+    obrigatorios_atendidos: matched(true, true),
+    obrigatorios_faltantes: matched(true, false),
+    desejaveis_atendidos: matched(false, true),
+    desejaveis_faltantes: matched(false, false),
+    experiencia_ok: evaluated.filter((c) => c.kind === "experience").every((c) => c.atendido),
+    localizacao_ok: evaluated.filter((c) => c.kind === "location").every((c) => c.atendido),
+    formacao_ok: evaluated.filter((c) => c.kind === "education").every((c) => c.atendido),
+    formula: "weighted-v2",
+    pontuacao_antes_limite: Math.round(raw),
+    limite_obrigatorio_aplicado: cap,
+    criterios: evaluated,
+  };
   return { score, details };
 }
