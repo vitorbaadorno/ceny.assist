@@ -127,7 +127,7 @@ export function suggestCriteria(description: string): JobCriterion[] {
   let section: boolean | null = null;
   const suggestions: JobCriterion[] = [];
   for (const original of description.split(/\r?\n/)) {
-    let line = original.trim().replace(/^[-*•\d.)\s]+/, "");
+    let line = original.trim().replace(/^(?:[-*•]\s*|\d+[.)]\s+)/, "");
     if (!line) continue;
     const heading = criterionKey(line);
     if (/^(desejaveis|diferenciais|desejavel|diferencial)\b/.test(heading)) section = false;

@@ -6,6 +6,10 @@ import {
   suggestCriteria,
 } from "../supabase/functions/_shared/job-criteria.ts";
 import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
+test("description suggestions keep experience numbers", () => {
+  const items = suggestCriteria("Requisitos:\n3 anos de experiência");
+  assert.equal(items[0].min_years, 3);
+});
 const criterion = (text, extra = {}) => ({
   kind: "skill",
   text,
