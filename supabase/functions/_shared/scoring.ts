@@ -1,4 +1,5 @@
-import { criterionKey, normalizeCriteria, type JobCriterion } from "./job-criteria.ts";
+import { evaluateCriterion, type MatchState, type Evidence } from "./criterion-evidence.ts";
+import { normalizeCriteria, type JobCriterion } from "./job-criteria.ts";
 
 export type MatchDetails = {
   obrigatorios_atendidos: string[];
@@ -8,26 +9,30 @@ export type MatchDetails = {
   experiencia_ok: boolean;
   localizacao_ok: boolean;
   formacao_ok: boolean;
-  formula: "weighted-v2";
+  formula: "evidence-v3";
   pontuacao_antes_limite: number;
   limite_obrigatorio_aplicado: boolean;
-  criterios: Array<JobCriterion & { atendido: boolean; proporcao: number; pontos: number }>;
+  criterios: Array<
+    JobCriterion & {
+      atendido: boolean;
+      proporcao: number;
+      pontos: number;
+      estado: MatchState;
+      motivo: string;
+      evidencias: Evidence[];
+    }
+  >;
 };
 export type CandidateForScore = {
   skills?: string[] | null;
   localizacao?: string | null;
   anos_experiencia?: number | null;
   dados_extraidos?: unknown;
+  correcoes_rh?: unknown;
   data_nascimento?: string | null;
 };
 export type JobForScore = { criteria?: unknown; categoria?: string | null };
 
-// Token boundaries distinguish Java from JavaScript and C from C++ / C#.
-function phraseMatch(facts: string[], criterion: string) {
-  const escaped = criterionKey(criterion).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(?:^|[^\\p{L}\\p{N}+#])${escaped}(?=$|[^\\p{L}\\p{N}+#])`, "u");
-  return facts.some((fact) => typeof fact === "string" && pattern.test(criterionKey(fact)));
-}
 export function scoreCandidate(candidate: CandidateForScore, job: JobForScore) {
   const criteria = normalizeCriteria(job.criteria);
   if (
@@ -39,51 +44,14 @@ export function scoreCandidate(candidate: CandidateForScore, job: JobForScore) {
     )
   )
     throw new Error("Critérios insuficientes para avaliar candidatos.");
-  const data = (candidate.dados_extraidos ?? {}) as {
-    experiencias?: Array<{ cargo?: string }>;
-    formacao_academica?: Array<{ curso?: string; nivel?: string }>;
-    idiomas?: Array<string | { idioma?: string }>;
-    certificacoes?: Array<string | { nome?: string }>;
-  };
-  const education = (data.formacao_academica ?? []).flatMap((item) => [
-    item.curso ?? "",
-    item.nivel ?? "",
-  ]);
-  // Only factual, effective fields: no evidence quotes, interpretations or instructions.
-  const facts = [
-    ...(candidate.skills ?? []),
-    ...(data.experiencias ?? []).map((e) => e.cargo ?? ""),
-    ...education,
-    ...(data.idiomas ?? []).map((i) => (typeof i === "string" ? i : (i.idioma ?? ""))),
-    ...(data.certificacoes ?? []).map((c) => (typeof c === "string" ? c : (c.nome ?? ""))),
-  ];
   const total = criteria.reduce((sum, c) => sum + c.weight, 0);
   const evaluated = criteria.map((c) => {
-    let fraction: number;
-    if (c.kind === "experience") {
-      const years = candidate.anos_experiencia;
-      fraction =
-        typeof years !== "number" || !Number.isFinite(years) || years < 0
-          ? 0
-          : c.min_years === 0
-            ? 1
-            : Math.min(years / c.min_years!, 1);
-    } else
-      fraction = Number(
-        phraseMatch(
-          c.kind === "education"
-            ? education
-            : c.kind === "location"
-              ? [candidate.localizacao ?? ""]
-              : facts,
-          c.text,
-        ),
-      );
+    const result = evaluateCriterion(c, candidate);
     return {
       ...c,
-      atendido: fraction === 1,
-      proporcao: fraction,
-      pontos: (100 * c.weight * fraction) / total,
+      ...result,
+      atendido: result.estado === "atendido",
+      pontos: (100 * c.weight * result.proporcao) / total,
     };
   });
   const matched = (required: boolean, hit: boolean) =>
@@ -101,7 +69,7 @@ export function scoreCandidate(candidate: CandidateForScore, job: JobForScore) {
     experiencia_ok: evaluated.filter((c) => c.kind === "experience").every((c) => c.atendido),
     localizacao_ok: evaluated.filter((c) => c.kind === "location").every((c) => c.atendido),
     formacao_ok: evaluated.filter((c) => c.kind === "education").every((c) => c.atendido),
-    formula: "weighted-v2",
+    formula: "evidence-v3",
     pontuacao_antes_limite: Math.round(raw),
     limite_obrigatorio_aplicado: cap,
     criterios: evaluated,

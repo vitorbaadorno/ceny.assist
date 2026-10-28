@@ -141,7 +141,7 @@ function JobDetail() {
       const localOk =
         !localFilter ||
         (candidate.localizacao ?? "").toLowerCase().includes(localFilter.toLowerCase());
-      const expOk = !minExp || (candidate.anos_experiencia ?? 0) >= Number(minExp);
+      const expOk = !minExp || (candidate.anos_experiencia !== null && candidate.anos_experiencia >= Number(minExp));
       return localOk && expOk;
     });
   }, [scores, localFilter, minExp]);
@@ -236,7 +236,7 @@ function JobDetail() {
         <CardContent className="space-y-2 text-sm">
           <p>
             <span className="font-medium">Categoria:</span>{" "}
-            {job?.categoria === "jovem_aprendiz" ? "Jovem Aprendiz (14 a 24 anos)" : "Vaga regular"}
+            {job?.categoria === "jovem_aprendiz" ? "Jovem Aprendiz — elegibilidade a conferir pelo RH" : "Vaga regular"}
           </p>
           <p>
             <Badge variant="outline">
@@ -304,6 +304,7 @@ function JobDetail() {
             const details = (row.detalhes_matching ?? {}) as unknown as MatchDetails;
             const outdated =
               row.stale ||
+              details.formula !== "evidence-v3" ||
               row.candidate_version !== candidate.data_version ||
               row.job_version !== job?.version ||
               row.criteria_hash !== job?.approved_hash;
@@ -329,7 +330,7 @@ function JobDetail() {
                   </div>
                   {outdated && (
                     <p role="status" className="text-sm text-amber-800 dark:text-amber-300">
-                      A vaga, os critérios ou os dados do candidato mudaram. Calcule a aderência
+                      A vaga, os dados ou as regras da avaliação mudaram. Calcule a aderência
                       novamente antes de usar esta avaliação.
                     </p>
                   )}
@@ -349,12 +350,27 @@ function JobDetail() {
                         {details.criterios.map((c, i) => (
                           <li key={i}>
                             {c.text}:{" "}
-                            {c.atendido
-                              ? "atendido"
-                              : c.proporcao > 0
-                                ? "parcial"
-                                : "não comprovado"}{" "}
+                            {{
+                              atendido: "Atendido",
+                              parcial: "Parcialmente comprovado",
+                              sem_informacao: "Sem informação suficiente",
+                              nao_atendido: "Não atendido por evidência explícita",
+                            }[c.estado] ?? "Avaliação anterior"}{" "}
                             · peso {c.weight} · {c.pontos.toFixed(1)} pontos
+                            <p className="mt-1 text-muted-foreground">{c.motivo}</p>
+                            {c.evidencias?.map((e, n) => (
+                              <blockquote key={n} className="my-2 border-l-2 pl-3">
+                                “{e.trecho}”
+                                <p className="text-muted-foreground">
+                                  {e.origem === "correcao_rh"
+                                    ? "Correção do RH"
+                                    : e.origem === "trecho_conferido"
+                                      ? "Trecho conferido no documento"
+                                      : "Dado extraído; trecho original não conferido"}
+                                  {e.pagina ? ` · página ${e.pagina}` : ""}
+                                </p>
+                              </blockquote>
+                            ))}
                           </li>
                         ))}
                       </ul>
@@ -368,14 +384,16 @@ function JobDetail() {
                       Atende: {details.obrigatorios_atendidos?.join(", ") || "—"}
                     </p>
                     <p className="text-muted-foreground">
-                      Falta: {details.obrigatorios_faltantes?.join(", ") || "—"}
+                      Exige conferência: {details.obrigatorios_faltantes?.join(", ") || "—"}
                     </p>
                     <p className="text-muted-foreground">
                       Diferenciais: {details.desejaveis_atendidos?.join(", ") || "—"}
                     </p>
                     <p className="text-muted-foreground">
-                      Experiência: {candidate.anos_experiencia ?? 0} ano(s)
-                      {details.experiencia_ok ? " (atende)" : " (abaixo do mínimo)"}
+                      Experiência:{" "}
+                      {candidate.anos_experiencia === null
+                        ? "não informada"
+                        : `${candidate.anos_experiencia} ano(s) registrados`}
                     </p>
                   </div>
                 </CardContent>

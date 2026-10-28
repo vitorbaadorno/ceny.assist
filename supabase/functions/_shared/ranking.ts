@@ -1,6 +1,5 @@
 import { requireCompanyRole } from "./access.ts";
 import { scoreCandidate } from "./scoring.ts";
-import { isYoungApprenticeEligible } from "./age.ts";
 import { validateJobPayload } from "./job-criteria.ts";
 import type { Json, WorkerContext } from "./context.ts";
 export async function rankCandidates(
@@ -39,14 +38,14 @@ export async function rankCandidates(
     localizacao: string | null;
     anos_experiencia: number | null;
     dados_efetivos: Json;
-    data_nascimento: string | null;
+    correcoes_rh: Json;
     data_version: number;
   }> = [];
   for (let offset = 0; ; offset += 500) {
     const { data: page, error } = await supabase
       .from("candidates")
       .select(
-        "id, skills, localizacao, anos_experiencia, dados_efetivos, data_nascimento, data_version",
+        "id, skills, localizacao, anos_experiencia, dados_efetivos, correcoes_rh, data_version",
       )
       .eq("company_id", data.companyId)
       .in("processing_status", ["concluido", "revisao_manual"])
@@ -57,12 +56,7 @@ export async function rankCandidates(
     if (!page || page.length < 500) break;
   }
 
-  const eligibleCandidates = (candidates ?? []).filter(
-    (candidate) =>
-      job.categoria !== "jovem_aprendiz" || isYoungApprenticeEligible(candidate.data_nascimento),
-  );
-
-  const rows = eligibleCandidates.map((candidate) => {
+  const rows = candidates.map((candidate) => {
     const { score, details } = scoreCandidate(
       { ...candidate, dados_extraidos: candidate.dados_efetivos },
       job,

@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const JOB_RULE =
-  "A nota soma o atendimento de cada critério proporcionalmente ao seu peso. Experiência pode ter atendimento parcial. Se algum obrigatório não estiver comprovado, a nota fica limitada a 49%. A avaliação apoia a revisão do RH e não exclui candidatos.";
+  "Aderência aos critérios, não previsão de sucesso ou contratação. Cada peso divide o total de pontos: atendimento integral recebe 100% da parcela, parcial recebe 50% (tempo de experiência usa a proporção de anos), ausência ou negação recebe zero. Sem critérios não há nota, e campos sem exigência não dão pontos. Um obrigatório não confirmado limita a nota a 49%. Ausência de informação não prova incapacidade. A decisão final é do RH.";
 const blank: JobPayload = { titulo: "", descricao: "", categoria: "regular", criteria: [] };
 const fromJob = (job?: Tables<"jobs">): JobPayload =>
   job
