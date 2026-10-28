@@ -20,4 +20,6 @@ Implementada na `ceny-versaonova`, no Supabase novo. A nota representa somente a
 
 A comparação de significado é limitada ao dicionário e às regras explícitas. Não é compreensão semântica irrestrita: frases complexas, ambiguidades, sinônimos fora do dicionário e níveis subjetivos ainda precisam do RH. Não houve chamadas reais de IA nem avaliação independente com currículos reais, conforme orientação do usuário. A declaração em currículo também não equivale a comprovação externa de habilidade.
 
-Verificação TypeScript, Deno e compilação local aprovadas. A suíte de CI inclui os testes anteriores de autorização, arquivos, revisão, vagas e chamadas HTTP ao ranking em ambiente descartável.
+O primeiro CI identificou acessos a campos incompatíveis com a configuração estrita de TypeScript; foram corrigidos e a checagem local passou. Deno, compilação e os 101 testes unitários também passaram. A suíte de CI inclui os testes anteriores de autorização, arquivos, revisão, vagas e chamadas HTTP ao ranking em ambiente descartável.
+
+Interface conferida em navegador com o componente real e dados fictícios locais, sem consultas ou gravações no banco. Os quatro estados, pontos, motivos e origem das evidências foram inspecionados. Registro: `aderencia-interface-local.png`.

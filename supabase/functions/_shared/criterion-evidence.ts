@@ -93,40 +93,40 @@ export function evaluateCriterion(
   array(candidate.skills).forEach((s, i) => add(s, `skills.${i}`, "skill"));
   for (const key of ["idiomas", "certificacoes"])
     array(data[key]).forEach((s, i) => add(s, `${key}.${i}`, "skill"));
-  array(data.experiencias).forEach((v, i) => {
+  array(data["experiencias"]).forEach((v, i) => {
     const e = object(v);
     for (const key of ["cargo", "descricao"]) add(e[key], `experiencias.${i}.${key}`, "work");
   });
-  array(data.projetos).forEach((v, i) => {
+  array(data["projetos"]).forEach((v, i) => {
     const e = object(v);
-    add(e.descricao, `projetos.${i}.descricao`, "work");
-    array(e.tecnologias).forEach((s, j) => add(s, `projetos.${i}.tecnologias.${j}`, "work"));
+    add(e["descricao"], `projetos.${i}.descricao`, "work");
+    array(e["tecnologias"]).forEach((s, j) => add(s, `projetos.${i}.tecnologias.${j}`, "work"));
   });
-  array(data.formacao_academica).forEach((v, i) => {
+  array(data["formacao_academica"]).forEach((v, i) => {
     const e = object(v);
     for (const key of ["curso", "nivel"])
       add(e[key], `formacao_academica.${i}.${key}`, "education", {
-        period: str(e.periodo),
-        end: str(e.fim),
+        period: str(e["periodo"]),
+        end: str(e["fim"]),
       });
   });
   add(candidate.localizacao, "localizacao", "location");
   const evidence = (f: Fact): Evidence => {
     if (Object.hasOwn(corrections, f.path.split(".")[0]!))
       return { campo: f.path, trecho: f.text, pagina: null, origem: "correcao_rh" };
-    const e = array(data.evidencias)
+    const e = array(data["evidencias"])
       .map(object)
       .find(
         (e) =>
-          e.campo === f.path &&
-          e.tipo === "encontrado" &&
-          e.verificacao === "trecho_conferido" &&
-          criterionKey(str(e.trecho)).includes(criterionKey(f.text)),
+          e["campo"] === f.path &&
+          e["tipo"] === "encontrado" &&
+          e["verificacao"] === "trecho_conferido" &&
+          criterionKey(str(e["trecho"])).includes(criterionKey(f.text)),
       );
     return {
       campo: f.path,
-      trecho: e ? str(e.trecho) : f.text,
-      pagina: e && typeof e.pagina === "number" ? e.pagina : null,
+      trecho: e ? str(e["trecho"]) : f.text,
+      pagina: e && typeof e["pagina"] === "number" ? e["pagina"] : null,
       origem: e ? "trecho_conferido" : "extracao",
     };
   };
