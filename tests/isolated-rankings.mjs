@@ -162,6 +162,84 @@ try {
       assert.deepEqual(old.data.snapshot.dados_efetivos.skills, ["SQL"]);
     },
   );
+  await check(
+    "apprenticeship keeps unknown and older candidates, records reference and requires authorized review",
+    async () => {
+      const born = await a.client.rpc("save_candidate_review", {
+        p_company: company.data,
+        p_candidate: candidates[1].id,
+        p_expected_version: 0,
+        p_patch: { data_nascimento: "1990-01-01" },
+        p_complete: true,
+        p_confirmed: true,
+      });
+      assert.ifError(born.error);
+      const apprentice = await a.client.rpc("save_job", {
+        p_company: company.data,
+        p_job: null,
+        p_expected_version: 0,
+        p_approve: true,
+        p_payload: {
+          titulo: "Aprendiz de sistemas",
+          descricao: "Aprendizagem com SQL.",
+          categoria: "jovem_aprendiz",
+          criteria: [
+            {
+              kind: "skill",
+              text: "SQL",
+              required: true,
+              weight: 5,
+              min_years: null,
+              source: null,
+            },
+          ],
+        },
+      });
+      assert.ifError(apprentice.error);
+      const ranking = await a.client.functions.invoke("ceny-worker", {
+        body: {
+          action: "rank",
+          requestId: randomUUID(),
+          companyId: company.data,
+          jobId: apprentice.data.id,
+        },
+      });
+      assert.ifError(ranking.error);
+      assert.equal(ranking.data.count, 1201);
+      const entries = await a.client
+        .from("ranking_entries")
+        .select("candidate_id,score,details")
+        .eq("run_id", ranking.data.runId)
+        .in("candidate_id", [candidates[1].id, candidates[2].id]);
+      assert.ifError(entries.error);
+      const older = entries.data.find((e) => e.candidate_id === candidates[1].id),
+        unknown = entries.data.find((e) => e.candidate_id === candidates[2].id);
+      assert.equal(older.details.aprendizagem.state, "special_review");
+      assert.equal(unknown.details.aprendizagem.state, "birth_date_pending");
+      assert.equal(older.score, unknown.score);
+      assert.equal(unknown.details.aprendizagem.age, null);
+      assert.equal(unknown.details.aprendizagem.legal_validation, "pending");
+      assert.match(unknown.details.aprendizagem.reference_date, /^\d{4}-\d{2}-\d{2}$/);
+      const reviewArgs = {
+        p_company: company.data,
+        p_run: ranking.data.runId,
+        p_candidate: candidates[1].id,
+        p_expected_version: 0,
+        p_status: "pending_legal",
+        p_justification: "Conferir o caso especial com responsável jurídico.",
+        p_confirmed: true,
+      };
+      const replies = await Promise.all([
+        a.client.rpc("record_apprentice_review", { ...reviewArgs, p_request: randomUUID() }),
+        a.client.rpc("record_apprentice_review", { ...reviewArgs, p_request: randomUUID() }),
+      ]);
+      assert.equal(replies.filter((r) => !r.error).length, 1);
+      assert.equal(replies.filter((r) => r.error?.code === "40001").length, 1);
+      const stored = replies.find((r) => !r.error).data;
+      assert.equal(stored.reference_date, older.details.aprendizagem.reference_date);
+      assert.equal(stored.actor_id, a.id);
+    },
+  );
 } finally {
   fs.writeFileSync("artifacts/ranking-results.json", JSON.stringify(results, null, 2));
   for (const id of users) await admin.auth.admin.deleteUser(id);

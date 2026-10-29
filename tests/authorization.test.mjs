@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 import { z } from "zod";
 import { validateJobPayload } from "../supabase/functions/_shared/job-criteria.ts";
 import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
-import { isYoungApprenticeEligible } from "../supabase/functions/_shared/age.ts";
+import { assessApprenticeAge, ageReferenceDate } from "../supabase/functions/_shared/age.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
 import { extractionFixture } from "./extraction-fixture.mjs";
 import {
@@ -162,7 +162,8 @@ const { rankCandidates } = load("supabase/functions/_shared/ranking.ts", ["rankC
   requireCompanyRole,
   scoreCandidate,
   validateJobPayload,
-  isYoungApprenticeEligible,
+  assessApprenticeAge,
+  ageReferenceDate,
 });
 
 test("membership authorization fails closed on database errors", async () => {

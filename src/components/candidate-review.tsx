@@ -55,6 +55,11 @@ export function CandidateReview({
     campos_incertos?: string[];
   };
   const reasons = [
+    ...(!candidate.data_nascimento
+      ? [
+          "Data de nascimento não informada: confira quando necessária para aprendizagem, sem presumir idade ou excluir o candidato.",
+        ]
+      : []),
     ...new Set([
       ...(raw.controle_qualidade?.motivos_revisao ?? []),
       ...(raw.campos_incertos ?? []).map((f) => `${f}: informação incerta na leitura`),

@@ -1,3 +1,4 @@
+import { ApprenticeAgeNotice, ApprenticeCaseReview } from "./apprentice-age";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -27,10 +28,12 @@ export function RankingResult({
   run,
   entries,
   outdated,
+  canAdmin = false,
 }: {
   run: Run;
   entries: Entry[];
   outdated: boolean;
+  canAdmin?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [minExp, setMinExp] = useState("");
@@ -102,6 +105,21 @@ export function RankingResult({
                   {c.localizacao || "Local não informado"} · Experiência:{" "}
                   {c.anos_experiencia === null ? "não informada" : `${c.anos_experiencia} ano(s)`}
                 </p>
+                {(run.job_snapshot as unknown as Tables<"jobs">).categoria === "jovem_aprendiz" && (
+                  <>
+                    <ApprenticeAgeNotice
+                      assessment={(e.details as unknown as MatchDetails)?.aprendizagem}
+                    />
+                    {canAdmin && (
+                      <ApprenticeCaseReview
+                        companyId={run.company_id}
+                        runId={run.id}
+                        candidateId={e.candidate_id}
+                        outdated={outdated}
+                      />
+                    )}
+                  </>
+                )}
                 <ScoreExplanation
                   details={e.details as unknown as MatchDetails}
                   jobVersion={(run.job_snapshot as unknown as Tables<"jobs">).version}
@@ -142,12 +160,22 @@ export function RankingResult({
             {entries
               .filter((e) => e.reason)
               .map((e) => (
-                <p key={e.candidate_id}>
+                <div key={e.candidate_id} className="space-y-2">
                   <Link to="/candidatos/$id" params={{ id: e.candidate_id }} className="underline">
                     {(e.snapshot as unknown as Candidate).nome || "Currículo sem nome"}
                   </Link>{" "}
                   — {e.reason}
-                </p>
+                  {canAdmin &&
+                    (run.job_snapshot as unknown as Tables<"jobs">).categoria ===
+                      "jovem_aprendiz" && (
+                      <ApprenticeCaseReview
+                        companyId={run.company_id}
+                        runId={run.id}
+                        candidateId={e.candidate_id}
+                        outdated={outdated}
+                      />
+                    )}
+                </div>
               ))}
           </div>
         </details>
@@ -166,7 +194,15 @@ function Snapshot({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-export function RankingHistory({ companyId, job }: { companyId: string; job: Tables<"jobs"> }) {
+export function RankingHistory({
+  companyId,
+  job,
+  canAdmin = false,
+}: {
+  companyId: string;
+  job: Tables<"jobs">;
+  canAdmin?: boolean;
+}) {
   const [historyPage, setHistoryPage] = useState(0);
   const [selected, setSelected] = useState<Run | null>(null);
   const [pendingPage, setPendingPage] = useState(0);
@@ -333,6 +369,7 @@ export function RankingHistory({ companyId, job }: { companyId: string; job: Tab
             <RankingResult
               key={run.id}
               run={run}
+              canAdmin={canAdmin}
               entries={entries.data}
               outdated={
                 run.stale ||

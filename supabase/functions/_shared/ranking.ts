@@ -1,3 +1,4 @@
+import { assessApprenticeAge, ageReferenceDate } from "./age.ts";
 import { requireCompanyRole } from "./access.ts";
 import { scoreCandidate, type CandidateForScore } from "./scoring.ts";
 import type { Json, WorkerContext } from "./context.ts";
@@ -6,7 +7,8 @@ type Run = {
   status: string;
   eligible: number;
   total: number;
-  job_snapshot: { criteria: Json };
+  job_snapshot: { criteria: Json; categoria?: string };
+  created_at: string;
 };
 export async function rankCandidates(
   data: { companyId: string; jobId: string; requestId: string },
@@ -51,7 +53,21 @@ export async function rankCandidates(
           { ...c, dados_extraidos: c.dados_efetivos },
           run.job_snapshot,
         );
-        return { candidate_id: e.candidate_id, score: result.score, details: result.details };
+        return {
+          candidate_id: e.candidate_id,
+          score: result.score,
+          details: {
+            ...result.details,
+            ...(run.job_snapshot.categoria === "jovem_aprendiz"
+              ? {
+                  aprendizagem: assessApprenticeAge(
+                    c.data_nascimento,
+                    ageReferenceDate(new Date(run.created_at)),
+                  ),
+                }
+              : {}),
+          },
+        };
       });
       const saved = await context.admin.rpc("stage_ranking", {
         p_actor: context.userId,

@@ -8,6 +8,81 @@ export type Database = {
   };
   public: {
     Tables: {
+      apprentice_case_reviews: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          candidate_id: string;
+          candidate_version: number;
+          company_id: string;
+          created_at: string;
+          id: string;
+          job_version: number;
+          justification: string;
+          legal_reference: string | null;
+          legal_responsible: string | null;
+          reference_date: string;
+          request_id: string;
+          review_version: number;
+          run_id: string;
+          status: string;
+          version: number;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          candidate_id: string;
+          candidate_version: number;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          job_version: number;
+          justification: string;
+          legal_reference?: string | null;
+          legal_responsible?: string | null;
+          reference_date: string;
+          request_id: string;
+          review_version: number;
+          run_id: string;
+          status: string;
+          version: number;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          candidate_id?: string;
+          candidate_version?: number;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          job_version?: number;
+          justification?: string;
+          legal_reference?: string | null;
+          legal_responsible?: string | null;
+          reference_date?: string;
+          request_id?: string;
+          review_version?: number;
+          run_id?: string;
+          status?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "apprentice_case_reviews_company_id_run_id_fkey";
+            columns: ["company_id", "run_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_runs";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "apprentice_case_reviews_run_id_candidate_id_fkey";
+            columns: ["run_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_entries";
+            referencedColumns: ["run_id", "candidate_id"];
+          },
+        ];
+      };
       candidate_revisions: {
         Row: {
           action: string;
@@ -1142,6 +1217,21 @@ export type Database = {
           id: string;
           role: string;
         }[];
+      };
+      record_apprentice_review: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_confirmed?: boolean;
+          p_expected_version: number;
+          p_justification: string;
+          p_legal_reference?: string;
+          p_legal_responsible?: string;
+          p_request: string;
+          p_run: string;
+          p_status: string;
+        };
+        Returns: Json;
       };
       record_resume_analysis: {
         Args: { p_job: string; p_metadata: Json; p_token: string };

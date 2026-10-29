@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ageReferenceDate } from "./age.ts";
 import { experienceMonths } from "./experience.ts";
 
 const text = z.string().trim().min(1).max(500).nullable();
@@ -170,7 +171,7 @@ export function validateExtraction(
   }
   if (
     data.data_nascimento &&
-    (data.data_nascimento > today.toISOString().slice(0, 10) || data.data_nascimento < "1900-01-01")
+    (data.data_nascimento > ageReferenceDate(today) || data.data_nascimento < "1900-01-01")
   ) {
     data.data_nascimento = null;
     reasons.add("data_nascimento");

@@ -235,7 +235,7 @@ function JobDetail() {
           <p>
             <span className="font-medium">Categoria:</span>{" "}
             {job?.categoria === "jovem_aprendiz"
-              ? "Jovem Aprendiz — elegibilidade a conferir pelo RH"
+              ? "Jovem Aprendiz — conferência jurídica pendente"
               : "Vaga regular"}
           </p>
           <p>
@@ -271,7 +271,14 @@ function JobDetail() {
         </CardContent>
       </Card>
 
-      {job && <RankingHistory key={`${companyId}:${id}`} companyId={companyId} job={job} />}
+      {job && (
+        <RankingHistory
+          key={`${companyId}:${id}`}
+          companyId={companyId}
+          job={job}
+          canAdmin={canAdmin}
+        />
+      )}
       <JobHistory key={`${companyId}:${id}`} companyId={companyId} jobId={id} />
     </div>
   );

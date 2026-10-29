@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Upload } from "lucide-react";
-import { isYoungApprenticeEligible } from "@/lib/age";
 
 export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
@@ -157,9 +156,6 @@ function CandidatesPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {isYoungApprenticeEligible(candidate.data_nascimento) && (
-                      <Badge variant="outline">Jovem Aprendiz</Badge>
-                    )}
                     <Badge variant={processing.variant}>{processing.label}</Badge>
                     <Badge variant="secondary">
                       {STATUS_FUNIL.find((s) => s.value === candidate.status)?.label ??

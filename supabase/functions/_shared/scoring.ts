@@ -2,6 +2,7 @@ import { evaluateCriterion, type MatchState, type Evidence } from "./criterion-e
 import { normalizeCriteria, type JobCriterion } from "./job-criteria.ts";
 
 export type MatchDetails = {
+  aprendizagem?: import("./age.ts").ApprenticeAgeAssessment;
   obrigatorios_atendidos: string[];
   obrigatorios_faltantes: string[];
   desejaveis_atendidos: string[];
