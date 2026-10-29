@@ -39,6 +39,7 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_queue.sql > artifacts/resume-queue.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/resume_analysis.sql > artifacts/resume-analysis.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_review.sql > artifacts/candidate-review.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_documents.sql > artifacts/candidate-documents.txt
       - name: Validate real file intake and Storage
         # All SQL fixtures run in rolled-back transactions.
         run: |
@@ -78,6 +79,7 @@ jobs:
             artifacts/resume-queue.txt
             artifacts/resume-analysis.txt
             artifacts/candidate-review.txt
+            artifacts/candidate-documents.txt
             artifacts/review-results.json
             artifacts/job-governance.txt
             artifacts/job-results.json

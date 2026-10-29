@@ -18,9 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BatchHistory } from "@/components/resume-queue";
+import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/upload")({
   head: () => ({ meta: [{ title: "Enviar currículos | Ceny" }] }),
+  validateSearch: z.object({ candidateId: z.string().uuid().optional() }),
   component: UploadPage,
 });
 type Item = {
@@ -48,6 +50,8 @@ const sources = {
 };
 
 function UploadPage() {
+  const { candidateId } = Route.useSearch();
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
   const { companyId, canEdit, canAdmin } = useCompany();
   const queryClient = useQueryClient();
   const [items, setItems] = useState<Item[]>([]),
@@ -55,6 +59,20 @@ function UploadPage() {
     [finished, setFinished] = useState(false);
   const [source, setSource] = useState<keyof typeof sources>("selecao_local");
   const active = useRef<AbortController | null>(null);
+  const target = useQuery({
+    queryKey: ["upload-target", companyId, candidateId],
+    enabled: !!candidateId,
+    queryFn: async () => {
+      const r = await supabase
+        .from("candidates")
+        .select("id,nome,email")
+        .eq("company_id", companyId)
+        .eq("id", candidateId!)
+        .single();
+      if (r.error) throw r.error;
+      return r.data;
+    },
+  });
   useEffect(
     () => () => {
       active.current?.abort();
@@ -115,7 +133,8 @@ function UploadPage() {
     );
   }
   async function start() {
-    if (busy || !canEdit || !items.length) return;
+    if (busy || !canEdit || !items.length || (candidateId && (!target.data || !identityConfirmed)))
+      return;
     const controller = new AbortController();
     active.current = controller;
     setBusy(true);
@@ -159,6 +178,7 @@ function UploadPage() {
             batchId,
             i,
             AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]),
+            candidateId,
           );
           accepted = true;
           update(i, {
@@ -242,6 +262,30 @@ function UploadPage() {
           documento.
         </p>
       </header>
+      {candidateId && (
+        <div className="space-y-3 rounded border p-4">
+          <p className="font-medium">
+            Adicionar versões ao cadastro de {target.data?.nome ?? "pessoa selecionada"}
+          </p>
+          {target.isError && (
+            <p role="alert">Cadastro indisponível. Volte à lista de candidatos.</p>
+          )}
+          <p className="text-sm">
+            {target.data?.email ?? "E-mail não informado"}. Cada arquivo será mantido separadamente.
+            O último recebimento confirmado será selecionado para revisão; os originais anteriores e
+            as correções do RH serão preservados.
+          </p>
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              disabled={busy}
+              checked={identityConfirmed}
+              onChange={(e) => setIdentityConfirmed(e.target.checked)}
+            />
+            Conferi que todos os arquivos selecionados pertencem a esta pessoa.
+          </label>
+        </div>
+      )}
       <Card>
         <CardHeader>
           <CardTitle>Selecionar arquivos</CardTitle>
@@ -282,7 +326,12 @@ function UploadPage() {
             nova leitura por IA.
           </p>
           <Button
-            disabled={!canEdit || busy || !items.some((i) => i.state === "aguardando")}
+            disabled={
+              !canEdit ||
+              busy ||
+              !items.some((i) => i.state === "aguardando") ||
+              (!!candidateId && (!target.data || !identityConfirmed))
+            }
             onClick={start}
           >
             {busy ? "Enviando lote…" : "Iniciar envio"}

@@ -62,7 +62,13 @@ Deno.serve(async (req) => {
           batchId: z.string().uuid(),
           slot: z.coerce.number().int().min(0).max(4),
           filename: z.string().min(1).max(180),
+          candidateId: z.string().uuid().optional(),
+          identityConfirmed: z.literal("true").optional(),
         })
+        .refine(
+          (args) => !args.candidateId || args.identityConfirmed === "true",
+          "Confirme a identidade antes de adicionar uma versão.",
+        )
         .parse(Object.fromEntries([...url.searchParams].filter(([key]) => key !== "action")));
       return json(await receiveResume(req, args, context));
     }

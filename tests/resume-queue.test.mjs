@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import { stripTypeScriptTypes } from "node:module";
 import { classifyFailure } from "../supabase/functions/_shared/queue-policy.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
@@ -60,7 +61,7 @@ const job = {
   candidate_id: "candidate",
   document_id: "document",
 };
-function fakeDb({ authorized = true, downloadPending = false } = {}) {
+function fakeDb({ authorized = true, downloadPending = false, wrongHash = false } = {}) {
   const calls = [];
   return {
     calls,
@@ -75,7 +76,19 @@ function fakeDb({ authorized = true, downloadPending = false } = {}) {
       eq() {
         return this;
       },
-      single: async () => ({ data: { filename: "fixture.pdf", byte_size: 1 }, error: null }),
+      single: async () => ({
+        data: {
+          filename: "fixture.pdf",
+          byte_size: 1,
+          object_path: "company/documents/document/original",
+          sha256: wrongHash
+            ? "0".repeat(64)
+            : createHash("sha256")
+                .update(new Uint8Array([1]))
+                .digest("hex"),
+        },
+        error: null,
+      }),
     }),
     storage: {
       from: () => ({
@@ -92,10 +105,21 @@ function fakeDb({ authorized = true, downloadPending = false } = {}) {
 test("queue worker saves validated result with lease token and scoped original", async () => {
   const db = fakeDb();
   await worker()(db, job);
-  assert.equal(db.calls.find((c) => c.download).download, "company/candidate/original");
+  assert.equal(db.calls.find((c) => c.download).download, "company/documents/document/original");
   const saved = db.calls.find((c) => c.name === "settle_resume_job");
   assert.equal(saved.args.p_token, "lease");
   assert.equal(saved.args.p_outcome, "succeeded");
+});
+test("same-size replacement bytes never reach AI or a successful analysis", async () => {
+  const db = fakeDb({ wrongHash: true });
+  let calls = 0;
+  await worker({
+    extract: async () => {
+      calls++;
+    },
+  })(db, job);
+  assert.equal(calls, 0);
+  assert.equal(db.calls.at(-1).args.p_kind, "permanent");
 });
 test("stale or revoked lease prevents download and AI", async () => {
   const db = fakeDb({ authorized: false });

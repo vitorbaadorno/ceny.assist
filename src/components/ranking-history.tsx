@@ -1,4 +1,5 @@
 import { ApprenticeAgeNotice, ApprenticeCaseReview } from "./apprentice-age";
+import { CandidateJobButton } from "./candidate-job-links";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -29,11 +30,13 @@ export function RankingResult({
   entries,
   outdated,
   canAdmin = false,
+  canEdit = false,
 }: {
   run: Run;
   entries: Entry[];
   outdated: boolean;
   canAdmin?: boolean;
+  canEdit?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [minExp, setMinExp] = useState("");
@@ -124,6 +127,13 @@ export function RankingResult({
                   details={e.details as unknown as MatchDetails}
                   jobVersion={(run.job_snapshot as unknown as Tables<"jobs">).version}
                 />
+                {canEdit && !outdated && (
+                  <CandidateJobButton
+                    companyId={run.company_id}
+                    candidateId={e.candidate_id}
+                    jobId={run.job_id}
+                  />
+                )}
                 <details className="text-sm">
                   <summary className="cursor-pointer">
                     Dados e revisão usados nesta avaliação
@@ -198,10 +208,12 @@ export function RankingHistory({
   companyId,
   job,
   canAdmin = false,
+  canEdit = false,
 }: {
   companyId: string;
   job: Tables<"jobs">;
   canAdmin?: boolean;
+  canEdit?: boolean;
 }) {
   const [historyPage, setHistoryPage] = useState(0);
   const [selected, setSelected] = useState<Run | null>(null);
@@ -362,7 +374,7 @@ export function RankingHistory({
       ) : (
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">
-            {selected ? "Avaliação histórica" : "Ranking publicado"}
+            {selected ? "Avaliação histórica" : "Recomendações do acervo por aderência à vaga"}
           </h2>
           <Snapshot label="Descrição e critérios aprovados usados" value={run.job_snapshot} />
           {entries.data ? (
@@ -370,6 +382,7 @@ export function RankingHistory({
               key={run.id}
               run={run}
               canAdmin={canAdmin}
+              canEdit={canEdit && !selected && job.status === "aberta"}
               entries={entries.data}
               outdated={
                 run.stale ||

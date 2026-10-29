@@ -54,36 +54,41 @@ export function CandidateQueue({
   companyId,
   candidateId,
   canEdit,
+  documentId,
+  showHistory = false,
 }: {
   companyId: string;
   candidateId: string;
   canEdit: boolean;
+  documentId?: string | null;
+  showHistory?: boolean;
 }) {
   const client = useQueryClient();
   const query = useQuery({
-    queryKey: ["candidate-queue", companyId, candidateId],
+    queryKey: ["candidate-queue", companyId, candidateId, documentId, showHistory],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("resume_jobs")
         .select("*,resume_job_attempts(*)")
         .eq("company_id", companyId)
         .eq("candidate_id", candidateId)
         .order("generation", { ascending: false })
-        .limit(1);
+        .limit(showHistory ? 100 : 1);
+      if (documentId) q = q.eq("document_id", documentId);
+      const { data, error } = await q;
       if (error) throw error;
-      return data[0] ?? null;
+      return data;
     },
     refetchInterval: 5000,
   });
-  const job = query.data;
+  const job = query.data?.[0];
   const action = useMutation({
     mutationFn: async (mode: "retry" | "cancel" | "reprocess") => {
       const response =
         mode === "reprocess"
-          ? await supabase.rpc("request_resume_job", {
+          ? await supabase.rpc("request_document_analysis", {
               p_company: companyId,
-              p_candidate: candidateId,
-              p_mode: mode,
+              p_document: documentId ?? job!.document_id,
               p_request: crypto.randomUUID(),
             })
           : await supabase.rpc("control_resume_job", {
@@ -179,6 +184,36 @@ export function CandidateQueue({
                   )}
                 </div>
               ))}
+          </details>
+        )}
+        {showHistory && query.data && query.data.length > 1 && (
+          <details className="text-sm">
+            <summary>Leituras anteriores deste documento</summary>
+            {query.data.slice(1).map((previous) => (
+              <div className="mt-3 rounded border p-3" key={previous.id}>
+                <JobProgress job={previous} />
+                <p>{new Date(previous.created_at).toLocaleString("pt-BR")}</p>
+                {previous.resume_job_attempts.map((a) => (
+                  <details key={a.attempt}>
+                    <summary>
+                      Tentativa {a.attempt} ·{" "}
+                      {a.model_reported ?? a.model_requested ?? "Modelo não registrado"} ·{" "}
+                      {a.prompt_version ?? "Instruções não registradas"}
+                    </summary>
+                    <p>
+                      Duração: {a.duration_ms ?? "Não informada"} ms · Consumo:{" "}
+                      {a.total_tokens ?? "Não informado"} tokens
+                    </p>
+                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
+                      {JSON.stringify(a.extraction, null, 2)}
+                    </pre>
+                  </details>
+                ))}
+              </div>
+            ))}
+            {query.data.length === 100 && (
+              <p>Exibindo as 100 leituras mais recentes. As anteriores permanecem registradas.</p>
+            )}
           </details>
         )}
       </CardContent>

@@ -83,6 +83,191 @@ export type Database = {
           },
         ];
       };
+      candidate_document_events: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          document_id: string;
+          id: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          document_id: string;
+          id?: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          document_id?: string;
+          id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_document_events_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "candidate_document_events_document_id_fkey";
+            columns: ["document_id"];
+            isOneToOne: false;
+            referencedRelation: "resume_documents";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      candidate_job_links: {
+        Row: {
+          active: boolean;
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          job_id: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          active?: boolean;
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          job_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          active?: boolean;
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          job_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_job_links_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "candidate_job_links_company_id_job_id_fkey";
+            columns: ["company_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      candidate_link_events: {
+        Row: {
+          active: boolean;
+          actor_id: string | null;
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          id: string;
+          job_id: string;
+        };
+        Insert: {
+          active: boolean;
+          actor_id?: string | null;
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          job_id: string;
+        };
+        Update: {
+          active?: boolean;
+          actor_id?: string | null;
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          job_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_link_events_company_id_candidate_id_job_id_fkey";
+            columns: ["company_id", "candidate_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "candidate_job_links";
+            referencedColumns: ["company_id", "candidate_id", "job_id"];
+          },
+        ];
+      };
+      candidate_merges: {
+        Row: {
+          actor_id: string | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          reason: string;
+          source_id: string;
+          source_revisions: Json;
+          source_snapshot: Json;
+          target_id: string;
+          target_snapshot: Json;
+        };
+        Insert: {
+          actor_id?: string | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          reason: string;
+          source_id: string;
+          source_revisions: Json;
+          source_snapshot: Json;
+          target_id: string;
+          target_snapshot: Json;
+        };
+        Update: {
+          actor_id?: string | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          reason?: string;
+          source_id?: string;
+          source_revisions?: Json;
+          source_snapshot?: Json;
+          target_id?: string;
+          target_snapshot?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_merges_company_id_source_id_fkey";
+            columns: ["company_id", "source_id"];
+            isOneToOne: true;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "candidate_merges_company_id_target_id_fkey";
+            columns: ["company_id", "target_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       candidate_revisions: {
         Row: {
           action: string;
@@ -202,6 +387,7 @@ export type Database = {
       };
       candidates: {
         Row: {
+          active_document_id: string | null;
           anos_experiencia: number | null;
           arquivo_nome: string | null;
           arquivo_original_path: string | null;
@@ -218,6 +404,7 @@ export type Database = {
           excluido: boolean;
           id: string;
           localizacao: string | null;
+          merged_into_id: string | null;
           nome: string | null;
           observacoes: string | null;
           processing_error: string | null;
@@ -232,6 +419,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          active_document_id?: string | null;
           anos_experiencia?: number | null;
           arquivo_nome?: string | null;
           arquivo_original_path?: string | null;
@@ -248,6 +436,7 @@ export type Database = {
           excluido?: boolean;
           id?: string;
           localizacao?: string | null;
+          merged_into_id?: string | null;
           nome?: string | null;
           observacoes?: string | null;
           processing_error?: string | null;
@@ -262,6 +451,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          active_document_id?: string | null;
           anos_experiencia?: number | null;
           arquivo_nome?: string | null;
           arquivo_original_path?: string | null;
@@ -278,6 +468,7 @@ export type Database = {
           excluido?: boolean;
           id?: string;
           localizacao?: string | null;
+          merged_into_id?: string | null;
           nome?: string | null;
           observacoes?: string | null;
           processing_error?: string | null;
@@ -292,6 +483,20 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "candidate_active_document";
+            columns: ["company_id", "active_document_id", "id"];
+            isOneToOne: false;
+            referencedRelation: "resume_documents";
+            referencedColumns: ["company_id", "id", "candidate_id"];
+          },
+          {
+            foreignKeyName: "candidate_merge_company";
+            columns: ["company_id", "merged_into_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
           {
             foreignKeyName: "candidates_company_id_fkey";
             columns: ["company_id"];
@@ -846,7 +1051,9 @@ export type Database = {
           filename: string;
           finished_at: string | null;
           id: string;
+          latest_extraction: Json;
           mime_type: string;
+          object_path: string;
           operation_token: string;
           page_count: number;
           sha256: string;
@@ -855,6 +1062,7 @@ export type Database = {
           stored_at: string | null;
           updated_at: string;
           uploaded_by: string | null;
+          version: number;
         };
         Insert: {
           ai_started_at?: string | null;
@@ -866,7 +1074,9 @@ export type Database = {
           filename: string;
           finished_at?: string | null;
           id?: string;
+          latest_extraction?: Json;
           mime_type: string;
+          object_path: string;
           operation_token?: string;
           page_count: number;
           sha256: string;
@@ -875,6 +1085,7 @@ export type Database = {
           stored_at?: string | null;
           updated_at?: string;
           uploaded_by?: string | null;
+          version: number;
         };
         Update: {
           ai_started_at?: string | null;
@@ -886,7 +1097,9 @@ export type Database = {
           filename?: string;
           finished_at?: string | null;
           id?: string;
+          latest_extraction?: Json;
           mime_type?: string;
+          object_path?: string;
           operation_token?: string;
           page_count?: number;
           sha256?: string;
@@ -895,6 +1108,7 @@ export type Database = {
           stored_at?: string | null;
           updated_at?: string;
           uploaded_by?: string | null;
+          version?: number;
         };
         Relationships: [
           {
@@ -1152,6 +1366,18 @@ export type Database = {
         Args: { p_company: string; p_email: string };
         Returns: string;
       };
+      confirm_candidate_merge: {
+        Args: {
+          p_company: string;
+          p_confirmed: boolean;
+          p_reason: string;
+          p_source: string;
+          p_source_version: number;
+          p_target: string;
+          p_target_version: number;
+        };
+        Returns: string;
+      };
       control_resume_batch: {
         Args: { p_action: string; p_batch: string; p_company: string };
         Returns: number;
@@ -1279,6 +1505,10 @@ export type Database = {
         };
         Returns: undefined;
       };
+      request_document_analysis: {
+        Args: { p_company: string; p_document: string; p_request: string };
+        Returns: string;
+      };
       request_resume_job: {
         Args: {
           p_candidate: string;
@@ -1306,6 +1536,21 @@ export type Database = {
         Args: {
           p_actor: string;
           p_batch: string;
+          p_company: string;
+          p_filename: string;
+          p_mime: string;
+          p_pages: number;
+          p_sha: string;
+          p_size: number;
+          p_slot: number;
+        };
+        Returns: Json;
+      };
+      reserve_resume_version: {
+        Args: {
+          p_actor: string;
+          p_batch: string;
+          p_candidate?: string;
           p_company: string;
           p_filename: string;
           p_mime: string;
@@ -1349,6 +1594,70 @@ export type Database = {
         };
         Returns: Json;
       };
+      search_candidates: {
+        Args: {
+          p_company: string;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: {
+          active_document_id: string | null;
+          anos_experiencia: number | null;
+          arquivo_nome: string | null;
+          arquivo_original_path: string | null;
+          company_id: string;
+          correcoes_rh: Json;
+          created_at: string;
+          created_by: string | null;
+          dados_efetivos: Json;
+          dados_extraidos: Json;
+          data_nascimento: string | null;
+          data_version: number;
+          deleted_at: string | null;
+          email: string | null;
+          excluido: boolean;
+          id: string;
+          localizacao: string | null;
+          merged_into_id: string | null;
+          nome: string | null;
+          observacoes: string | null;
+          processing_error: string | null;
+          processing_status: string;
+          review_status: string;
+          review_version: number;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          skills: string[];
+          status: string;
+          telefone: string | null;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "candidates";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      select_candidate_document: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_document: string;
+          p_expected_version: number;
+        };
+        Returns: undefined;
+      };
+      set_candidate_job_link: {
+        Args: {
+          p_active: boolean;
+          p_candidate: string;
+          p_company: string;
+          p_job: string;
+        };
+        Returns: undefined;
+      };
       set_job_status: {
         Args: {
           p_company: string;
@@ -1372,6 +1681,17 @@ export type Database = {
       stage_ranking: {
         Args: { p_actor: string; p_rows: Json; p_run: string };
         Returns: undefined;
+      };
+      suggest_candidate_duplicates: {
+        Args: { p_candidate: string; p_company: string };
+        Returns: {
+          candidate_id: string;
+          email: string;
+          nome: string;
+          reasons: string[];
+          review_version: number;
+          telefone: string;
+        }[];
       };
       verify_resume_dispatch: { Args: { p_token: string }; Returns: boolean };
     };

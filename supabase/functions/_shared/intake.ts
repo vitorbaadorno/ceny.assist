@@ -41,7 +41,13 @@ export async function cleanupResumes(companyId: string, context: WorkerContext) 
 
 async function receiveValidatedResume(
   request: Request,
-  data: { companyId: string; batchId: string; slot: number; filename: string },
+  data: {
+    companyId: string;
+    batchId: string;
+    slot: number;
+    filename: string;
+    candidateId?: string;
+  },
   context: WorkerContext,
 ) {
   await requireCompanyRole(context.supabase, context.userId, data.companyId, [
@@ -68,7 +74,7 @@ async function receiveValidatedResume(
   const validated = await validateFile(data.filename, bytes);
   const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
   const sha = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
-  const { data: reservation, error } = await context.admin.rpc("reserve_resume", {
+  const { data: reservation, error } = await context.admin.rpc("reserve_resume_version", {
     p_actor: context.userId,
     p_company: data.companyId,
     p_batch: data.batchId,
@@ -78,6 +84,7 @@ async function receiveValidatedResume(
     p_mime: validated.mime,
     p_size: bytes.length,
     p_pages: validated.pages,
+    p_candidate: data.candidateId,
   });
   if (error || !reservation)
     throw new FileRejected(
@@ -130,7 +137,13 @@ async function receiveValidatedResume(
 
 export async function receiveResume(
   request: Request,
-  data: { companyId: string; batchId: string; slot: number; filename: string },
+  data: {
+    companyId: string;
+    batchId: string;
+    slot: number;
+    filename: string;
+    candidateId?: string;
+  },
   context: WorkerContext,
 ) {
   try {

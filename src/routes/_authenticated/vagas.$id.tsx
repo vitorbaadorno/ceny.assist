@@ -1,4 +1,5 @@
 import { RankingHistory } from "@/components/ranking-history";
+import { JobTalentPool } from "@/components/candidate-job-links";
 import { useCompany } from "@/hooks/useCompany";
 import { JobEditor, JobHistory, JOB_RULE, jobError } from "@/components/job-editor";
 import {
@@ -272,11 +273,20 @@ function JobDetail() {
       </Card>
 
       {job && (
+        <JobTalentPool
+          companyId={companyId}
+          jobId={id}
+          canEdit={canEdit}
+          open={job.status === "aberta"}
+        />
+      )}
+      {job && (
         <RankingHistory
           key={`${companyId}:${id}`}
           companyId={companyId}
           job={job}
           canAdmin={canAdmin}
+          canEdit={canEdit}
         />
       )}
       <JobHistory key={`${companyId}:${id}`} companyId={companyId} jobId={id} />

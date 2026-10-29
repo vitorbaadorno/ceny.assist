@@ -47,6 +47,10 @@ export function CandidateReview({
   const [limit, setLimit] = useState(20);
   const [original, setOriginal] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
+  useEffect(() => {
+    setOriginal(null);
+    setConfirmed(false);
+  }, [candidate.active_document_id]);
   const patch = reviewPatch(base, draft);
   const dirty = Object.keys(patch).length > 0;
   const conflict = candidate.review_version !== version;

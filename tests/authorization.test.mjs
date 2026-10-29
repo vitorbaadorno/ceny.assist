@@ -213,6 +213,40 @@ test("archive rejects recruiter before any mutation", async () => {
   );
   assert.ok(!supabase.calls.some((c) => c.rpc));
 });
+test("version signing requires the exact company, person and received document", async () => {
+  const fixtures = {
+    company_members: member("viewer"),
+    candidates: {
+      data: { arquivo_original_path: "legacy/original", active_document_id: jobId },
+      error: null,
+    },
+  };
+  for (const document of [null, { object_path: "private/version", stored_at: null }]) {
+    const supabase = db({ ...fixtures, resume_documents: { data: document, error: null } });
+    await assert.rejects(
+      getResumeUrl({
+        data: { companyId, candidateId, documentId: jobId },
+        context: { supabase, userId },
+      }),
+      /indisponível/,
+    );
+    assert.ok(!supabase.calls.some((c) => c.bucket));
+  }
+  const supabase = db({
+    ...fixtures,
+    resume_documents: {
+      data: { object_path: "private/version", filename: "v2.pdf", stored_at: "2026-10-29" },
+      error: null,
+    },
+  });
+  await getResumeUrl({ data: { companyId, candidateId }, context: { supabase, userId } });
+  assert.deepEqual(supabase.calls.find((c) => c.table === "resume_documents").filters, [
+    ["id", jobId],
+    ["company_id", companyId],
+    ["candidate_id", candidateId],
+  ]);
+  assert.equal(supabase.calls.find((c) => c.bucket).path, "private/version");
+});
 test("archive passes both company and record IDs to atomic database authorization", async () => {
   const supabase = db({ company_members: member("admin") });
   await archiveCandidate({ data: { companyId, candidateId }, context: { supabase, userId } });

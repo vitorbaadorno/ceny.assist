@@ -41,7 +41,7 @@ async function batch(count = 5) {
   assert.ifError(error);
   return data;
 }
-async function send(name, bytes, batchId, slot = 0) {
+async function send(name, bytes, batchId, slot = 0, candidateId, confirmed = true) {
   const params = new URLSearchParams({
     action: "upload",
     companyId: company,
@@ -49,6 +49,10 @@ async function send(name, bytes, batchId, slot = 0) {
     slot: String(slot),
     filename: name,
   });
+  if (candidateId) {
+    params.set("candidateId", candidateId);
+    if (confirmed) params.set("identityConfirmed", "true");
+  }
   const response = await fetch(`${config.API_URL}/functions/v1/ceny-worker?${params}`, {
     method: "POST",
     headers: {
@@ -161,6 +165,77 @@ try {
       assert.equal(data.ai_started_at, null);
     },
   );
+  let versionPath;
+  await check("adding a version requires explicit identity confirmation", async () => {
+    const r = await send(
+      "resume.pdf",
+      await pdfFixture(2),
+      await batch(),
+      0,
+      accepted[0].candidateId,
+      false,
+    );
+    assert.equal(r.status, 400);
+  });
+  await check(
+    "concurrent new version uploads preserve both originals and create one job",
+    async () => {
+      const bytes = await pdfFixture(2),
+        b3 = await batch();
+      const responses = await Promise.all([
+        send("resume.pdf", bytes, b3, 0, accepted[0].candidateId),
+        send("renamed.pdf", bytes, b3, 1, accepted[0].candidateId),
+      ]);
+      for (const r of responses) {
+        assert.equal(r.status, 200, JSON.stringify(r.body));
+        assert.equal(r.body.candidateId, accepted[0].candidateId);
+      }
+      assert.equal(responses[0].body.documentId, responses[1].body.documentId);
+      const { data: docs, error } = await user
+        .from("resume_documents")
+        .select("*")
+        .eq("candidate_id", accepted[0].candidateId)
+        .order("version");
+      assert.ifError(error);
+      assert.equal(docs.length, 2);
+      assert.equal(new Set(docs.map((d) => d.object_path)).size, 2);
+      versionPath = docs[1].object_path;
+      for (const [i, doc] of docs.entries()) {
+        const { data, error } = await user.storage.from("resumes").download(doc.object_path);
+        assert.ifError(error);
+        assert.deepEqual(
+          new Uint8Array(await data.arrayBuffer()),
+          i === 0 ? fixtures[0][1] : bytes,
+        );
+        const signed = await user.storage.from("resumes").createSignedUrl(doc.object_path, 60);
+        assert.ifError(signed.error);
+        assert.equal((await fetch(signed.data.signedUrl)).status, 200);
+      }
+      const { count } = await user
+        .from("candidates")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", company);
+      assert.equal(count, 4);
+      const jobs = await user.from("resume_jobs").select("id").eq("document_id", docs[1].id);
+      assert.equal(jobs.data.length, 1);
+    },
+  );
+  await check(
+    "same bytes assigned to another person require review and never move automatically",
+    async () => {
+      const b4 = await batch();
+      const r = await send("same.pdf", fixtures[0][1], b4, 0, accepted[1].candidateId);
+      assert.equal(r.status, 200);
+      assert.equal(r.body.candidateId, accepted[0].candidateId);
+      assert.match(r.body.message, /outro cadastro/);
+      const manifest = await user
+        .from("resume_batch_items")
+        .select("document_id")
+        .eq("batch_id", b4)
+        .single();
+      assert.equal(manifest.data.document_id, accepted[0].documentId);
+    },
+  );
   await check("reconciliation deletes stale unlinked object through Storage API", async () => {
     const path = `${company}/${randomUUID()}/original`;
     const { error } = await admin.storage
@@ -188,6 +263,7 @@ try {
       .from("resumes")
       .download(`${company}/${accepted[0].candidateId}/original`);
     assert.ifError(keptError);
+    assert.ifError((await user.storage.from("resumes").download(versionPath)).error);
   });
   await check("concurrent dispatchers reserve at most two documents per company", async () => {
     const responses = await Promise.all([
@@ -238,10 +314,10 @@ try {
       const response = await admin.from("resume_jobs").select("*").eq("company_id", company);
       assert.ifError(response.error);
       jobs = response.data;
-      if (jobs.length === 4 && jobs.every((j) => j.state === "blocked")) break;
+      if (jobs.length === 5 && jobs.every((j) => j.state === "blocked")) break;
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } while (Date.now() < deadline);
-    assert.equal(jobs.length, 4);
+    assert.equal(jobs.length, 5);
     assert.ok(
       jobs.every((j) => j.state === "blocked" && j.attempts === 1),
       JSON.stringify(jobs.map((j) => ({ state: j.state, attempts: j.attempts }))),

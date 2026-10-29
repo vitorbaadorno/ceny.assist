@@ -81,7 +81,7 @@ export async function runResumeJob(admin: Client, job: Job) {
     const { data: document, error: docError } = await abortable(
       admin
         .from("resume_documents")
-        .select("filename,byte_size,candidate_id")
+        .select("filename,byte_size,candidate_id,object_path,sha256")
         .eq("id", job.document_id)
         .eq("company_id", job.company_id)
         .eq("candidate_id", job.candidate_id)
@@ -91,7 +91,7 @@ export async function runResumeJob(admin: Client, job: Job) {
     if (docError) throw new Error("Falha temporária ao consultar o documento.");
     if (!document) throw new FileRejected("Documento indisponível. Confira o original.");
     const { data: file, error: downloadError } = await abortable(
-      admin.storage.from("resumes").download(`${job.company_id}/${job.candidate_id}/original`),
+      admin.storage.from("resumes").download(document.object_path),
       signal,
     );
     if (downloadError || !file) throw new Error("Falha temporária no armazenamento.");
@@ -99,6 +99,12 @@ export async function runResumeJob(admin: Client, job: Job) {
       throw new FileRejected("O original está incompleto ou incompatível.");
     await phase("validating");
     const bytes = new Uint8Array(await abortable(file.arrayBuffer(), signal));
+    const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
+    const sha = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    if (sha !== document.sha256)
+      throw new FileRejected(
+        "O conteúdo do original não corresponde ao arquivo registrado. Confira o documento.",
+      );
     await phase("reading");
     const result = await abortable(
       extractResume(bytes, document.filename, signal, (value) => {

@@ -1,7 +1,7 @@
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -62,30 +62,28 @@ function CandidatesPage() {
   const { companyId, canEdit, canAdmin } = useCompany();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("todos");
+  const [page, setPage] = useState(0);
 
-  const { data: candidates = [], isLoading } = useQuery({
-    queryKey: ["candidates", companyId],
+  const {
+    data: candidates = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["candidates", companyId, search, status, page],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("candidates")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.rpc("search_candidates", {
+        p_company: companyId,
+        p_query: search,
+        p_status: status,
+        p_offset: page * 50,
+      });
       if (error) throw error;
       return data;
     },
     refetchInterval: 8000,
   });
 
-  const filtered = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    return candidates.filter((candidate) => {
-      const matchesStatus = status === "todos" || candidate.status === status;
-      const haystack =
-        `${candidate.nome ?? ""} ${candidate.email ?? ""} ${(candidate.skills ?? []).join(" ")}`.toLowerCase();
-      return matchesStatus && (!term || haystack.includes(term));
-    });
-  }, [candidates, search, status]);
+  const filtered = candidates.slice(0, 50);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -93,7 +91,7 @@ function CandidatesPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Candidatos</h1>
           <p className="text-sm text-muted-foreground">
-            {candidates.length} currículo(s) no banco de talentos.
+            Banco de pessoas e seus currículos · Página {page + 1}.
           </p>
         </div>
         <Button asChild>
@@ -107,10 +105,19 @@ function CandidatesPage() {
         <Input
           placeholder="Buscar por nome, e-mail ou habilidade"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
           className="max-w-sm"
         />
-        <Select value={status} onValueChange={setStatus}>
+        <Select
+          value={status}
+          onValueChange={(value) => {
+            setStatus(value);
+            setPage(0);
+          }}
+        >
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
@@ -125,7 +132,21 @@ function CandidatesPage() {
         </Select>
       </div>
 
-      {isLoading ? (
+      <div className="flex items-center gap-3">
+        <Button variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>
+          Anterior
+        </Button>
+        <Button
+          variant="outline"
+          disabled={candidates.length <= 50}
+          onClick={() => setPage(page + 1)}
+        >
+          Próxima página
+        </Button>
+      </div>
+      {isError ? (
+        <p role="alert">Não foi possível consultar o acervo. Tente atualizar a página.</p>
+      ) : isLoading ? (
         <p className="text-sm text-muted-foreground">Carregando candidatos...</p>
       ) : filtered.length === 0 ? (
         <Card>

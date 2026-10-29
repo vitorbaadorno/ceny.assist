@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { CandidateQueue } from "@/components/resume-queue";
 import { CandidateAnalysis } from "@/components/candidate-analysis";
 import { CandidateReview } from "@/components/candidate-review";
+import { CandidateDocuments } from "@/components/candidate-documents";
+import { CandidateDuplicates } from "@/components/candidate-duplicates";
+import { CandidateJobLinks } from "@/components/candidate-job-links";
 import { archiveCandidate } from "@/lib/records.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -125,7 +128,15 @@ function CandidateDetail() {
           </AlertDialog>
         </div>
       </header>
-      <CandidateQueue companyId={companyId} candidateId={id} canEdit={canEdit} />
+      <CandidateDocuments candidate={candidate} canEdit={canEdit} />
+      <CandidateQueue
+        companyId={companyId}
+        candidateId={id}
+        documentId={candidate.active_document_id}
+        canEdit={canEdit}
+      />
+      <CandidateDuplicates candidate={candidate} canAdmin={canAdmin} />
+      <CandidateJobLinks companyId={companyId} candidateId={id} canEdit={canEdit} />
       {candidate.processing_error && (
         <p role="status" className="rounded border p-3 text-sm">
           {candidate.processing_error}

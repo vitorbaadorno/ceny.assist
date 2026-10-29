@@ -31,6 +31,7 @@ export async function sendResume(
   batchId: string,
   slot: number,
   signal: AbortSignal,
+  candidateId?: string,
 ) {
   const {
     data: { session },
@@ -44,6 +45,10 @@ export async function sendResume(
     slot: String(slot),
     filename: file.name,
   });
+  if (candidateId) {
+    params.set("candidateId", candidateId);
+    params.set("identityConfirmed", "true");
+  }
   const response = await fetch(
     `${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/ceny-worker?${params}`,
     {

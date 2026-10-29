@@ -31,21 +31,42 @@ export const processResume = createServerFn({ method: "POST" })
 export const getResumeUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ companyId: z.string().uuid(), candidateId: z.string().uuid() }).parse(data),
+    z
+      .object({
+        companyId: z.string().uuid(),
+        candidateId: z.string().uuid(),
+        documentId: z.string().uuid().optional(),
+      })
+      .parse(data),
   )
   .handler(async ({ data, context }) => {
     await requireCompanyRole(context.supabase, context.userId, data.companyId);
     const { data: candidate, error: loadError } = await context.supabase
       .from("candidates")
-      .select("arquivo_original_path, arquivo_nome")
+      .select("arquivo_original_path, arquivo_nome, active_document_id")
       .eq("company_id", data.companyId)
       .eq("id", data.candidateId)
       .single();
     if (loadError || !candidate?.arquivo_original_path) throw new Error("Currículo indisponível.");
+    let path = candidate.arquivo_original_path;
+    let filename = candidate.arquivo_nome ?? "curriculo";
+    const documentId = data.documentId ?? candidate.active_document_id;
+    if (documentId) {
+      const { data: document, error } = await context.supabase
+        .from("resume_documents")
+        .select("object_path,filename,stored_at")
+        .eq("id", documentId)
+        .eq("company_id", data.companyId)
+        .eq("candidate_id", data.candidateId)
+        .single();
+      if (error || !document?.stored_at) throw new Error("Documento indisponível.");
+      path = document.object_path;
+      filename = document.filename;
+    }
     const { data: signed, error } = await context.supabase.storage
       .from("resumes")
-      .createSignedUrl(candidate.arquivo_original_path, 60, {
-        download: candidate.arquivo_nome ?? "curriculo",
+      .createSignedUrl(path, 60, {
+        download: filename,
       });
     if (error || !signed) throw new Error("Não foi possível gerar o link do currículo.");
     return { url: signed.signedUrl };
