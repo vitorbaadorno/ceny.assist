@@ -1,85 +1,76 @@
 import { requireCompanyRole } from "./access.ts";
-import { scoreCandidate } from "./scoring.ts";
-import { validateJobPayload } from "./job-criteria.ts";
+import { scoreCandidate, type CandidateForScore } from "./scoring.ts";
 import type { Json, WorkerContext } from "./context.ts";
+type Run = {
+  id: string;
+  status: string;
+  eligible: number;
+  total: number;
+  job_snapshot: { criteria: Json };
+};
 export async function rankCandidates(
-  data: { companyId: string; jobId: string },
+  data: { companyId: string; jobId: string; requestId: string },
   context: WorkerContext,
 ) {
-  const supabase = context.supabase;
-  await requireCompanyRole(supabase, context.userId, data.companyId, [
+  await requireCompanyRole(context.supabase, context.userId, data.companyId, [
     "owner",
     "admin",
     "recruiter",
   ]);
-
-  const { data: job, error: jobError } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("company_id", data.companyId)
-    .eq("id", data.jobId)
-    .single();
-  if (jobError || !job) throw new Error("Vaga não encontrada.");
-  if (job.status !== "aberta" || !job.approved_hash)
-    throw new Error("Reabra a vaga e aprove os critérios antes de avaliar.");
-  validateJobPayload(
-    {
-      titulo: job.titulo,
-      descricao: job.descricao ?? "",
-      categoria: job.categoria as "regular" | "jovem_aprendiz",
-      criteria: job.criteria as never,
-    },
-    true,
-  );
-
-  const candidates: Array<{
-    id: string;
-    skills: string[];
-    localizacao: string | null;
-    anos_experiencia: number | null;
-    dados_efetivos: Json;
-    correcoes_rh: Json;
-    data_version: number;
-  }> = [];
-  for (let offset = 0; ; offset += 500) {
-    const { data: page, error } = await supabase
-      .from("candidates")
-      .select(
-        "id, skills, localizacao, anos_experiencia, dados_efetivos, correcoes_rh, data_version",
-      )
-      .eq("company_id", data.companyId)
-      .in("processing_status", ["concluido", "revisao_manual"])
-      .order("id")
-      .range(offset, offset + 499);
-    if (error) throw new Error(error.message);
-    candidates.push(...(page ?? []));
-    if (!page || page.length < 500) break;
-  }
-
-  const rows = candidates.map((candidate) => {
-    const { score, details } = scoreCandidate(
-      { ...candidate, dados_extraidos: candidate.dados_efetivos },
-      job,
-    );
-    return {
-      candidate_id: candidate.id,
-      candidate_version: candidate.data_version,
-      job_id: job.id,
-      score,
-      detalhes_matching: details as unknown as Json,
-    };
-  });
-
-  const supabaseAdmin = context.admin;
-  const { error } = await supabaseAdmin.rpc("replace_job_scores_v2", {
+  const { data: started, error: startError } = await context.admin.rpc("begin_ranking", {
     p_actor: context.userId,
     p_company: data.companyId,
-    p_job: job.id,
-    p_job_version: job.version,
-    p_criteria_hash: job.approved_hash,
-    p_scores: rows as unknown as Json,
+    p_job: data.jobId,
+    p_request: data.requestId,
   });
-  if (error) throw new Error(error.message);
-
-  return { count: rows.length };
+  if (startError)
+    throw new Error(
+      "Não foi possível iniciar. Confira a aprovação da vaga ou aguarde o cálculo em andamento.",
+    );
+  const run = started as unknown as Run;
+  if (run.status === "completed")
+    return { count: run.eligible, pending: run.total - run.eligible, runId: run.id };
+  try {
+    let cursor = "";
+    for (;;) {
+      let query = context.supabase
+        .from("ranking_entries")
+        .select("candidate_id,snapshot,reason")
+        .eq("company_id", data.companyId)
+        .eq("run_id", run.id)
+        .is("reason", null)
+        .order("candidate_id")
+        .limit(200);
+      if (cursor) query = query.gt("candidate_id", cursor);
+      const { data: page, error } = await query;
+      if (error) throw error;
+      if (!page?.length) break;
+      const rows = page.map((e) => {
+        const c = e.snapshot as unknown as CandidateForScore & { dados_efetivos: Json };
+        const result = scoreCandidate(
+          { ...c, dados_extraidos: c.dados_efetivos },
+          run.job_snapshot,
+        );
+        return { candidate_id: e.candidate_id, score: result.score, details: result.details };
+      });
+      const saved = await context.admin.rpc("stage_ranking", {
+        p_actor: context.userId,
+        p_run: run.id,
+        p_rows: rows as unknown as Json,
+      });
+      if (saved.error) throw saved.error;
+      cursor = page[page.length - 1]!.candidate_id;
+    }
+    const finished = await context.admin.rpc("finish_ranking", {
+      p_actor: context.userId,
+      p_run: run.id,
+    });
+    if (finished.error) throw finished.error;
+    return { count: run.eligible, pending: run.total - run.eligible, runId: run.id };
+  } catch {
+    await context.admin.rpc("fail_ranking", { p_actor: context.userId, p_run: run.id });
+    throw new Error(
+      "O cálculo não foi publicado. O ranking anterior foi preservado. Confira alterações recentes e inicie um novo cálculo.",
+    );
+  }
 }

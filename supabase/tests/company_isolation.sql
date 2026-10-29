@@ -34,6 +34,7 @@ insert into public.company_members(company_id,user_id,role) values
 insert into public.candidates(id,company_id,nome,processing_status,created_by) values
   (pg_temp.id('ca'),pg_temp.id('a'),'Candidate A','concluido',pg_temp.id('owner_a')),
   (pg_temp.id('cb'),pg_temp.id('b'),'Candidate B','concluido',pg_temp.id('owner_b'));
+update public.candidates set review_status='completed';
 insert into public.jobs(id,company_id,titulo) values(pg_temp.id('ja'),pg_temp.id('a'),'Job A'),(pg_temp.id('jb'),pg_temp.id('b'),'Job B');
 update public.jobs set descricao='Descrição de teste com requisito SQL.',criteria='[{"kind":"skill","text":"SQL","min_years":null,"required":true,"weight":5,"source":null}]';
 update public.jobs set approved_hash=private.job_hash(private.job_payload(titulo,descricao,categoria,criteria));
@@ -96,7 +97,7 @@ reset role;
 select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('recruiter'),'role','authenticated')::text,true);
 set local role authenticated;
 select pg_temp.ok('recruiter profiles limited to self',(select count(*)=1 from public.profiles));
-select public.save_candidate_review(pg_temp.id('a'),pg_temp.id('ca'),0,'{"observacoes":"Allowed note"}');
+select public.save_candidate_review(pg_temp.id('a'),pg_temp.id('ca'),0,'{"observacoes":"Allowed note"}',true,true);
 select pg_temp.ok('recruiter edits own company note',(select observacoes='Allowed note' from public.candidates where id=pg_temp.id('ca')));
 select pg_temp.denied('recruiter cannot archive',$q$select public.archive_candidate(pg_temp.id('a'),pg_temp.id('ca'))$q$);
 select pg_temp.denied('recruiter cannot escalate',$q$select public.manage_company_member(pg_temp.id('a'),pg_temp.id('recruiter'),'admin')$q$);
@@ -125,7 +126,7 @@ reset role;
 set local role service_role;
 select pg_temp.denied('legacy assignment requires evidence', $q$update private.legacy_records set confirmed_company_id=pg_temp.id('a'),reviewed_by=pg_temp.id('owner_a'),reviewed_at=now() where source_system='test'$q$,'23514');
 select pg_temp.denied('legacy cannot be marked imported before attribution', $q$update private.legacy_records set imported_at=now() where source_system='test'$q$,'23514');
-select pg_temp.denied('composite candidate/job FK prevents crossing',$q$insert into public.candidate_scores(company_id,candidate_id,job_id,score) values(pg_temp.id('a'),pg_temp.id('cb'),pg_temp.id('ja'),90)$q$,'23503');
+select pg_temp.denied('cross-company score rejected before publication',$q$insert into public.candidate_scores(company_id,candidate_id,job_id,score) values(pg_temp.id('a'),pg_temp.id('cb'),pg_temp.id('ja'),90)$q$,'22023');
 select pg_temp.denied('report/job company FK',$q$insert into public.job_reports(company_id,job_id) values(pg_temp.id('a'),pg_temp.id('jb'))$q$,'23503');
 select pg_temp.denied('backend rejects unauthorized actor',$q$select public.replace_job_scores(pg_temp.id('viewer'),pg_temp.id('a'),pg_temp.id('ja'),'[]')$q$);
 select public.replace_job_scores_v2(pg_temp.id('owner_a'),pg_temp.id('a'),pg_temp.id('ja'),(select version from public.jobs where id=pg_temp.id('ja')),(select approved_hash from public.jobs where id=pg_temp.id('ja')),jsonb_build_array(jsonb_build_object('candidate_id',pg_temp.id('ca'),'score',82,'candidate_version',(select data_version from public.candidates where id=pg_temp.id('ca')),'detalhes_matching','{}'::jsonb)));

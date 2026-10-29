@@ -63,6 +63,17 @@ function db(fixtures = {}, rpcError = null) {
         order() {
           return this;
         },
+        limit() {
+          return this;
+        },
+        is(key, value) {
+          call.filters.push([key, value]);
+          return this;
+        },
+        gt(key, value) {
+          call.cursor = value;
+          return this;
+        },
         range() {
           return this;
         },
@@ -72,10 +83,11 @@ function db(fixtures = {}, rpcError = null) {
           );
         },
         then(resolve, reject) {
-          return Promise.resolve(fixtures[table] ?? { data: [], error: null }).then(
-            resolve,
-            reject,
-          );
+          return Promise.resolve(
+            call.cursor
+              ? { data: [], error: null }
+              : (fixtures[table] ?? { data: [], error: null }),
+          ).then(resolve, reject);
         },
       };
       return query;
@@ -87,7 +99,15 @@ function db(fixtures = {}, rpcError = null) {
         data:
           name === "claim_resume_extraction"
             ? { owned: true, token: "test-token", state: "reading" }
-            : null,
+            : name === "begin_ranking"
+              ? {
+                  id: jobId,
+                  status: "processing",
+                  total: 1,
+                  eligible: 1,
+                  job_snapshot: approvedJob,
+                }
+              : null,
       };
     },
     storage: {
@@ -209,8 +229,10 @@ test("viewer cannot trigger ranking or use privileged persistence", async () => 
 test("ranking uses scoped RLS reads and server-derived scores, with verified actor", async () => {
   const supabase = db({
       company_members: member("recruiter"),
-      jobs: { data: approvedJob, error: null },
-      candidates: { data: [{ id: candidateId, skills: [], dados_extraidos: {} }], error: null },
+      ranking_entries: {
+        data: [{ candidate_id: candidateId, snapshot: { skills: [], dados_efetivos: {} } }],
+        error: null,
+      },
     }),
     admin = db();
   const result = await rankCandidates(
@@ -218,15 +240,15 @@ test("ranking uses scoped RLS reads and server-derived scores, with verified act
     { supabase, admin, userId },
   );
   assert.equal(result.count, 1);
-  for (const c of supabase.calls.filter((c) => ["jobs", "candidates"].includes(c.table)))
+  for (const c of supabase.calls.filter((c) => ["ranking_entries"].includes(c.table)))
     assert.ok(c.filters.some(([k, v]) => k === "company_id" && v === companyId));
-  const write = admin.calls.find((c) => c.rpc);
-  assert.equal(write.rpc, "replace_job_scores_v2");
+  const write = admin.calls.find((c) => c.rpc === "stage_ranking");
+  assert.equal(write.rpc, "stage_ranking");
   assert.equal(write.args.p_actor, userId);
-  assert.equal(write.args.p_company, companyId);
-  assert.equal(write.args.p_scores[0].candidate_id, candidateId);
+  assert.equal(write.args.p_run, jobId);
+  assert.equal(write.args.p_rows[0].candidate_id, candidateId);
   assert.equal(
-    write.args.p_scores[0].score,
+    write.args.p_rows[0].score,
     scoreCandidate({ skills: [], dados_extraidos: {} }, approvedJob).score,
   );
 });
@@ -239,7 +261,7 @@ test("backend refuses success if final database check detects revocation", async
     admin = db({}, new Error("Acesso revogado"));
   await assert.rejects(
     rankCandidates({ companyId, jobId }, { supabase, admin, userId }),
-    /revogado/,
+    /Não foi possível iniciar/,
   );
 });
 test("invalid IDs are rejected before database access", async () => {

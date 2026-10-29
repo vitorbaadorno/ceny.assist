@@ -11,6 +11,7 @@ insert into auth.users(id,email,email_confirmed_at,role,aud) select id,id::text|
 insert into public.companies(id,name) select company,'Jobs A' from fixture union all select other_company,'Jobs B' from fixture;
 insert into public.company_members(company_id,user_id,role) select company,actor,'recruiter' from fixture union all select company,viewer,'viewer' from fixture union all select other_company,outsider,'owner' from fixture;
 insert into public.candidates(id,company_id,processing_status,dados_extraidos) select candidate,company,'concluido','{"skills":["SQL"]}' from fixture;
+update public.candidates set review_status='completed' where id=(select candidate from fixture);
 select set_config('request.jwt.claims',json_build_object('sub',actor,'role','authenticated')::text,true) from fixture;
 set local role authenticated;
 select pg_temp.denied('direct job insertion cannot bypass approval and audit',$q$insert into public.jobs(company_id,titulo) select company,'Bypass' from fixture$q$,'42501');

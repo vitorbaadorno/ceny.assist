@@ -1,4 +1,4 @@
-import { ScoreExplanation } from "@/components/score-explanation";
+import { RankingHistory } from "@/components/ranking-history";
 import { useCompany } from "@/hooks/useCompany";
 import { JobEditor, JobHistory, JOB_RULE, jobError } from "@/components/job-editor";
 import {
@@ -8,19 +8,19 @@ import {
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { rankJobCandidates } from "@/lib/scoring.functions";
 import { archiveJob } from "@/lib/records.functions";
-import type { MatchDetails } from "@/lib/scoring";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+
 import { ArrowLeft, Sparkles, Trash2 } from "lucide-react";
-import { CityAutocomplete } from "@/components/city-autocomplete";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,8 +61,6 @@ function JobDetail() {
   const navigate = useNavigate();
   const rank = useServerFn(rankJobCandidates);
   const archive = useServerFn(archiveJob);
-  const [localFilter, setLocalFilter] = useState("");
-  const [minExp, setMinExp] = useState("");
   const [editing, setEditing] = useState(false);
 
   const { data: job } = useQuery({
@@ -80,28 +78,22 @@ function JobDetail() {
     },
   });
 
-  const { data: scores = [], isLoading } = useQuery({
-    queryKey: ["job-scores", companyId, id],
-    refetchInterval: 5000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("candidate_scores")
-        .select(
-          "score, detalhes_matching, stale, candidate_version, job_version, criteria_hash, candidates(*)",
-        )
-        .eq("company_id", companyId)
-        .eq("job_id", id)
-        .order("score", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const recalc = useMutation({
-    mutationFn: async () => rank({ data: { companyId, jobId: id } }),
+    mutationFn: async (requestId: string) => rank({ data: { companyId, jobId: id, requestId } }),
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["job-scores", companyId, id] });
-      toast.success(`${result.count} candidato(s) avaliados.`);
+      for (const key of [
+        "ranking-runs",
+        "ranking-current",
+        "ranking-entries",
+        "ranking-pending",
+        "job-scores",
+      ])
+        queryClient.invalidateQueries({ queryKey: [key, companyId] });
+      toast.success(
+        result.count
+          ? `${result.count} candidato(s) avaliados. ${result.pending} com pendências.`
+          : `Cálculo concluído sem classificação final: ${result.pending} candidato(s) com pendências.`,
+      );
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -135,20 +127,6 @@ function JobDetail() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const filtered = useMemo(() => {
-    return scores.filter((row) => {
-      const candidate = row.candidates;
-      if (!candidate) return false;
-      const localOk =
-        !localFilter ||
-        (candidate.localizacao ?? "").toLowerCase().includes(localFilter.toLowerCase());
-      const expOk =
-        !minExp ||
-        (candidate.anos_experiencia !== null && candidate.anos_experiencia >= Number(minExp));
-      return localOk && expOk;
-    });
-  }, [scores, localFilter, minExp]);
-
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <Link
@@ -165,7 +143,11 @@ function JobDetail() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
-            onClick={() => recalc.mutate()}
+            onClick={() =>
+              recalc.mutate(
+                recalc.isError && recalc.variables ? recalc.variables : crypto.randomUUID(),
+              )
+            }
             disabled={
               !canEdit ||
               recalc.isPending ||
@@ -175,8 +157,21 @@ function JobDetail() {
             }
           >
             <Sparkles className="size-4" />
-            {recalc.isPending ? "Calculando..." : "Calcular aderência"}
+            {recalc.isPending
+              ? "Calculando..."
+              : recalc.isError
+                ? "Repetir tentativa"
+                : "Calcular aderência"}
           </Button>
+          {recalc.isError && (
+            <Button
+              variant="outline"
+              disabled={!canEdit || job?.status !== "aberta" || !job?.approved_hash || editing}
+              onClick={() => recalc.mutate(crypto.randomUUID())}
+            >
+              Iniciar novo cálculo
+            </Button>
+          )}
           <Button
             variant="outline"
             disabled={!canEdit || !job}
@@ -276,100 +271,7 @@ function JobDetail() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-3">
-        <div className="w-full max-w-xs">
-          <CityAutocomplete
-            value={localFilter}
-            onChange={setLocalFilter}
-            placeholder="Filtrar por cidade"
-          />
-        </div>
-        <Input
-          type="number"
-          min={0}
-          placeholder="Experiência mínima (anos)"
-          value={minExp}
-          onChange={(e) => setMinExp(e.target.value)}
-          className="max-w-56"
-        />
-      </div>
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando ranking...</p>
-      ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Nenhum candidato avaliado ainda. Clique em "Calcular aderência".
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((row) => {
-            const candidate = row.candidates!;
-            const details = (row.detalhes_matching ?? {}) as unknown as MatchDetails;
-            const outdated =
-              row.stale ||
-              details.formula !== "evidence-v3" ||
-              row.candidate_version !== candidate.data_version ||
-              row.job_version !== job?.version ||
-              row.criteria_hash !== job?.approved_hash;
-            return (
-              <Card key={candidate.id}>
-                <CardContent className="space-y-3 py-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <Link
-                      to="/candidatos/$id"
-                      params={{ id: candidate.id }}
-                      className="font-medium hover:underline"
-                    >
-                      {candidate.nome ?? "Currículo sem nome"}
-                    </Link>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">
-                        {candidate.localizacao ?? "Local não informado"}
-                      </span>
-                      <Badge variant={outdated ? "outline" : "default"}>
-                        {Math.round(row.score)}% de aderência{outdated ? " · desatualizada" : ""}
-                      </Badge>
-                    </div>
-                  </div>
-                  {outdated && (
-                    <p role="status" className="text-sm text-amber-800 dark:text-amber-300">
-                      A vaga, os dados ou as regras da avaliação mudaram. Calcule a aderência
-                      novamente antes de usar esta avaliação.
-                    </p>
-                  )}
-                  <Progress value={Number(row.score)} />
-                  {details.limite_obrigatorio_aplicado && (
-                    <p className="text-sm text-amber-800 dark:text-amber-300">
-                      Nota limitada a 49%: há requisito obrigatório não comprovado. Confira o
-                      currículo.
-                    </p>
-                  )}
-                  <ScoreExplanation details={details} jobVersion={row.job_version} />
-                  <div className="grid gap-1 text-xs md:grid-cols-2">
-                    <p className="text-success">
-                      Atende: {details.obrigatorios_atendidos?.join(", ") || "—"}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Exige conferência: {details.obrigatorios_faltantes?.join(", ") || "—"}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Diferenciais: {details.desejaveis_atendidos?.join(", ") || "—"}
-                    </p>
-                    <p className="text-muted-foreground">
-                      Experiência:{" "}
-                      {candidate.anos_experiencia === null
-                        ? "não informada"
-                        : `${candidate.anos_experiencia} ano(s) registrados`}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      {job && <RankingHistory key={`${companyId}:${id}`} companyId={companyId} job={job} />}
       <JobHistory key={`${companyId}:${id}`} companyId={companyId} jobId={id} />
     </div>
   );

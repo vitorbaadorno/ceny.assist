@@ -5,7 +5,13 @@ import { requireCompanyRole } from "@/lib/company-access";
 export const rankJobCandidates = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ companyId: z.string().uuid(), jobId: z.string().uuid() }).parse(input),
+    z
+      .object({
+        companyId: z.string().uuid(),
+        jobId: z.string().uuid(),
+        requestId: z.string().uuid(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     await requireCompanyRole(context.supabase, context.userId, data.companyId, [
@@ -18,7 +24,7 @@ export const rankJobCandidates = createServerFn({ method: "POST" })
     });
     if (error)
       throw new Error(
-        "Não foi possível calcular o ranking. Verifique seu acesso e tente novamente.",
+        "Não foi possível publicar o ranking. O resultado anterior foi preservado. Aguarde outro cálculo ou confira alterações na base antes de tentar novamente.",
       );
-    return result as { count: number };
+    return result as { count: number; pending: number; runId: string };
   });

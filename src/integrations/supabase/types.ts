@@ -63,6 +63,8 @@ export type Database = {
           id: string;
           job_id: string;
           job_version: number | null;
+          review_version: number | null;
+          run_id: string | null;
           score: number;
           stale: boolean;
           updated_at: string;
@@ -77,6 +79,8 @@ export type Database = {
           id?: string;
           job_id: string;
           job_version?: number | null;
+          review_version?: number | null;
+          run_id?: string | null;
           score: number;
           stale?: boolean;
           updated_at?: string;
@@ -91,6 +95,8 @@ export type Database = {
           id?: string;
           job_id?: string;
           job_version?: number | null;
+          review_version?: number | null;
+          run_id?: string | null;
           score?: number;
           stale?: boolean;
           updated_at?: string;
@@ -109,6 +115,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "jobs";
             referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "candidate_scores_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_runs";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -537,6 +550,113 @@ export type Database = {
         };
         Relationships: [];
       };
+      ranking_entries: {
+        Row: {
+          candidate_id: string;
+          company_id: string;
+          details: Json | null;
+          documents: Json;
+          reason: string | null;
+          run_id: string;
+          score: number | null;
+          snapshot: Json;
+        };
+        Insert: {
+          candidate_id: string;
+          company_id: string;
+          details?: Json | null;
+          documents: Json;
+          reason?: string | null;
+          run_id: string;
+          score?: number | null;
+          snapshot: Json;
+        };
+        Update: {
+          candidate_id?: string;
+          company_id?: string;
+          details?: Json | null;
+          documents?: Json;
+          reason?: string | null;
+          run_id?: string;
+          score?: number | null;
+          snapshot?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ranking_entries_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "ranking_entries_company_id_run_id_fkey";
+            columns: ["company_id", "run_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_runs";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      ranking_runs: {
+        Row: {
+          actor_id: string | null;
+          company_id: string;
+          completed_at: string | null;
+          created_at: string;
+          eligible: number;
+          expires_at: string;
+          formula: string;
+          id: string;
+          job_id: string;
+          job_snapshot: Json;
+          request_id: string;
+          stale: boolean;
+          status: string;
+          total: number;
+        };
+        Insert: {
+          actor_id?: string | null;
+          company_id: string;
+          completed_at?: string | null;
+          created_at?: string;
+          eligible?: number;
+          expires_at?: string;
+          formula?: string;
+          id?: string;
+          job_id: string;
+          job_snapshot: Json;
+          request_id: string;
+          stale?: boolean;
+          status?: string;
+          total?: number;
+        };
+        Update: {
+          actor_id?: string | null;
+          company_id?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          eligible?: number;
+          expires_at?: string;
+          formula?: string;
+          id?: string;
+          job_id?: string;
+          job_snapshot?: Json;
+          request_id?: string;
+          stale?: boolean;
+          status?: string;
+          total?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ranking_runs_company_id_job_id_fkey";
+            columns: ["company_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       resume_batch_entries: {
         Row: {
           batch_id: string;
@@ -895,6 +1015,15 @@ export type Database = {
         Args: { p_company: string; p_id: string };
         Returns: undefined;
       };
+      begin_ranking: {
+        Args: {
+          p_actor: string;
+          p_company: string;
+          p_job: string;
+          p_request: string;
+        };
+        Returns: Json;
+      };
       begin_resume_batch: {
         Args: { p_company: string; p_count: number; p_source: string };
         Returns: string;
@@ -962,6 +1091,14 @@ export type Database = {
       create_job_template: {
         Args: { p_company: string; p_name: string; p_payload: Json };
         Returns: string;
+      };
+      fail_ranking: {
+        Args: { p_actor: string; p_run: string };
+        Returns: undefined;
+      };
+      finish_ranking: {
+        Args: { p_actor: string; p_run: string };
+        Returns: Json;
       };
       finish_resume_cleanup: {
         Args: { p_company: string; p_document: string };
@@ -1141,6 +1278,10 @@ export type Database = {
           p_token: string;
         };
         Returns: boolean;
+      };
+      stage_ranking: {
+        Args: { p_actor: string; p_rows: Json; p_run: string };
+        Returns: undefined;
       };
       verify_resume_dispatch: { Args: { p_token: string }; Returns: boolean };
     };

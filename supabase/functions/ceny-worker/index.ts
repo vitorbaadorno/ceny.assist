@@ -8,7 +8,12 @@ import { readLimitedBody, FileRejected } from "../_shared/file-policy.ts";
 
 const input = z.discriminatedUnion("action", [
   z
-    .object({ action: z.literal("rank"), companyId: z.string().uuid(), jobId: z.string().uuid() })
+    .object({
+      action: z.literal("rank"),
+      companyId: z.string().uuid(),
+      jobId: z.string().uuid(),
+      requestId: z.string().uuid(),
+    })
     .strict(),
   z
     .object({

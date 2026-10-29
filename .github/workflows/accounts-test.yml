@@ -57,6 +57,8 @@ jobs:
         run: |
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/job_governance.sql > artifacts/job-governance.txt
           node tests/isolated-jobs.mjs
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/ranking_history.sql > artifacts/ranking-history.txt
+          node tests/isolated-rankings.mjs
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
@@ -78,6 +80,8 @@ jobs:
             artifacts/review-results.json
             artifacts/job-governance.txt
             artifacts/job-results.json
+            artifacts/ranking-history.txt
+            artifacts/ranking-results.json
             artifacts/upload-results.json
       - name: Stop disposable test environment
         if: always()

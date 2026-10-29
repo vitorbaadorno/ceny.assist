@@ -10,6 +10,7 @@ insert into auth.users(id,email,email_confirmed_at,role,aud) select id,id::text|
 insert into public.companies(id,name) select company,'Review A' from fixture union all select other_company,'Review B' from fixture;
 insert into public.company_members(company_id,user_id,role) select company,actor,'recruiter' from fixture union all select company,viewer,'viewer' from fixture union all select other_company,other_actor,'owner' from fixture;
 insert into public.candidates(id,company_id,processing_status,dados_extraidos) select candidate,company,'concluido','{"nome_completo":"Ana IA","email":"ana@example.test","skills":["SQL"],"anos_experiencia_total":2,"experiencias":[],"formacao_academica":[],"idiomas":[],"certificacoes":[]}'::jsonb from fixture union all select other_candidate,other_company,'concluido','{}' from fixture;
+update public.candidates set review_status='completed';
 insert into public.jobs(id,company_id,titulo) select job,company,'Review job' from fixture;
 update public.jobs set descricao='Descrição de teste com requisito SQL.',criteria='[{"kind":"skill","text":"SQL","min_years":null,"required":true,"weight":5,"source":null}]';
 update public.jobs set approved_hash=private.job_hash(private.job_payload(titulo,descricao,categoria,criteria));
@@ -45,6 +46,7 @@ select public.save_candidate_extraction(actor,company,candidate,'{"nome_completo
 select pg_temp.ok('reprocessing cannot overwrite human correction or confirmed absence',(select nome='Ana RH' and email is null and skills=array['Python'] and anos_experiencia=3 and dados_efetivos->'experiencias'->0->>'cargo'='Analista' from public.candidates where id=(select candidate from fixture)));
 select pg_temp.ok('new AI remains separately accessible and review reopened',(select dados_extraidos->>'nome_completo'='Nome reprocessado' and review_status='pending' and review_version=3 from public.candidates where id=(select candidate from fixture)));
 select pg_temp.denied('ranking calculated against older data cannot be published',$q$select public.replace_job_scores_v2(actor,company,job,(select version from public.jobs where id=job),(select approved_hash from public.jobs where id=job),jsonb_build_array(jsonb_build_object('candidate_id',candidate,'score',99,'candidate_version',0))) from fixture$q$,'40001');
+update public.candidates set review_status='completed' where id=(select candidate from fixture);
 select public.replace_job_scores_v2(actor,company,job,(select version from public.jobs where id=job),(select approved_hash from public.jobs where id=job),jsonb_build_array(jsonb_build_object('candidate_id',candidate,'score',90,'candidate_version',c.data_version,'detalhes_matching','{}'::jsonb))) from fixture join public.candidates c on c.id=fixture.candidate;
 select pg_temp.ok('fresh evaluation clears stale state',(select not stale from public.candidate_scores));
 reset role;
