@@ -222,6 +222,7 @@ export type Database = {
           id: string;
           reason: string;
           source_id: string;
+          source_relationships: Json;
           source_revisions: Json;
           source_snapshot: Json;
           target_id: string;
@@ -234,6 +235,7 @@ export type Database = {
           id?: string;
           reason: string;
           source_id: string;
+          source_relationships?: Json;
           source_revisions: Json;
           source_snapshot: Json;
           target_id: string;
@@ -246,6 +248,7 @@ export type Database = {
           id?: string;
           reason?: string;
           source_id?: string;
+          source_relationships?: Json;
           source_revisions?: Json;
           source_snapshot?: Json;
           target_id?: string;

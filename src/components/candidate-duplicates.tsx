@@ -172,7 +172,11 @@ export function CandidateDuplicates({
               <summary>Dados e correções preservados do cadastro anterior</summary>
               <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">
                 {JSON.stringify(
-                  { cadastro: h.source_snapshot, revisoes: h.source_revisions },
+                  {
+                    cadastro: h.source_snapshot,
+                    revisoes: h.source_revisions,
+                    vinculos_e_documentos: h.source_relationships,
+                  },
                   null,
                   2,
                 )}

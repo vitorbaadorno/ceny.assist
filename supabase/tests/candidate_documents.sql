@@ -61,6 +61,10 @@ select pg_temp.ok('explicit multiple job links are idempotent',(select count(*)=
 select pg_temp.denied('cannot associate foreign job',$q$select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('foreignjob'),true)$q$);
 select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('job2'),false);
 select pg_temp.ok('withdrawing preserves person and audit',(select not active from public.candidate_job_links where job_id=pg_temp.id('job2')) and exists(select 1 from public.candidates where id=pg_temp.id('person')));
+select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('job2'),true);
+reset role;
+update public.jobs set status='encerrada' where id=pg_temp.id('job2');
+set local role authenticated;
 select pg_temp.ok('search immediately sees human corrections',(select count(*)=1 from public.search_candidates(pg_temp.id('company'),'Human name')));
 insert into ids(name,id) values('retry',public.request_document_analysis(pg_temp.id('company'),pg_temp.id('doc2'),gen_random_uuid()));
 select pg_temp.denied('merge waits for in-flight document jobs',$q$select public.confirm_candidate_merge(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('target'),(select review_version from public.candidates where id=pg_temp.id('person')),(select review_version from public.candidates where id=pg_temp.id('target')),'Verified synthetic original documents',true)$q$);
@@ -75,6 +79,8 @@ select pg_temp.ok('merge preserves old corrections and actor',(select source_sna
 select pg_temp.ok('merge keeps destination data and reopens review',(select nome='Existing person' and review_status='pending' from public.candidates where id=pg_temp.id('target')));
 select pg_temp.ok('merged source leaves search',(select count(*)=0 from public.search_candidates(pg_temp.id('company'),'Human name')));
 select pg_temp.ok('merge moves active job link',(select active from public.candidate_job_links where candidate_id=pg_temp.id('target') and job_id=pg_temp.id('job1')));
+select pg_temp.ok('merge preserves participation in closed jobs',(select active from public.candidate_job_links where candidate_id=pg_temp.id('target') and job_id=pg_temp.id('job2')));
+select pg_temp.ok('merge keeps document provenance and relationship audit',(select jsonb_array_length(source_relationships->'documentos')=2 and jsonb_array_length(source_relationships->'eventos_vagas')=4 from public.candidate_merges));
 select pg_temp.ok('repeat confirmed merge is idempotent',public.confirm_candidate_merge(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('target'),-1,-1,'Verified synthetic original documents',true)=pg_temp.id('target'));
 reset role;
 set local role service_role;

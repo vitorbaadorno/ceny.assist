@@ -129,12 +129,14 @@ function CandidateDetail() {
         </div>
       </header>
       <CandidateDocuments candidate={candidate} canEdit={canEdit} />
-      <CandidateQueue
-        companyId={companyId}
-        candidateId={id}
-        documentId={candidate.active_document_id}
-        canEdit={canEdit}
-      />
+      {candidate.active_document_id && (
+        <CandidateQueue
+          companyId={companyId}
+          candidateId={id}
+          documentId={candidate.active_document_id}
+          canEdit={canEdit}
+        />
+      )}
       <CandidateDuplicates candidate={candidate} canAdmin={canAdmin} />
       <CandidateJobLinks companyId={companyId} candidateId={id} canEdit={canEdit} />
       {candidate.processing_error && (
