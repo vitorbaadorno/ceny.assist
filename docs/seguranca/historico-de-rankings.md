@@ -29,4 +29,8 @@ O antigo escritor de notas `replace_job_scores_v2` permanece disponível somente
 - Integração HTTP em Supabase descartável: pedidos simultâneos, repetição de pedido concluído, 1.201 candidatos elegíveis e duas pendências, além de conflito de revisão durante o cálculo. Resultados ficam nos artefatos do fluxo `Accounts and company isolation`.
 - Nenhuma chamada real de IA nesta etapa, conforme a orientação do usuário.
 
+Verificação completa aprovada: [execução 40798567580](https://github.com/vitorbaadorno/ceny.assist/actions/runs/40798567580), commit `909b289`. Foram aprovados os 101 testes unitários, as suítes SQL, a integração HTTP com 1.201 candidatos elegíveis e as regressões de contas, arquivos, filas, revisão humana e vagas. O `ceny-worker` versão 11 está ativo no Supabase novo. A referência remota `main` foi conferida e permanece em `58df482099e187f25ef2c154789321df8b0b1815`.
+
+Também foi conferido o componente real da interface, com dados fictícios locais e sem acesso ao banco: consulta de avaliação histórica, indicação de desatualização, dados usados e motivos de pendência. [Registro visual](ranking-historico-interface.png).
+
 O auditor de segurança não apontou novos problemas nas tabelas de ranking. Permanecem os avisos anteriores sobre tabelas privadas intencionalmente sem políticas de leitura e a [proteção de senhas vazadas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection), fora do escopo desta etapa.
