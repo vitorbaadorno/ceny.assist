@@ -26,3 +26,9 @@ Implementado na `ceny-versaonova`, preservando a `main`. Banco exclusivo: `wiker
 - Supabase Advisors: nenhum novo alerta desta alteração. Permanecem os avisos previamente conhecidos de tabelas privadas com RLS sem políticas e proteção de senhas vazadas desativada. Referência: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection.
 
 A consulta usa índices de empresa/ordenação e índices de texto. Contagens exatas exigem consultar toda a seleção; o teste funcional com mais de mil registros não constitui uma medição de carga em escala de produção. A comparação semântica aberta e testes reais de IA continuam fora desta etapa, conforme a orientação anterior.
+
+## Resultado da integração contínua
+
+A execução [40988344773](https://github.com/vitorbaadorno/ceny.assist/actions/runs/40988344773), do commit `fed963e7b420497bfdee2ef1ee28e82298440473`, terminou com sucesso. Foram aprovados TypeScript, os 110 testes unitários, recriação do Supabase com todas as migrações, isolamento e contas, as 29 verificações novas de busca, recebimento de arquivos/Storage, cadastro e recuperação de acesso, revisão concorrente, governança de vagas, histórico de ranking, aprendizagem e compilação. As análises de IA nesses testes são simuladas; nenhum teste real de IA foi executado.
+
+A migração aplicada no projeto novo é `20261030013901_company_search_filters`. A `main` permaneceu em `58df482099e187f25ef2c154789321df8b0b1815`.
