@@ -1,3 +1,4 @@
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -156,6 +157,7 @@ export function CandidateReview({
         p_confirmed: confirmed,
       });
       if (error) throw error;
+      await refreshCompanyLists(cache, candidate.company_id);
       const saved = data as unknown as Candidate;
       const current = reviewData(saved);
       setBase(current);

@@ -10,7 +10,8 @@ import { ScoreExplanation } from "./score-explanation";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Input } from "./ui/input";
+import { useBrowse, type BrowseFilters } from "@/lib/company-browse";
+import { CompanySearch, BrowseSummary } from "./company-search";
 
 type Candidate = Tables<"candidates">;
 type Entry = Tables<"ranking_entries">;
@@ -38,8 +39,6 @@ export function RankingResult({
   canAdmin?: boolean;
   canEdit?: boolean;
 }) {
-  const [filter, setFilter] = useState("");
-  const [minExp, setMinExp] = useState("");
   const ranked = entries
     .filter((e) => !e.reason && e.score !== null)
     .sort(
@@ -60,111 +59,82 @@ export function RankingResult({
       <p className="text-sm text-muted-foreground">
         Os dados abaixo são os que foram usados nesta avaliação. A decisão final é do RH.
       </p>
-      <Input
-        aria-label="Filtrar candidatos avaliados"
-        placeholder="Filtrar por nome ou cidade"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <Input
-        type="number"
-        min={0}
-        aria-label="Experiência mínima em anos"
-        placeholder="Experiência mínima (anos)"
-        value={minExp}
-        onChange={(e) => setMinExp(e.target.value)}
-      />
-      {ranked.length === 0 && (
-        <p>Nenhum candidato estava apto para uma avaliação final neste cálculo.</p>
-      )}
-      {ranked
-        .filter((e) => {
-          const c = e.snapshot as unknown as Candidate;
-          return (
-            (!minExp || (c.anos_experiencia !== null && c.anos_experiencia >= Number(minExp))) &&
-            `${c.nome ?? ""} ${c.localizacao ?? ""}`
-              .toLocaleLowerCase()
-              .includes(filter.toLocaleLowerCase())
-          );
-        })
-        .map((e) => {
-          const c = e.snapshot as unknown as Candidate;
-          return (
-            <Card key={e.candidate_id}>
-              <CardContent className="space-y-3 py-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Link
-                    to="/candidatos/$id"
-                    params={{ id: e.candidate_id }}
-                    className="font-medium hover:underline"
-                  >
-                    {c.nome || "Currículo sem nome"}
-                  </Link>
-                  <Badge variant={outdated ? "outline" : "default"}>
-                    {Math.round(Number(e.score))}% de aderência{outdated ? " · desatualizada" : ""}
-                  </Badge>
-                </div>
-                <p className="text-sm">
-                  {c.localizacao || "Local não informado"} · Experiência:{" "}
-                  {c.anos_experiencia === null ? "não informada" : `${c.anos_experiencia} ano(s)`}
-                </p>
-                {(run.job_snapshot as unknown as Tables<"jobs">).categoria === "jovem_aprendiz" && (
-                  <>
-                    <ApprenticeAgeNotice
-                      assessment={(e.details as unknown as MatchDetails)?.aprendizagem}
-                    />
-                    {canAdmin && (
-                      <ApprenticeCaseReview
-                        companyId={run.company_id}
-                        runId={run.id}
-                        candidateId={e.candidate_id}
-                        outdated={outdated}
-                      />
-                    )}
-                  </>
-                )}
-                <ScoreExplanation
-                  details={e.details as unknown as MatchDetails}
-                  jobVersion={(run.job_snapshot as unknown as Tables<"jobs">).version}
-                />
-                {canEdit && !outdated && (
-                  <CandidateJobButton
-                    companyId={run.company_id}
-                    candidateId={e.candidate_id}
-                    jobId={run.job_id}
+      {ranked.map((e) => {
+        const c = e.snapshot as unknown as Candidate;
+        return (
+          <Card key={e.candidate_id}>
+            <CardContent className="space-y-3 py-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <Link
+                  to="/candidatos/$id"
+                  params={{ id: e.candidate_id }}
+                  className="font-medium hover:underline"
+                >
+                  {c.nome || "Currículo sem nome"}
+                </Link>
+                <Badge variant={outdated ? "outline" : "default"}>
+                  {Math.round(Number(e.score))}% de aderência{outdated ? " · desatualizada" : ""}
+                </Badge>
+              </div>
+              <p className="text-sm">
+                {c.localizacao || "Local não informado"} · Experiência:{" "}
+                {c.anos_experiencia === null ? "não informada" : `${c.anos_experiencia} ano(s)`}
+              </p>
+              {(run.job_snapshot as unknown as Tables<"jobs">).categoria === "jovem_aprendiz" && (
+                <>
+                  <ApprenticeAgeNotice
+                    assessment={(e.details as unknown as MatchDetails)?.aprendizagem}
                   />
-                )}
-                <details className="text-sm">
-                  <summary className="cursor-pointer">
-                    Dados e revisão usados nesta avaliação
-                  </summary>
-                  <div className="space-y-2 pt-3">
-                    <p>
-                      Currículo versão {c.data_version} · Revisão {c.review_version} · Revisado em{" "}
-                      {date(c.reviewed_at)}.
-                    </p>
-                    <p>
-                      Responsável pela revisão: {c.reviewed_by || "Não registrado"}. Responsável
-                      pelo cálculo: {run.actor_id || "Conta removida"}.
-                    </p>
-                    <p>
-                      Os documentos e as informações abaixo correspondem à data do cálculo, mesmo
-                      que o cadastro tenha sido corrigido depois.
-                    </p>
-                    <Snapshot label="Documentos originais identificados" value={e.documents} />
-                    <Snapshot label="Informações usadas no cálculo" value={c.dados_efetivos} />
-                    <Snapshot label="Extração da IA" value={c.dados_extraidos} />
-                    <Snapshot label="Correções humanas" value={c.correcoes_rh} />
-                  </div>
-                </details>
-              </CardContent>
-            </Card>
-          );
-        })}
+                  {canAdmin && (
+                    <ApprenticeCaseReview
+                      companyId={run.company_id}
+                      runId={run.id}
+                      candidateId={e.candidate_id}
+                      outdated={outdated}
+                    />
+                  )}
+                </>
+              )}
+              <ScoreExplanation
+                details={e.details as unknown as MatchDetails}
+                jobVersion={(run.job_snapshot as unknown as Tables<"jobs">).version}
+              />
+              {canEdit && !outdated && (
+                <CandidateJobButton
+                  companyId={run.company_id}
+                  candidateId={e.candidate_id}
+                  jobId={run.job_id}
+                />
+              )}
+              <details className="text-sm">
+                <summary className="cursor-pointer">Dados e revisão usados nesta avaliação</summary>
+                <div className="space-y-2 pt-3">
+                  <p>
+                    Currículo versão {c.data_version} · Revisão {c.review_version} · Revisado em{" "}
+                    {date(c.reviewed_at)}.
+                  </p>
+                  <p>
+                    Responsável pela revisão: {c.reviewed_by || "Não registrado"}. Responsável pelo
+                    cálculo: {run.actor_id || "Conta removida"}.
+                  </p>
+                  <p>
+                    Os documentos e as informações abaixo correspondem à data do cálculo, mesmo que
+                    o cadastro tenha sido corrigido depois.
+                  </p>
+                  <Snapshot label="Documentos originais identificados" value={e.documents} />
+                  <Snapshot label="Informações usadas no cálculo" value={c.dados_efetivos} />
+                  <Snapshot label="Extração da IA" value={c.dados_extraidos} />
+                  <Snapshot label="Correções humanas" value={c.correcoes_rh} />
+                </div>
+              </details>
+            </CardContent>
+          </Card>
+        );
+      })}
       {entries.some((e) => e.reason) && (
         <details className="rounded border p-4">
           <summary className="cursor-pointer">
-            Sem avaliação final neste cálculo ({entries.filter((e) => e.reason).length})
+            Sem avaliação final nesta página ({entries.filter((e) => e.reason).length})
           </summary>
           <div className="space-y-3 pt-3">
             {entries
@@ -253,32 +223,9 @@ export function RankingHistory({
     },
   });
   const run = latest.data;
-  const entries = useQuery({
-    queryKey: ["ranking-entries", companyId, run?.id],
-    enabled: !!run,
-    refetchInterval: 5000,
-    queryFn: async () => {
-      const result: Entry[] = [];
-      let cursor = "";
-      // Immutable run identity on every page prevents mixing generations.
-      for (;;) {
-        let q = supabase
-          .from("ranking_entries")
-          .select("*")
-          .eq("company_id", companyId)
-          .eq("run_id", run!.id)
-          .order("candidate_id")
-          .limit(200);
-        if (cursor) q = q.gt("candidate_id", cursor);
-        const r = await q;
-        if (r.error) throw r.error;
-        if (!r.data.length) break;
-        result.push(...r.data);
-        cursor = r.data[r.data.length - 1]!.candidate_id;
-      }
-      return result;
-    },
-  });
+  const [filters, setFilters] = useState<BrowseFilters>({});
+  const [entryPage, setEntryPage] = useState(0);
+  const entries = useBrowse<Entry>("ranking", companyId, filters, entryPage, run?.id);
   const pending = useQuery({
     queryKey: ["ranking-pending", companyId, pendingPage],
     refetchInterval: 5000,
@@ -364,7 +311,18 @@ export function RankingHistory({
         </CardContent>
       </Card>
       {latest.isError || entries.isError ? (
-        <p role="alert">Não foi possível carregar a avaliação. O resultado salvo foi preservado.</p>
+        <div role="alert">
+          Não foi possível carregar a avaliação. O resultado salvo foi preservado.{" "}
+          <Button
+            variant="outline"
+            onClick={() => {
+              void latest.refetch();
+              if (run) void entries.refetch();
+            }}
+          >
+            Tentar novamente
+          </Button>
+        </div>
       ) : !run ? (
         <p className="text-sm">
           {latest.isLoading
@@ -377,13 +335,38 @@ export function RankingHistory({
             {selected ? "Avaliação histórica" : "Recomendações do acervo por aderência à vaga"}
           </h2>
           <Snapshot label="Descrição e critérios aprovados usados" value={run.job_snapshot} />
+          <CompanySearch
+            kind="ranking"
+            filters={filters}
+            onChange={(f) => {
+              setFilters(f);
+              setEntryPage(0);
+            }}
+          />
+          {entries.data && (
+            <BrowseSummary
+              data={entries.data}
+              scope="nesta avaliação"
+              setPage={setEntryPage}
+              fetching={entries.isFetching}
+            />
+          )}
+          {entries.data?.filtered === 0 && (
+            <p>
+              {entries.data.total === 0
+                ? "Esta avaliação foi calculada sobre uma base vazia."
+                : run.eligible === 0 && Object.keys(filters).length === 0
+                  ? "Nenhum candidato estava apto para uma avaliação final neste cálculo. Consulte os candidatos sem avaliação final."
+                  : "A avaliação está calculada, mas nenhum candidato corresponde aos filtros selecionados."}
+            </p>
+          )}
           {entries.data ? (
             <RankingResult
               key={run.id}
               run={run}
               canAdmin={canAdmin}
               canEdit={canEdit && !selected && job.status === "aberta"}
-              entries={entries.data}
+              entries={entries.data.items}
               outdated={
                 run.stale ||
                 (run.job_snapshot as unknown as Tables<"jobs">).version !== job.version ||

@@ -4,7 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { useBrowse, type BrowseFilters, type CandidateListItem } from "@/lib/company-browse";
+import { CompanySearch, BrowseSummary } from "./company-search";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 export function CandidateJobButton({
@@ -73,35 +74,36 @@ export function CandidateJobLinks({
     queryFn: async () => {
       const r = await supabase
         .from("candidate_job_links")
-        .select("*,jobs(titulo,status)")
+        .select("*,jobs(titulo,status)", { count: "exact" })
         .eq("company_id", companyId)
         .eq("candidate_id", candidateId)
         .eq("active", true)
         .order("job_id")
         .range(page * 20, page * 20 + 20);
       if (r.error) throw r.error;
-      return r.data;
+      return r;
     },
   });
   const jobs = useQuery({
     queryKey: ["linkable-jobs", companyId, jobPage],
     enabled: canEdit,
+    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("jobs")
-        .select("id,titulo")
+        .select("id,titulo", { count: "exact" })
         .eq("company_id", companyId)
         .eq("status", "aberta")
         .order("id")
         .range(jobPage * 20, jobPage * 20 + 20);
       if (r.error) throw r.error;
-      return r.data;
+      return r;
     },
   });
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Vagas associadas</CardTitle>
+        <CardTitle>Vagas associadas ({links.data?.count ?? "…"})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm">
@@ -109,8 +111,8 @@ export function CandidateJobLinks({
           significa aprovação ou contratação.
         </p>
         {links.isError && <p role="alert">Não foi possível carregar os vínculos.</p>}
-        {links.data?.length === 0 && <p className="text-sm">Nenhuma vaga associada.</p>}
-        {links.data?.slice(0, 20).map((l) => (
+        {links.data?.count === 0 && <p className="text-sm">Nenhuma vaga associada.</p>}
+        {links.data?.data.slice(0, 20).map((l) => (
           <div
             key={l.job_id}
             className="flex flex-wrap items-center justify-between gap-3 rounded border p-3"
@@ -128,13 +130,19 @@ export function CandidateJobLinks({
             )}
           </div>
         ))}
-        <Pages page={page} setPage={setPage} more={(links.data?.length ?? 0) > 20} />
+        <Pages page={page} setPage={setPage} more={(links.data?.count ?? 0) > (page + 1) * 20} />
         {canEdit && (
           <details>
             <summary className="cursor-pointer">Associar a outra vaga aberta</summary>
             <div className="space-y-3 pt-3">
+              {jobs.data && (
+                <p className="text-sm">
+                  {jobs.data.count} vagas abertas · {jobs.data.data.slice(0, 20).length} nesta
+                  página
+                </p>
+              )}
               {jobs.isError && <p role="alert">Não foi possível carregar as vagas.</p>}
-              {jobs.data?.slice(0, 20).map((j) => (
+              {jobs.data?.data.slice(0, 20).map((j) => (
                 <div key={j.id} className="flex items-center justify-between gap-3">
                   <span>{j.titulo}</span>
                   <CandidateJobButton
@@ -144,7 +152,11 @@ export function CandidateJobLinks({
                   />
                 </div>
               ))}
-              <Pages page={jobPage} setPage={setJobPage} more={(jobs.data?.length ?? 0) > 20} />
+              <Pages
+                page={jobPage}
+                setPage={setJobPage}
+                more={(jobs.data?.count ?? 0) > (jobPage + 1) * 20}
+              />
             </div>
           </details>
         )}
@@ -165,7 +177,7 @@ export function JobTalentPool({
   open: boolean;
 }) {
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState<BrowseFilters>({});
   const [poolPage, setPoolPage] = useState(0);
   const links = useQuery({
     queryKey: ["candidate-job-links", companyId, "job", jobId, page],
@@ -173,33 +185,28 @@ export function JobTalentPool({
     queryFn: async () => {
       const r = await supabase
         .from("candidate_job_links")
-        .select("*,candidates(nome,email)")
+        .select("*,candidates(nome,email)", { count: "exact" })
         .eq("company_id", companyId)
         .eq("job_id", jobId)
         .eq("active", true)
         .order("candidate_id")
         .range(page * 20, page * 20 + 20);
       if (r.error) throw r.error;
-      return r.data;
+      return r;
     },
   });
-  const pool = useQuery({
-    queryKey: ["talent-pool", companyId, search, poolPage],
-    refetchInterval: 5000,
-    queryFn: async () => {
-      const r = await supabase.rpc("search_candidates", {
-        p_company: companyId,
-        p_query: search,
-        p_offset: poolPage * 50,
-      });
-      if (r.error) throw r.error;
-      return r.data;
-    },
-  });
+  const pool = useBrowse<CandidateListItem>(
+    "candidates",
+    companyId,
+    filters,
+    poolPage,
+    undefined,
+    "talent-pool",
+  );
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Equipe de candidatos desta vaga</CardTitle>
+        <CardTitle>Candidatos associados à vaga ({links.data?.count ?? "…"})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm">
@@ -207,8 +214,8 @@ export function JobTalentPool({
           para sugerir pessoas, mesmo que ainda não estejam vinculadas.
         </p>
         {links.isError && <p role="alert">Não foi possível carregar as associações.</p>}
-        {links.data?.length === 0 && <p>Nenhum candidato associado.</p>}
-        {links.data?.slice(0, 20).map((l) => (
+        {links.data?.count === 0 && <p>Nenhum candidato associado.</p>}
+        {links.data?.data.slice(0, 20).map((l) => (
           <div
             key={l.candidate_id}
             className="flex flex-wrap items-center justify-between gap-3 rounded border p-3"
@@ -227,22 +234,31 @@ export function JobTalentPool({
             )}
           </div>
         ))}
-        <Pages page={page} setPage={setPage} more={(links.data?.length ?? 0) > 20} />
+        <Pages page={page} setPage={setPage} more={(links.data?.count ?? 0) > (page + 1) * 20} />
         <details>
           <summary className="cursor-pointer">Buscar pessoas já cadastradas no acervo</summary>
           <div className="space-y-3 pt-3">
-            <Input
-              aria-label="Buscar no acervo"
-              placeholder="Nome, e-mail, cidade ou competência"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+            <CompanySearch
+              kind="candidates"
+              filters={filters}
+              onChange={(f) => {
+                setFilters(f);
                 setPoolPage(0);
               }}
             />
+            {pool.isLoading && <p>Pesquisando o acervo…</p>}
+            {pool.data && !pool.isError && (
+              <BrowseSummary data={pool.data} setPage={setPoolPage} fetching={pool.isFetching} />
+            )}
             {pool.isError && <p role="alert">Não foi possível pesquisar o acervo.</p>}
-            {pool.data?.length === 0 && <p>Nenhuma pessoa encontrada.</p>}
-            {pool.data?.slice(0, 50).map((c) => (
+            {!pool.isError && pool.data?.filtered === 0 && (
+              <p>
+                {pool.data.total === 0
+                  ? "A empresa ainda não tem candidatos."
+                  : "Nenhum candidato corresponde à busca e aos filtros."}
+              </p>
+            )}
+            {(!pool.isError ? pool.data?.items : undefined)?.map((c) => (
               <div
                 key={c.id}
                 className="flex flex-wrap items-center justify-between gap-3 rounded border p-3"
@@ -261,7 +277,6 @@ export function JobTalentPool({
                 )}
               </div>
             ))}
-            <Pages page={poolPage} setPage={setPoolPage} more={(pool.data?.length ?? 0) > 50} />
           </div>
         </details>
       </CardContent>

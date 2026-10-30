@@ -1,8 +1,9 @@
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useBrowse, type BrowseFilters } from "@/lib/company-browse";
+import type { Tables } from "@/integrations/supabase/types";
+import { CompanySearch, BrowseSummary } from "@/components/company-search";
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { JobEditor } from "@/components/job-editor";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,29 +21,11 @@ export const Route = createFileRoute("/_authenticated/vagas/")({
 function JobsPage() {
   const { companyId, canEdit } = useCompany();
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState("todas");
-  const [status, setStatus] = useState("todas");
-  const {
-    data: jobs = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["jobs", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
-  });
-  const visible = jobs.filter(
-    (j) =>
-      (category === "todas" || j.categoria === category) &&
-      (status === "todas" || j.status === status),
-  );
+  const [filters, setFilters] = useState<BrowseFilters>({});
+  const [page, setPage] = useState(0);
+  const query = useBrowse<Tables<"jobs">>("jobs", companyId, filters, page);
+  const { data, isLoading, isError } = query;
+  const visible = data?.items ?? [];
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -64,39 +47,35 @@ function JobsPage() {
           onCancel={() => setOpen(false)}
         />
       )}
-      <div className="flex flex-wrap gap-4 text-sm">
-        <label>
-          Categoria{" "}
-          <select
-            className="ml-2 rounded-md border bg-background p-2"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="todas">Todas</option>
-            <option value="regular">Regulares</option>
-            <option value="jovem_aprendiz">Jovem Aprendiz</option>
-          </select>
-        </label>
-        <label>
-          Situação{" "}
-          <select
-            className="ml-2 rounded-md border bg-background p-2"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="todas">Todas</option>
-            <option value="aberta">Abertas</option>
-            <option value="encerrada">Encerradas</option>
-          </select>
-        </label>
-      </div>
+      <CompanySearch
+        kind="jobs"
+        filters={filters}
+        onChange={(f) => {
+          setFilters(f);
+          setPage(0);
+        }}
+      />
+      {data && !isError && (
+        <BrowseSummary data={data} setPage={setPage} fetching={query.isFetching} />
+      )}
       {isLoading ? (
         <p>Carregando vagas…</p>
       ) : isError ? (
-        <p role="alert">Não foi possível carregar as vagas.</p>
+        <div role="alert">
+          Não foi possível carregar as vagas.{" "}
+          <Button variant="outline" onClick={() => query.refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
       ) : !visible.length ? (
         <p className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
-          Nenhuma vaga nesta seleção.
+          {data?.total === 0
+            ? "A empresa ainda não tem vagas cadastradas."
+            : filters.category === "jovem_aprendiz"
+              ? "Nenhuma vaga de Jovem Aprendiz corresponde à busca e aos filtros."
+              : filters.category === "regular"
+                ? "Nenhuma vaga regular corresponde à busca e aos filtros."
+                : "Nenhuma vaga corresponde à busca e aos filtros."}
         </p>
       ) : (
         <div className="grid gap-3">

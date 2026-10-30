@@ -1,3 +1,4 @@
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -93,7 +94,7 @@ export function JobEditor({
     },
     onSuccess: async ({ approve, merged }) => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["jobs", companyId] }),
+        refreshCompanyLists(queryClient, companyId),
         queryClient.invalidateQueries({ queryKey: ["job", companyId] }),
         queryClient.invalidateQueries({ queryKey: ["job-revisions", companyId] }),
         queryClient.invalidateQueries({ queryKey: ["job-scores", companyId] }),

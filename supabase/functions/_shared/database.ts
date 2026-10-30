@@ -1324,6 +1324,23 @@ export type Database = {
         Args: { p_company: string; p_files: Json; p_source: string };
         Returns: string;
       };
+      browse_candidates: {
+        Args: { p_company: string; p_filters?: Json; p_page?: number };
+        Returns: Json;
+      };
+      browse_jobs: {
+        Args: { p_company: string; p_filters?: Json; p_page?: number };
+        Returns: Json;
+      };
+      browse_ranking: {
+        Args: {
+          p_company: string;
+          p_filters?: Json;
+          p_page?: number;
+          p_run: string;
+        };
+        Returns: Json;
+      };
       claim_resume_cleanup: {
         Args: { p_actor: string; p_company: string };
         Returns: {

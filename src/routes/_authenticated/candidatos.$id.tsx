@@ -1,3 +1,4 @@
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -68,7 +69,7 @@ function CandidateDetail() {
   const remove = useMutation({
     mutationFn: async () => archive({ data: { companyId, candidateId: id } }),
     onSuccess: async () => {
-      await cache.invalidateQueries({ queryKey: ["candidates", companyId] });
+      await refreshCompanyLists(cache, companyId);
       toast.success("Currículo arquivado.");
       navigate({ to: "/" });
     },

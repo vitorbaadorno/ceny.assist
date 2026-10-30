@@ -1,3 +1,4 @@
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -109,7 +110,7 @@ function UploadPage() {
   }, [history.data]);
   const refresh = () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["candidates", companyId] }),
+      refreshCompanyLists(queryClient, companyId),
       queryClient.invalidateQueries({ queryKey: ["resume-documents", companyId] }),
       queryClient.invalidateQueries({ queryKey: ["resume-batches", companyId] }),
     ]);

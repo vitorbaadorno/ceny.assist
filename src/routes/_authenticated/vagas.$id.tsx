@@ -1,3 +1,4 @@
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { RankingHistory } from "@/components/ranking-history";
 import { JobTalentPool } from "@/components/candidate-job-links";
 import { useCompany } from "@/hooks/useCompany";
@@ -111,7 +112,15 @@ function JobDetail() {
       if (error) throw error;
     },
     onSuccess: () => {
-      for (const key of ["job", "jobs", "job-revisions", "job-scores"])
+      for (const key of [
+        "job",
+        "jobs",
+        "job-revisions",
+        "job-scores",
+        "linkable-jobs",
+        "ranking-current",
+        "ranking-runs",
+      ])
         queryClient.invalidateQueries({ queryKey: [key, companyId] });
       toast.success("Situação da vaga atualizada. Os candidatos foram mantidos.");
     },
@@ -121,7 +130,7 @@ function JobDetail() {
   const removeJob = useMutation({
     mutationFn: async () => archive({ data: { companyId, jobId: id } }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["jobs", companyId] });
+      await refreshCompanyLists(queryClient, companyId);
       toast.success("Vaga arquivada.");
       navigate({ to: "/vagas" });
     },
