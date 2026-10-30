@@ -26,6 +26,7 @@ jobs:
         run: |
           bun run typecheck
           bun run test
+          bun run test:interface
       - name: Start disposable Supabase and mail catcher
         run: |
           mkdir -p artifacts
@@ -41,6 +42,7 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_review.sql > artifacts/candidate-review.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_documents.sql > artifacts/candidate-documents.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_search.sql > artifacts/company-search.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_collaboration.sql > artifacts/candidate-collaboration.txt
       - name: Validate real file intake and Storage
         # All SQL fixtures run in rolled-back transactions.
         run: |
@@ -82,6 +84,7 @@ jobs:
             artifacts/candidate-review.txt
             artifacts/candidate-documents.txt
             artifacts/company-search.txt
+            artifacts/candidate-collaboration.txt
             artifacts/review-results.json
             artifacts/job-governance.txt
             artifacts/job-results.json

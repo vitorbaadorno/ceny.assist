@@ -132,7 +132,10 @@ export function CandidateDuplicates({
             <p className="text-sm">
               O cadastro atual será arquivado. O destino manterá suas correções e seu currículo
               selecionado. Os dados anteriores ficarão no histórico. Confira identidade, contatos e
-              originais antes de confirmar; coincidência de contato sozinha não basta.
+              originais antes de confirmar; coincidência de contato sozinha não basta. As notas e
+              decisões do cadastro anterior serão preservadas no histórico da união. Confira
+              novamente as decisões de cada vaga; elas não substituem automaticamente as decisões do
+              destino.
             </p>
             <Textarea
               aria-label="Justificativa da união"

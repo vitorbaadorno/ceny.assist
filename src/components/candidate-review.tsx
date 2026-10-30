@@ -532,36 +532,11 @@ export function CandidateReview({
                   {hints(field)}
                 </div>
               ))}
-              <div className="space-y-1">
-                <Label htmlFor="review-status">Status no funil</Label>
-                <select
-                  id="review-status"
-                  className="h-10 w-full rounded-md border bg-background px-3"
-                  value={draft.status}
-                  onChange={(e) => change("status", e.target.value)}
-                >
-                  {[
-                    ["novo", "Novo"],
-                    ["em_analise", "Em análise"],
-                    ["aprovado", "Aprovado"],
-                    ["rejeitado", "Rejeitado"],
-                    ["contratado", "Contratado"],
-                  ].map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="review-notes">Observações</Label>
-                <Textarea
-                  id="review-notes"
-                  maxLength={10000}
-                  value={draft.observacoes ?? ""}
-                  onChange={(e) => change("observacoes", e.target.value || null)}
-                />
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Situação geral anterior: {draft.status}. Esse registro não define decisões por vaga.
+                Use a seção de cada vaga e o histórico de notas para registrar decisões e
+                observações.
+              </p>
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"

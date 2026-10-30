@@ -1,3 +1,4 @@
+import { CandidateNotes, CandidateFavorite } from "@/components/candidate-collaboration";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -101,6 +102,7 @@ function CandidateDetail() {
           <Badge variant="outline">
             {candidate.review_status === "completed" ? "Revisado pelo RH" : "Revisão pendente"}
           </Badge>
+          <CandidateFavorite companyId={companyId} candidateId={id} />
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button disabled={!canAdmin} variant="destructive" size="sm">
@@ -139,6 +141,12 @@ function CandidateDetail() {
         />
       )}
       <CandidateDuplicates candidate={candidate} canAdmin={canAdmin} />
+      <CandidateNotes
+        companyId={companyId}
+        candidateId={id}
+        canEdit={canEdit}
+        legacy={candidate.observacoes}
+      />
       <CandidateJobLinks companyId={companyId} candidateId={id} canEdit={canEdit} />
       {candidate.processing_error && (
         <p role="status" className="rounded border p-3 text-sm">

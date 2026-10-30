@@ -1,3 +1,4 @@
+import { CandidateFavorite } from "@/components/candidate-collaboration";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
@@ -104,51 +105,60 @@ function CandidatesPage() {
           {filtered.map((candidate) => {
             const processing = processingLabel(candidate.processing_status);
             return (
-              <Link
-                key={candidate.id}
-                to="/candidatos/$id"
-                params={{ id: candidate.id }}
-                className="rounded-lg border bg-card p-4 transition-colors hover:border-primary/50"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {candidate.nome ?? candidate.arquivo_nome ?? "Currículo sem nome"}
-                    </p>
-                    <p className="truncate text-sm text-muted-foreground">
-                      {[candidate.email, candidate.telefone, candidate.localizacao]
-                        .filter(Boolean)
-                        .join(" · ") || "Dados ainda não extraídos"}
-                    </p>
+              <div key={candidate.id} className="rounded-lg border bg-card p-4">
+                <Link
+                  to="/candidatos/$id"
+                  params={{ id: candidate.id }}
+                  className="block transition-colors hover:text-primary"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {candidate.nome ?? candidate.arquivo_nome ?? "Currículo sem nome"}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {[candidate.email, candidate.telefone, candidate.localizacao]
+                          .filter(Boolean)
+                          .join(" · ") || "Dados ainda não extraídos"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={processing.variant}>{processing.label}</Badge>
+                      <Badge variant="outline">
+                        {candidate.review_status === "completed"
+                          ? "Revisado"
+                          : candidate.review_status === "draft"
+                            ? "Em revisão"
+                            : "Revisão pendente"}
+                      </Badge>
+                      <Badge variant="secondary">
+                        Geral (anterior):{" "}
+                        {STATUS_FUNIL.find((s) => s.value === candidate.status)?.label ??
+                          candidate.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={processing.variant}>{processing.label}</Badge>
-                    <Badge variant="outline">
-                      {candidate.review_status === "completed"
-                        ? "Revisado"
-                        : candidate.review_status === "draft"
-                          ? "Em revisão"
-                          : "Revisão pendente"}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {STATUS_FUNIL.find((s) => s.value === candidate.status)?.label ??
-                        candidate.status}
-                    </Badge>
-                  </div>
+                  {(candidate.skills ?? []).length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {(candidate.skills ?? []).slice(0, 8).map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+                <div className="mt-3">
+                  <CandidateFavorite
+                    companyId={companyId}
+                    candidateId={candidate.id}
+                    value={candidate.is_favorite}
+                  />
                 </div>
-                {(candidate.skills ?? []).length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {(candidate.skills ?? []).slice(0, 8).map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded-full bg-accent px-2.5 py-0.5 text-xs text-accent-foreground"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </Link>
+              </div>
             );
           })}
         </div>

@@ -83,6 +83,65 @@ export type Database = {
           },
         ];
       };
+      candidate_decision_events: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          after_selected: boolean;
+          after_status: string;
+          before_selected: boolean;
+          before_status: string;
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          id: string;
+          job_id: string;
+          reason: string;
+          request_id: string;
+          version: number;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          after_selected: boolean;
+          after_status: string;
+          before_selected: boolean;
+          before_status: string;
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          job_id: string;
+          reason: string;
+          request_id: string;
+          version: number;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          after_selected?: boolean;
+          after_status?: string;
+          before_selected?: boolean;
+          before_status?: string;
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          job_id?: string;
+          reason?: string;
+          request_id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_decision_events_company_id_candidate_id_job_id_fkey";
+            columns: ["company_id", "candidate_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "candidate_job_links";
+            referencedColumns: ["company_id", "candidate_id", "job_id"];
+          },
+        ];
+      };
       candidate_document_events: {
         Row: {
           action: string;
@@ -128,6 +187,35 @@ export type Database = {
           },
         ];
       };
+      candidate_favorites: {
+        Row: {
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          user_id: string;
+        };
+        Insert: {
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          user_id: string;
+        };
+        Update: {
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_favorites_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
       candidate_job_links: {
         Row: {
           active: boolean;
@@ -135,7 +223,10 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string | null;
+          decision_status: string;
+          decision_version: number;
           job_id: string;
+          shortlisted: boolean;
           updated_at: string;
           updated_by: string | null;
         };
@@ -145,7 +236,10 @@ export type Database = {
           company_id: string;
           created_at?: string;
           created_by?: string | null;
+          decision_status?: string;
+          decision_version?: number;
           job_id: string;
+          shortlisted?: boolean;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -155,7 +249,10 @@ export type Database = {
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
+          decision_status?: string;
+          decision_version?: number;
           job_id?: string;
+          shortlisted?: boolean;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -267,6 +364,57 @@ export type Database = {
             columns: ["company_id", "target_id"];
             isOneToOne: false;
             referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      candidate_notes: {
+        Row: {
+          actor_id: string | null;
+          actor_name: string | null;
+          body: string;
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          id: string;
+          job_id: string | null;
+          request_id: string;
+        };
+        Insert: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          body: string;
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          job_id?: string | null;
+          request_id: string;
+        };
+        Update: {
+          actor_id?: string | null;
+          actor_name?: string | null;
+          body?: string;
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          job_id?: string | null;
+          request_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "candidate_notes_company_id_candidate_id_fkey";
+            columns: ["company_id", "candidate_id"];
+            isOneToOne: false;
+            referencedRelation: "candidates";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "candidate_notes_company_id_job_id_fkey";
+            columns: ["company_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
             referencedColumns: ["company_id", "id"];
           },
         ];
@@ -1295,6 +1443,16 @@ export type Database = {
     };
     Functions: {
       accept_company_invitation: { Args: { p_id: string }; Returns: string };
+      add_candidate_note: {
+        Args: {
+          p_body: string;
+          p_candidate: string;
+          p_company: string;
+          p_job: string | null;
+          p_request: string;
+        };
+        Returns: string;
+      };
       advance_resume_job: {
         Args: { p_job: string; p_phase: string; p_token: string };
         Returns: boolean;
@@ -1381,6 +1539,10 @@ export type Database = {
           isOneToOne: false;
           isSetofReturn: true;
         };
+      };
+      compare_job_candidates: {
+        Args: { p_candidates: string[]; p_company: string; p_job: string };
+        Returns: Json;
       };
       configure_company_recovery: {
         Args: { p_company: string; p_email: string };
@@ -1582,6 +1744,19 @@ export type Database = {
         Returns: Json;
       };
       revoke_company_invitation: { Args: { p_id: string }; Returns: undefined };
+      save_candidate_decision: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_job: string;
+          p_reason: string;
+          p_request: string;
+          p_selected: boolean;
+          p_status: string;
+          p_version: number;
+        };
+        Returns: Json;
+      };
       save_candidate_extraction: {
         Args: {
           p_actor: string;
@@ -1667,6 +1842,10 @@ export type Database = {
           p_document: string;
           p_expected_version: number;
         };
+        Returns: undefined;
+      };
+      set_candidate_favorite: {
+        Args: { p_candidate: string; p_company: string; p_favorite: boolean };
         Returns: undefined;
       };
       set_candidate_job_link: {

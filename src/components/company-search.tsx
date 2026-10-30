@@ -75,7 +75,16 @@ export function CompanySearch({
           <>
             {field("skill", "Competências (todas as informadas)")}
             <FilterSelect
-              label="Etapa do funil"
+              label="Favoritos pessoais"
+              value={filters.favorite ?? "all"}
+              onChange={(v) => set("favorite", v)}
+              options={[
+                ["all", "Todos"],
+                ["mine", "Meus favoritos"],
+              ]}
+            />
+            <FilterSelect
+              label="Situação geral anterior"
               value={filters.status ?? "todos"}
               onChange={(v) => set("status", v)}
               options={[

@@ -17,6 +17,7 @@ export type BrowseFilters = Partial<
     | "outcome"
     | "required"
     | "criterion"
+    | "favorite"
     | "criterionState",
     string
   >
@@ -42,7 +43,7 @@ export type CandidateListItem = Pick<
   | "processing_status"
   | "review_status"
   | "created_at"
->;
+> & { is_favorite: boolean };
 export function useBrowse<T>(
   kind: "candidates" | "jobs" | "ranking",
   companyId: string,
@@ -99,6 +100,7 @@ export function refreshCompanyLists(cache: QueryClient, companyId: string) {
       "candidate-job-links",
       "linkable-jobs",
       "jobs",
+      "candidate-comparison",
       "ranking-current",
       "ranking-entries",
       "ranking-pending",

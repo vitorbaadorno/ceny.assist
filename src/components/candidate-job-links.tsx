@@ -1,3 +1,5 @@
+import { CandidateJobWorkspace, CandidateFavorite } from "./candidate-collaboration";
+import { CandidateComparison } from "./candidate-comparison";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -67,19 +69,19 @@ export function CandidateJobLinks({
   canEdit: boolean;
 }) {
   const [page, setPage] = useState(0);
+  const [showInactive, setShowInactive] = useState(false);
   const [jobPage, setJobPage] = useState(0);
   const links = useQuery({
-    queryKey: ["candidate-job-links", companyId, "person", candidateId, page],
+    queryKey: ["candidate-job-links", companyId, "person", candidateId, page, showInactive],
     refetchInterval: 5000,
     queryFn: async () => {
-      const r = await supabase
+      let q = supabase
         .from("candidate_job_links")
         .select("*,jobs(titulo,status)", { count: "exact" })
         .eq("company_id", companyId)
-        .eq("candidate_id", candidateId)
-        .eq("active", true)
-        .order("job_id")
-        .range(page * 20, page * 20 + 20);
+        .eq("candidate_id", candidateId);
+      if (!showInactive) q = q.eq("active", true);
+      const r = await q.order("job_id").range(page * 20, page * 20 + 20);
       if (r.error) throw r.error;
       return r;
     },
@@ -110,6 +112,17 @@ export function CandidateJobLinks({
           Uma pessoa pode participar de várias vagas. A associação é registrada pela equipe e não
           significa aprovação ou contratação.
         </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => {
+              setShowInactive(e.target.checked);
+              setPage(0);
+            }}
+          />
+          Incluir vínculos retirados para consultar o histórico
+        </label>
         {links.isError && <p role="alert">Não foi possível carregar os vínculos.</p>}
         {links.data?.count === 0 && <p className="text-sm">Nenhuma vaga associada.</p>}
         {links.data?.data.slice(0, 20).map((l) => (
@@ -120,7 +133,8 @@ export function CandidateJobLinks({
             <Link className="underline" to="/vagas/$id" params={{ id: l.job_id }}>
               {l.jobs?.titulo} · {l.jobs?.status}
             </Link>
-            {canEdit && (
+            <CandidateJobWorkspace link={l} canEdit={canEdit} open={l.jobs?.status === "aberta"} />
+            {canEdit && l.active && (
               <CandidateJobButton
                 companyId={companyId}
                 candidateId={candidateId}
@@ -177,20 +191,45 @@ export function JobTalentPool({
   open: boolean;
 }) {
   const [page, setPage] = useState(0);
+  const [selection, setSelection] = useState("all");
+  const [ids, setIds] = useState<string[]>([]);
+  const toggleCompare = (id: string) =>
+    setIds((current) =>
+      current.includes(id)
+        ? current.filter((v) => v !== id)
+        : current.length < 4
+          ? [...current, id]
+          : current,
+    );
+  const compareChoice = (id: string, name: string) => (
+    <label className="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        aria-label={`Comparar ${name}`}
+        checked={ids.includes(id)}
+        disabled={!ids.includes(id) && ids.length >= 4}
+        onChange={() => toggleCompare(id)}
+      />
+      Comparar
+    </label>
+  );
+
   const [filters, setFilters] = useState<BrowseFilters>({});
   const [poolPage, setPoolPage] = useState(0);
   const links = useQuery({
-    queryKey: ["candidate-job-links", companyId, "job", jobId, page],
+    queryKey: ["candidate-job-links", companyId, "job", jobId, page, selection],
     refetchInterval: 5000,
     queryFn: async () => {
-      const r = await supabase
+      let q = supabase
         .from("candidate_job_links")
         .select("*,candidates(nome,email)", { count: "exact" })
         .eq("company_id", companyId)
-        .eq("job_id", jobId)
-        .eq("active", true)
-        .order("candidate_id")
-        .range(page * 20, page * 20 + 20);
+        .eq("job_id", jobId);
+      if (selection !== "inactive") q = q.eq("active", true);
+      else q = q.eq("active", false);
+      if (selection === "selected") q = q.eq("shortlisted", true);
+      else if (!["all", "inactive"].includes(selection)) q = q.eq("decision_status", selection);
+      const r = await q.order("candidate_id").range(page * 20, page * 20 + 20);
       if (r.error) throw r.error;
       return r;
     },
@@ -213,8 +252,34 @@ export function JobTalentPool({
           Aqui aparecem os vínculos escolhidos pelo RH. O ranking consulta todo o acervo autorizado
           para sugerir pessoas, mesmo que ainda não estejam vinculadas.
         </p>
+        <CandidateComparison
+          companyId={companyId}
+          jobId={jobId}
+          ids={ids}
+          onRemove={(id) => setIds((current) => current.filter((v) => v !== id))}
+        />
+        <label className="block text-sm">
+          Lista desta vaga{" "}
+          <select
+            className="ml-2 rounded border bg-background p-2"
+            value={selection}
+            onChange={(e) => {
+              setSelection(e.target.value);
+              setPage(0);
+            }}
+          >
+            <option value="all">Todos os associados</option>
+            <option value="selected">Selecionados</option>
+            <option value="aprovado">Aprovados</option>
+            <option value="rejeitado">Não aprovados</option>
+            <option value="em_analise">Em análise</option>
+            <option value="novo">Não decididos</option>
+            <option value="contratado">Contratados</option>
+            <option value="inactive">Vínculos retirados (histórico)</option>
+          </select>
+        </label>
         {links.isError && <p role="alert">Não foi possível carregar as associações.</p>}
-        {links.data?.count === 0 && <p>Nenhum candidato associado.</p>}
+        {links.data?.count === 0 && <p>Nenhum candidato nesta lista da vaga.</p>}
         {links.data?.data.slice(0, 20).map((l) => (
           <div
             key={l.candidate_id}
@@ -224,7 +289,9 @@ export function JobTalentPool({
               {l.candidates?.nome ?? "Cadastro sem nome"} ·{" "}
               {l.candidates?.email ?? "E-mail não informado"}
             </Link>
-            {canEdit && (
+            {compareChoice(l.candidate_id, l.candidates?.nome ?? "candidato")}
+            <CandidateJobWorkspace link={l} canEdit={canEdit} open={open} />
+            {canEdit && l.active && (
               <CandidateJobButton
                 companyId={companyId}
                 candidateId={l.candidate_id}
@@ -272,6 +339,8 @@ export function JobTalentPool({
                     {c.review_status === "completed" ? "Revisado" : "Revisão pendente"}
                   </p>
                 </div>
+                {compareChoice(c.id, c.nome ?? "candidato")}
+                <CandidateFavorite companyId={companyId} candidateId={c.id} value={c.is_favorite} />
                 {canEdit && open && (
                   <CandidateJobButton companyId={companyId} candidateId={c.id} jobId={jobId} />
                 )}
