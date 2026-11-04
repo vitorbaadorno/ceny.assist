@@ -33,6 +33,7 @@ Gestores com vínculo autorizado na empresa consultam candidatos, avaliações, 
 ## Validação desta etapa
 
 - 40 testes SQL no banco novo, em transação revertida: decisões independentes, histórico, justificativas, concorrência, repetição, isolamento das notas, escrita direta bloqueada, retirada/reativação, união de cadastros, favoritos privados, comparação, gestores e revogação.
+- 58 verificações da suíte geral de isolamento passaram no banco novo. O teste antigo de substituição de observação foi atualizado para conferir a correção de dados profissionais e o acréscimo de notas com autoria; gestores continuam impedidos de executar ambos os comandos.
 - 115 testes unitários, incluindo 5 novos sobre critérios idênticos, dados ausentes, revisão pendente, retratos históricos e desatualização.
 - 6 testes de renderização dos componentes reais, com 27 verificações de conteúdo e permissões dos controles (`bun run test:interface`). Eles não substituem a inspeção visual nem interações no navegador.
 - TypeScript, compilação de produção e verificação das Edge Functions com Deno.
@@ -42,3 +43,9 @@ Gestores com vínculo autorizado na empresa consultam candidatos, avaliações, 
 Supabase Advisors não apontou novos alertas desta alteração. Permanecem os avisos anteriores de tabelas privadas com RLS sem políticas e proteção de senhas vazadas desativada. [Orientação sobre proteção de senhas](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
 
 Migração aplicada: `20261030130227_job_candidate_collaboration`.
+
+## Integração concluída em 4 de novembro de 2026
+
+A [execução completa no GitHub Actions](https://github.com/vitorbaadorno/ceny.assist/actions/runs/41904564350), no commit `f9f42bcfb557e453e14117ec23cd60977394314c`, terminou com sucesso. O ambiente descartável recriou o banco pelas migrações e passou pelas suítes SQL (incluindo colaboração), arquivos e Storage, cadastro/confirmação/login/recuperação/links expirados, revisão concorrente, preservação das correções humanas, governança de vagas, rankings e compilação de produção. Os 115 testes unitários e 6 testes de renderização também passaram nessa execução. A verificação de preservação das correções usa resultados simulados, sem chamada real de IA.
+
+O teste de isolamento anterior ainda tentava substituir `observacoes` pela API de revisão e foi corrigido para os comandos atuais, sem flexibilizar as permissões. A `main` remota permaneceu em `58df482099e187f25ef2c154789321df8b0b1815`.
