@@ -47,3 +47,5 @@ Em 5 de novembro de 2026:
 - Nenhuma chamada real de IA. Os Advisors não acrescentaram alertas; continuam os avisos preexistentes de quatro tabelas privadas fechadas por RLS e proteção de senhas vazadas desativada.
 
 Migrações aplicadas: `20261104203831_vacancy_reports` e `20261104204306_vacancy_report_validation`. Os arquivos locais foram alinhados às versões registradas pelo conector no banco remoto.
+
+A [execução completa de integração](https://github.com/vitorbaadorno/ceny.assist/actions/runs/42071533298) passou no commit `7b92118c6da725a0c64a92ab10be656dba5bef9f`: recriação do banco, suites SQL incluindo relatórios, arquivos/Storage, cadastro/confirmação/login/recuperação, revisão concorrente, governança de vagas, rankings e compilação. A `main` remota permaneceu em `58df482099e187f25ef2c154789321df8b0b1815`.
