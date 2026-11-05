@@ -13,6 +13,7 @@ import { CandidateDocuments } from "@/components/candidate-documents";
 import { CandidateDuplicates } from "@/components/candidate-duplicates";
 import { CandidateJobLinks } from "@/components/candidate-job-links";
 import { archiveCandidate } from "@/lib/records.functions";
+import { EraseCandidate } from "@/components/privacy-center";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Trash2 } from "lucide-react";
@@ -115,7 +116,9 @@ function CandidateDetail() {
                 <AlertDialogTitle>Arquivar currículo?</AlertDialogTitle>
                 <AlertDialogDescription>
                   O candidato e o original sairão do acesso da equipe. Os dados serão mantidos para
-                  revisão administrativa.
+                  revisão administrativa. Arquivar não elimina dados pessoais. Pontuações atuais e
+                  relatórios legados são invalidados; históricos e versões são mantidos. Para
+                  remover os dados ativos definitivamente, use “Eliminar dados”.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -131,6 +134,13 @@ function CandidateDetail() {
           </AlertDialog>
         </div>
       </header>
+      {canAdmin && (
+        <EraseCandidate
+          companyId={companyId}
+          candidateId={id}
+          onRequested={() => navigate({ to: "/" })}
+        />
+      )}
       <CandidateDocuments candidate={candidate} canEdit={canEdit} />
       {candidate.active_document_id && (
         <CandidateQueue

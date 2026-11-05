@@ -8,6 +8,209 @@ export type Database = {
   };
   public: {
     Tables: {
+      privacy_events: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          subject_id: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          subject_id: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          subject_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "privacy_events_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      privacy_requests: {
+        Row: {
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          due_at: string;
+          id: string;
+          identity_reference: string | null;
+          kind: string;
+          reference: string;
+          resolution: string | null;
+          state: string;
+          updated_at: string;
+          updated_by: string | null;
+          version: number;
+        };
+        Insert: {
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          due_at: string;
+          id?: string;
+          identity_reference?: string | null;
+          kind: string;
+          reference: string;
+          resolution?: string | null;
+          state?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
+        };
+        Update: {
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          due_at?: string;
+          id?: string;
+          identity_reference?: string | null;
+          kind?: string;
+          reference?: string;
+          resolution?: string | null;
+          state?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "privacy_requests_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      privacy_retention_holds: {
+        Row: {
+          candidate_id: string;
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          reason: string;
+          release_reason: string | null;
+          released_at: string | null;
+          released_by: string | null;
+          review_at: string;
+        };
+        Insert: {
+          candidate_id: string;
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          reason: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          released_by?: string | null;
+          review_at: string;
+        };
+        Update: {
+          candidate_id?: string;
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          reason?: string;
+          release_reason?: string | null;
+          released_at?: string | null;
+          released_by?: string | null;
+          review_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "privacy_retention_holds_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      privacy_erasure_operations: {
+        Row: {
+          attempts: number;
+          available_at: string;
+          candidate_ids: string[];
+          company_id: string;
+          completed_at: string | null;
+          created_at: string;
+          database_purged_at: string | null;
+          id: string;
+          last_error: string | null;
+          lease_token: string | null;
+          lease_until: string | null;
+          reason: string;
+          request_id: string;
+          requested_by: string | null;
+          state: string;
+        };
+        Insert: {
+          attempts?: number;
+          available_at?: string;
+          candidate_ids: string[];
+          company_id: string;
+          completed_at?: string | null;
+          created_at?: string;
+          database_purged_at?: string | null;
+          id?: string;
+          last_error?: string | null;
+          lease_token?: string | null;
+          lease_until?: string | null;
+          reason: string;
+          request_id: string;
+          requested_by?: string | null;
+          state?: string;
+        };
+        Update: {
+          attempts?: number;
+          available_at?: string;
+          candidate_ids?: string[];
+          company_id?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          database_purged_at?: string | null;
+          id?: string;
+          last_error?: string | null;
+          lease_token?: string | null;
+          lease_until?: string | null;
+          reason?: string;
+          request_id?: string;
+          requested_by?: string | null;
+          state?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "privacy_erasure_operations_company_id_fkey";
+            columns: ["company_id"];
+            isOneToOne: false;
+            referencedRelation: "companies";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       vacancy_reports: {
         Row: {
           actor_name: string | null;
@@ -1541,6 +1744,76 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      reconcile_privacy_restore_objects: {
+        Args: { p_company: string; p_erased: string[]; p_objects: string[] };
+        Returns: string;
+      };
+      export_privacy_ledger: { Args: never; Returns: Json };
+      reconcile_privacy_restore: {
+        Args: { p_company: string; p_erased: string[] };
+        Returns: string;
+      };
+      privacy_candidates: {
+        Args: { p_company: string; p_offset?: number };
+        Returns: {
+          archived: boolean;
+          created_at: string;
+          id: string;
+          label: string;
+        }[];
+      };
+      export_privacy_subject: {
+        Args: { p_company: string; p_request: string };
+        Returns: Json;
+      };
+      save_privacy_request: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_due_at: string;
+          p_id?: string;
+          p_identity?: string;
+          p_kind: string;
+          p_reference: string;
+          p_resolution?: string;
+          p_state?: string;
+          p_version?: number;
+        };
+        Returns: string;
+      };
+      set_privacy_hold: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_reason: string;
+          p_release?: string;
+          p_review_at: string;
+        };
+        Returns: string;
+      };
+      retry_privacy_erasure: {
+        Args: { p_company: string; p_operation: string };
+        Returns: undefined;
+      };
+      request_candidate_erasure: {
+        Args: {
+          p_candidate: string;
+          p_company: string;
+          p_confirmed_ids: string[];
+          p_reason: string;
+          p_request: string;
+        };
+        Returns: string;
+      };
+      preview_candidate_erasure: {
+        Args: { p_candidate: string; p_company: string };
+        Returns: Json;
+      };
+      finish_privacy_erasure: {
+        Args: { p_operation: string; p_success: boolean; p_token: string };
+        Returns: boolean;
+      };
+      claim_privacy_erasure: { Args: never; Returns: Json };
       generate_vacancy_report: {
         Args: {
           p_candidates: string[];

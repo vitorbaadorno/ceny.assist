@@ -1,3 +1,4 @@
+import { AI_MINIMIZATION_VERSION, requireAiPrivacyReview } from "./ai-privacy.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.116.0";
 import type { Database, Json } from "./database.ts";
 import { extractResume } from "./resumes.ts";
@@ -51,7 +52,7 @@ export async function runResumeJob(admin: Client, job: Job) {
                 request: EXTRACTION_REQUEST,
                 schema: extractionSchema,
                 reasoning: "low",
-                image_detail: "high",
+                minimization: AI_MINIMIZATION_VERSION,
                 store: false,
               }),
             }
@@ -75,6 +76,7 @@ export async function runResumeJob(admin: Client, job: Job) {
     }
   };
   try {
+    requireAiPrivacyReview(Deno.env.get("CENY_AI_PRIVACY_REVIEW_REFERENCE"));
     await abortable(audit(true), signal);
     if (!Deno.env.get("LOVABLE_API_KEY")) throw new AiGatewayError(401, "Configuração ausente.");
     await phase("downloading");

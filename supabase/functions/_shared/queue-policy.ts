@@ -1,6 +1,11 @@
 export type FailureKind = "transient" | "permanent" | "configuration" | "authorization";
 export function classifyFailure(error: unknown): { kind: FailureKind; message: string } {
   const e = (error ?? {}) as { name?: string; status?: number; message?: string };
+  if (e.name === "AiPrivacyPending")
+    return {
+      kind: "configuration",
+      message: e.message ?? "Validação de privacidade da IA pendente. Faça a revisão manual.",
+    };
   if (e.name === "FileRejected")
     return {
       kind: "permanent",

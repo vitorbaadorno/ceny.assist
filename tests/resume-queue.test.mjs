@@ -5,6 +5,10 @@ import { createHash } from "node:crypto";
 import { stripTypeScriptTypes } from "node:module";
 import { classifyFailure } from "../supabase/functions/_shared/queue-policy.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
+import {
+  requireAiPrivacyReview,
+  AI_MINIMIZATION_VERSION,
+} from "../supabase/functions/_shared/ai-privacy.ts";
 
 test("failure classification separates retry, HR intervention, revoked access and configuration", () => {
   for (const status of [408, 409, 425, 429, 500, 502, 503])
@@ -33,6 +37,8 @@ function worker({ extract, configured = true, timeout = false } = {}) {
     }
   }
   const deps = {
+    requireAiPrivacyReview,
+    AI_MINIMIZATION_VERSION,
     extractResume:
       extract ?? (async () => ({ status: "concluido", extraction: { nome_completo: "Fixture" } })),
     AiGatewayError,

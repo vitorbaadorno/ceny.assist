@@ -44,6 +44,7 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_search.sql > artifacts/company-search.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_collaboration.sql > artifacts/candidate-collaboration.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/vacancy_reports.sql > artifacts/vacancy-reports.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/privacy_lifecycle.sql > artifacts/privacy-lifecycle.txt
       - name: Validate real file intake and Storage
         # All SQL fixtures run in rolled-back transactions.
         run: |
@@ -65,6 +66,8 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/ranking_history.sql > artifacts/ranking-history.txt
           node tests/isolated-rankings.mjs
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/apprentice_age.sql > artifacts/apprentice-age.txt
+      - name: Privacy Storage erasure and isolated backup recovery
+        run: node tests/isolated-privacy.mjs
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
@@ -87,6 +90,8 @@ jobs:
             artifacts/company-search.txt
             artifacts/candidate-collaboration.txt
             artifacts/vacancy-reports.txt
+            artifacts/privacy-lifecycle.txt
+            artifacts/privacy-recovery-results.json
             artifacts/review-results.json
             artifacts/job-governance.txt
             artifacts/job-results.json

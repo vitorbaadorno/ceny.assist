@@ -9,6 +9,10 @@ import { assessApprenticeAge, ageReferenceDate } from "../supabase/functions/_sh
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
 import { extractionFixture } from "./extraction-fixture.mjs";
 import {
+  prepareProfessionalText,
+  requireAiPrivacyReview,
+} from "../supabase/functions/_shared/ai-privacy.ts";
+import {
   validateExtraction,
   extractionSchema,
 } from "../supabase/functions/_shared/extraction-quality.ts";
@@ -327,7 +331,14 @@ const loadExtraction = (callAiJson) =>
     requireCompanyRole,
     z,
     callAiJson,
-    validateFile: async () => ({ mime: "application/pdf", pages: 1 }),
+    prepareProfessionalText,
+    requireAiPrivacyReview,
+    Deno: { env: { get: () => "synthetic-privacy-review" } },
+    validateFile: async () => ({
+      mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      pages: 1,
+      text: "Ana Teste\nExperiência\nTypeScript",
+    }),
     FileRejected,
     FILE_LIMITS,
     validateExtraction,
@@ -363,10 +374,19 @@ test("extraction validates AI output and propagates cancellation", async () => {
   const signal = new AbortController().signal;
   const result = await loadExtraction(async (options) => {
     assert.equal(options.signal, signal);
-    return extractionFixture();
+    assert.equal(options.parts.length, 1);
+    assert.equal(options.parts[0].type, "input_text");
+    assert.ok(!options.parts[0].text.includes("Ana Teste"));
+    const fixture = extractionFixture();
+    return {
+      ...fixture,
+      nome_completo: null,
+      email: null,
+      evidencias: fixture.evidencias.filter((e) => e.campo === "skills.0"),
+    };
   }).extractResume(new Uint8Array([1]), "fixture.pdf", signal);
-  assert.equal(result.status, "concluido");
-  assert.equal(result.extraction.nome_completo, "Ana Teste");
+  assert.equal(result.status, "revisao_manual"); // Identification was intentionally omitted.
+  assert.equal(result.extraction.nome_completo, null);
   assert.equal(result.extraction.schema_version, "2");
 });
 test("invalid provider output never becomes an AI result", async () => {

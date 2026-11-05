@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 import type { Database } from "../_shared/database.ts";
 import { runResumeQueue } from "../_shared/queue.ts";
+import { runPrivacyQueue } from "../_shared/privacy-queue.ts";
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Método inválido", { status: 405 });
   const token = req.headers.get("x-ceny-queue-token");
@@ -25,6 +26,7 @@ Deno.serve(async (req) => {
   const { data: valid, error } = await admin.rpc("verify_resume_dispatch", { p_token: token });
   if (error || !valid) return new Response("Não autorizado", { status: 401 });
   try {
+    await runPrivacyQueue(admin);
     const jobs = await runResumeQueue(admin);
     return Response.json({ processed: jobs.length }, { headers: { "Cache-Control": "no-store" } });
   } catch {

@@ -1,4 +1,5 @@
 import { AiGatewayError, readAiStream, type AiReceipt } from "./ai-stream.ts";
+import { requireAiPrivacyReview } from "./ai-privacy.ts";
 export { AiGatewayError } from "./ai-stream.ts";
 // Server-only helper for Lovable AI Gateway (Responses API).
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/responses";
@@ -22,6 +23,7 @@ export async function callAiJson<T>(options: {
   signal?: AbortSignal;
   onReceipt?: (receipt: AiReceipt) => void;
 }): Promise<T> {
+  requireAiPrivacyReview(Deno.env.get("CENY_AI_PRIVACY_REVIEW_REFERENCE"));
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new AiGatewayError(401, "Serviço de IA não configurado.");
 

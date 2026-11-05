@@ -1,5 +1,6 @@
 import { CompanyProvider, useCompany } from "@/hooks/useCompany";
 import { CompanySettings } from "@/components/company-settings";
+import { PrivacyCenter } from "@/components/privacy-center";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,6 +36,7 @@ function CompanyLayout() {
     selectCompany,
   } = useCompany();
   const [settings, setSettings] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
   const { session, loading, user, signOut, recoverySession } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -79,15 +81,33 @@ function CompanyLayout() {
             ))}
           </select>
         </label>
-        <Button variant="secondary" onClick={() => setSettings((v) => !v)}>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setPrivacy(false);
+            setSettings((v) => !v);
+          }}
+        >
           {settings ? "Voltar ao trabalho" : "Empresas e acessos"}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setSettings(false);
+            setPrivacy((v) => !v);
+          }}
+        >
+          Privacidade e dados
         </Button>
         <nav className="flex flex-wrap gap-1 md:flex-col">
           {nav.map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
             return (
               <Link
-                onClick={() => setSettings(false)}
+                onClick={() => {
+                  setSettings(false);
+                  setPrivacy(false);
+                }}
                 key={item.to}
                 to={item.to}
                 className={cn(
@@ -129,6 +149,8 @@ function CompanyLayout() {
           <p role="alert">Não foi possível consultar suas empresas. Recarregue a página.</p>
         ) : settings || !companyId ? (
           <CompanySettings />
+        ) : privacy ? (
+          <PrivacyCenter onOpenCandidate={() => setPrivacy(false)} />
         ) : (
           <Outlet />
         )}
