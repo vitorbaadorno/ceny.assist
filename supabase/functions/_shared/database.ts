@@ -8,6 +8,105 @@ export type Database = {
   };
   public: {
     Tables: {
+      vacancy_reports: {
+        Row: {
+          actor_name: string | null;
+          candidate_ids: string[];
+          company_id: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          include_names: boolean;
+          include_notes: boolean;
+          job_id: string;
+          payload: Json;
+          request_id: string;
+          run_id: string;
+        };
+        Insert: {
+          actor_name?: string | null;
+          candidate_ids: string[];
+          company_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          include_names?: boolean;
+          include_notes?: boolean;
+          job_id: string;
+          payload: Json;
+          request_id: string;
+          run_id: string;
+        };
+        Update: {
+          actor_name?: string | null;
+          candidate_ids?: string[];
+          company_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          include_names?: boolean;
+          include_notes?: boolean;
+          job_id?: string;
+          payload?: Json;
+          request_id?: string;
+          run_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vacancy_reports_company_id_job_id_fkey";
+            columns: ["company_id", "job_id"];
+            isOneToOne: false;
+            referencedRelation: "jobs";
+            referencedColumns: ["company_id", "id"];
+          },
+          {
+            foreignKeyName: "vacancy_reports_company_id_run_id_fkey";
+            columns: ["company_id", "run_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_runs";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+      vacancy_report_events: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          actor_name: string | null;
+          company_id: string;
+          created_at: string;
+          id: string;
+          report_id: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          company_id: string;
+          created_at?: string;
+          id?: string;
+          report_id: string;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          actor_name?: string | null;
+          company_id?: string;
+          created_at?: string;
+          id?: string;
+          report_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "vacancy_report_events_company_id_report_id_fkey";
+            columns: ["company_id", "report_id"];
+            isOneToOne: false;
+            referencedRelation: "vacancy_reports";
+            referencedColumns: ["company_id", "id"];
+          },
+        ];
+      };
+
       apprentice_case_reviews: {
         Row: {
           actor_id: string | null;
@@ -1442,6 +1541,23 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      generate_vacancy_report: {
+        Args: {
+          p_candidates: string[];
+          p_company: string;
+          p_job: string;
+          p_names: boolean;
+          p_notes: boolean;
+          p_request: string;
+          p_run: string;
+        };
+        Returns: string;
+      };
+      access_vacancy_report: {
+        Args: { p_action: string; p_company: string; p_report: string };
+        Returns: Json;
+      };
+
       accept_company_invitation: { Args: { p_id: string }; Returns: string };
       add_candidate_note: {
         Args: {

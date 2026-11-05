@@ -1,5 +1,6 @@
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { RankingHistory } from "@/components/ranking-history";
+import { VacancyReports } from "@/components/vacancy-reports";
 import { JobTalentPool } from "@/components/candidate-job-links";
 import { useCompany } from "@/hooks/useCompany";
 import { JobEditor, JobHistory, JOB_RULE, jobError } from "@/components/job-editor";
@@ -295,6 +296,14 @@ function JobDetail() {
           companyId={companyId}
           job={job}
           canAdmin={canAdmin}
+          canEdit={canEdit}
+        />
+      )}
+      {job && (
+        <VacancyReports
+          key={`${companyId}:${id}`}
+          companyId={companyId}
+          jobId={id}
           canEdit={canEdit}
         />
       )}
