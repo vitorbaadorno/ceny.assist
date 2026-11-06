@@ -91,7 +91,11 @@ select set_config('test.claim',public.claim_privacy_erasure()::text,true);
 select pg_temp.ok('second concurrent claim cannot take active lease',public.claim_privacy_erasure() is null);
 -- Model worker termination AFTER successful Storage removal, BEFORE acknowledgment.
 reset role;
+-- This transaction created metadata-only fixtures, never object bytes. Simulate
+-- the Storage service acknowledgment locally; real bytes/API are tested separately.
+set local storage.allow_delete_query = 'true';
 delete from storage.objects where bucket_id='resumes' and name=(select company::text||'/'||candidate::text||'/original' from f);
+set local storage.allow_delete_query = 'false';
 set local role service_role;
 update public.privacy_erasure_operations set lease_until=now()-interval '1 minute' where id=current_setting('test.op')::uuid;
 select set_config('test.recovered',public.claim_privacy_erasure()::text,true);

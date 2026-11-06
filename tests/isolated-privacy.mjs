@@ -48,6 +48,32 @@ const original = await admin.storage.from("resumes").download(path);
 assert.ifError(original.error);
 const objectBackup = Buffer.from(await original.data.arrayBuffer());
 assert.deepEqual(objectBackup, bytes);
+// Two versions exist at deletion time, but the logical backup below contains
+// only the earlier candidate row. The external manifest must recover both paths.
+for (const sha of ["a", "b"]) {
+  r = await admin
+    .from("resume_documents")
+    .insert({
+      company_id: company,
+      candidate_id: candidate,
+      sha256: sha.repeat(64),
+      filename: "synthetic.pdf",
+      mime_type: "application/pdf",
+      byte_size: bytes.length,
+      page_count: 1,
+      source: "selecao_local",
+      state: "completed",
+    })
+    .select("object_path")
+    .single();
+  assert.ifError(r.error);
+}
+const versionPath = r.data.object_path;
+assert.notEqual(versionPath, path);
+r = await admin.storage
+  .from("resumes")
+  .upload(versionPath, objectBackup, { contentType: "application/pdf" });
+assert.ifError(r.error);
 r = await user.rpc("request_candidate_erasure", {
   p_company: company,
   p_candidate: candidate,
@@ -70,6 +96,10 @@ const signed = signLedger(
   "01234567890123456789012345678901",
 );
 const ledger = verifyLedger(signed, "01234567890123456789012345678901", "synthetic-local");
+const objects = [
+  ...new Set(ledger.erasures.filter((e) => e.company_id === company).flatMap((e) => e.objects)),
+];
+assert.ok(objects.includes(versionPath));
 // Restore old data only in this isolated localhost database. No production endpoint allowed.
 const restored = JSON.parse(backup);
 delete restored.arquivo_original_path;
@@ -84,7 +114,15 @@ const erased = [
     ledger.erasures.filter((e) => e.company_id === company).flatMap((e) => e.candidate_ids),
   ),
 ];
-r = await admin.rpc("reconcile_privacy_restore", { p_company: company, p_erased: erased });
+r = await admin.storage
+  .from("resumes")
+  .upload(versionPath, objectBackup, { contentType: "application/pdf" });
+assert.ifError(r.error);
+r = await admin.rpc("reconcile_privacy_restore_objects", {
+  p_company: company,
+  p_erased: erased,
+  p_objects: objects,
+});
 assert.ifError(r.error);
 r = await user.from("candidates").select("id").eq("company_id", company);
 assert.ifError(r.error);
@@ -93,6 +131,8 @@ r = await user.rpc("preview_candidate_erasure", { p_company: company, p_candidat
 assert.ok(r.error);
 await runPrivacyQueue(admin);
 r = await admin.storage.from("resumes").download(path);
+assert.ok(r.error);
+r = await admin.storage.from("resumes").download(versionPath);
 assert.ok(r.error);
 r = await admin.from("candidates").select("id").eq("id", candidate);
 assert.ifError(r.error);
@@ -109,6 +149,7 @@ fs.writeFileSync(
         "old row and bytes restored in isolation",
         "restored membership revoked and old JWT denied",
         "restored erased row and original removed again",
+        "version bytes absent from older DB backup erased using external manifest",
       ],
       scope: "synthetic localhost only; does not certify hosted backup recovery",
     },
