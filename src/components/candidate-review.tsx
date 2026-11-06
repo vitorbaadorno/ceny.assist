@@ -1,3 +1,5 @@
+import { QueryError } from "@/components/query-feedback";
+import { displayDate } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -29,7 +31,7 @@ const format = (v: unknown) =>
     : typeof v === "object"
       ? JSON.stringify(v, null, 2)
       : String(v);
-export function CandidateReview({
+function CandidateReviewContent({
   candidate,
   canEdit,
 }: {
@@ -48,6 +50,13 @@ export function CandidateReview({
   const [limit, setLimit] = useState(20);
   const [original, setOriginal] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState<unknown>(null);
+  const hasOriginal = !!(candidate.active_document_id || candidate.arquivo_nome);
+  useEffect(() => {
+    if (!original) return;
+    const timer = setTimeout(() => setOriginal(null), 55000);
+    return () => clearTimeout(timer);
+  }, [original]);
   useEffect(() => {
     setOriginal(null);
     setConfirmed(false);
@@ -157,19 +166,21 @@ export function CandidateReview({
         p_confirmed: confirmed,
       });
       if (error) throw error;
-      await refreshCompanyLists(cache, candidate.company_id);
       const saved = data as unknown as Candidate;
+      if (
+        !saved ||
+        saved.id !== candidate.id ||
+        saved.company_id !== candidate.company_id ||
+        !Number.isInteger(saved.review_version)
+      )
+        throw new Error("Salvamento não confirmado.");
       const current = reviewData(saved);
       setBase(current);
       setDraft(current);
       setVersion(saved.review_version);
       setConfirmed(false);
       cache.setQueryData(["candidate", candidate.company_id, candidate.id], saved);
-      await Promise.all(
-        ["candidates", "candidate-revisions", "candidate-scores", "job-scores"].map((key) =>
-          cache.invalidateQueries({ queryKey: [key, candidate.company_id] }),
-        ),
-      );
+      await refreshCompanyLists(cache, candidate.company_id);
       setMessage(complete ? "Revisão concluída e registrada." : "Alterações salvas.");
     } catch (error) {
       setFailed(true);
@@ -180,15 +191,18 @@ export function CandidateReview({
     }
   }
   async function showOriginal() {
+    if (!hasOriginal || opening) return;
     setOpening(true);
+    setOpenError(null);
     try {
       const { url } = await sign({
         data: { companyId: candidate.company_id, candidateId: candidate.id },
       });
+      if (!url) throw new Error("Acesso ao arquivo não confirmado.");
       setOriginal(url);
-    } catch {
-      setMessage("Não foi possível abrir o original. Confira seu acesso e tente novamente.");
-      setFailed(true);
+    } catch (error) {
+      setOriginal(null);
+      setOpenError(error);
     } finally {
       setOpening(false);
     }
@@ -342,6 +356,14 @@ export function CandidateReview({
             ))}
           </div>
         )}
+        {scores.isError && (
+          <QueryError
+            error={scores.error}
+            retry={() => scores.refetch()}
+            busy={scores.isFetching}
+            fallback="As avaliações estão indisponíveis. O preenchimento manual continua disponível."
+          />
+        )}
         {dirty && !!scores.data?.length && (
           <p className="text-sm text-amber-800 dark:text-amber-300">
             Alterações nos dados do currículo tornarão as avaliações anteriores desatualizadas.
@@ -349,13 +371,32 @@ export function CandidateReview({
         )}
         <div className={original ? "grid gap-5 xl:grid-cols-2" : ""}>
           <div>
-            <Button type="button" variant="outline" disabled={opening} onClick={showOriginal}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={opening || !hasOriginal}
+              aria-describedby={!hasOriginal ? "original-unavailable" : undefined}
+              onClick={showOriginal}
+            >
               {opening
                 ? "Abrindo…"
                 : original
                   ? "Renovar acesso ao original"
                   : "Conferir currículo original"}
             </Button>
+            {!hasOriginal && (
+              <p id="original-unavailable" className="text-sm">
+                Este cadastro não tem arquivo de currículo disponível.
+              </p>
+            )}
+            {openError != null && (
+              <QueryError
+                error={openError}
+                retry={showOriginal}
+                busy={opening}
+                fallback="Não foi possível abrir o original."
+              />
+            )}
             {original && (
               <aside className="mt-3 space-y-2 xl:sticky xl:top-4">
                 <p className="text-sm">
@@ -368,6 +409,9 @@ export function CandidateReview({
                   rel="noopener noreferrer"
                 >
                   Abrir ou baixar o original em outra aba
+                </a>
+                <a className="block text-sm underline" href={original}>
+                  Abrir ou baixar nesta aba se a nova aba for bloqueada
                 </a>
                 {/\.(pdf|png|jpe?g)$/i.test(candidate.arquivo_nome ?? "") ? (
                   <iframe
@@ -614,9 +658,16 @@ export function CandidateReview({
         </details>
         <details className="border-t pt-4">
           <summary className="cursor-pointer font-medium">Histórico de revisão</summary>
-          {history.isError && <p role="alert">Não foi possível carregar o histórico.</p>}
-          {history.isLoading && <p>Carregando histórico…</p>}
-          {!history.isLoading && !history.data?.length && (
+          {history.isError && (
+            <QueryError
+              error={history.error}
+              retry={() => history.refetch()}
+              busy={history.isFetching}
+              fallback="Não foi possível carregar o histórico. Você pode continuar preenchendo os campos."
+            />
+          )}
+          {history.isLoading && <p role="status">Carregando histórico…</p>}
+          {!history.isLoading && !history.isError && !history.data?.length && (
             <p className="mt-2 text-sm">Nenhuma revisão humana registrada.</p>
           )}
           {history.data?.map((revision) => (
@@ -627,7 +678,7 @@ export function CandidateReview({
                   : revision.action === "legacy_baseline"
                     ? "Valores anteriores preservados; responsável não confirmado"
                     : "Correção salva"}{" "}
-                · {new Date(revision.created_at).toLocaleString("pt-BR")}
+                · {displayDate(revision.created_at)}
               </p>
               {revision.action !== "legacy_baseline" && (
                 <p>
@@ -665,5 +716,14 @@ export function CandidateReview({
         </details>
       </CardContent>
     </Card>
+  );
+}
+
+export function CandidateReview(props: Parameters<typeof CandidateReviewContent>[0]) {
+  return (
+    <CandidateReviewContent
+      key={props.candidate.company_id + ":" + props.candidate.id}
+      {...props}
+    />
   );
 }

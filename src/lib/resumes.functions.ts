@@ -1,3 +1,4 @@
+import { errorFeedback } from "@/lib/ui-feedback";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -47,7 +48,9 @@ export const getResumeUrl = createServerFn({ method: "POST" })
       .eq("company_id", data.companyId)
       .eq("id", data.candidateId)
       .single();
-    if (loadError || !candidate?.arquivo_original_path) throw new Error("Currículo indisponível.");
+    if (loadError && loadError.code !== "PGRST116")
+      throw new Error(errorFeedback(loadError, "Não foi possível consultar o currículo.").message);
+    if (!candidate?.arquivo_original_path) throw new Error("Currículo indisponível.");
     let path = candidate.arquivo_original_path;
     let filename = candidate.arquivo_nome ?? "curriculo";
     const documentId = data.documentId ?? candidate.active_document_id;
@@ -59,7 +62,9 @@ export const getResumeUrl = createServerFn({ method: "POST" })
         .eq("company_id", data.companyId)
         .eq("candidate_id", data.candidateId)
         .single();
-      if (error || !document?.stored_at) throw new Error("Documento indisponível.");
+      if (error && error.code !== "PGRST116")
+        throw new Error(errorFeedback(error, "Não foi possível consultar o documento.").message);
+      if (!document?.stored_at) throw new Error("Documento indisponível.");
       path = document.object_path;
       filename = document.filename;
     }
@@ -68,6 +73,8 @@ export const getResumeUrl = createServerFn({ method: "POST" })
       .createSignedUrl(path, 60, {
         download: filename,
       });
-    if (error || !signed) throw new Error("Não foi possível gerar o link do currículo.");
+    if (error)
+      throw new Error(errorFeedback(error, "Não foi possível gerar o link do currículo.").message);
+    if (!signed?.signedUrl) throw new Error("Não foi possível gerar o link do currículo.");
     return { url: signed.signedUrl };
   });

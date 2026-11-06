@@ -1,3 +1,5 @@
+import { QueryError } from "@/components/query-feedback";
+import { errorFeedback, displayDate } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -42,6 +44,7 @@ const labels: Record<UploadState, string> = {
   ok: "Concluído",
   revisao: "Precisa de revisão",
   erro: "Erro",
+  desconhecido: "Situação não confirmada — confira o histórico",
 };
 const sources = {
   selecao_local: "Arquivo local",
@@ -51,6 +54,11 @@ const sources = {
 };
 
 function UploadPage() {
+  const { candidateId } = Route.useSearch();
+  const { companyId } = useCompany();
+  return <UploadContent key={`${companyId}:${candidateId ?? "new"}`} />;
+}
+function UploadContent() {
   const { candidateId } = Route.useSearch();
   const [identityConfirmed, setIdentityConfirmed] = useState(false);
   const { companyId, canEdit, canAdmin } = useCompany();
@@ -128,7 +136,11 @@ function UploadPage() {
           checkFileEnvelope(file.name, file.size);
           return { file, state: "aguardando" as const };
         } catch (e) {
-          return { file, state: "erro" as const, message: (e as Error).message };
+          return {
+            file,
+            state: "erro" as const,
+            message: errorFeedback(e, (e as Error).message).message,
+          };
         }
       }),
     );
@@ -205,10 +217,12 @@ function UploadPage() {
           }
           update(i, {
             state,
-            message:
+            message: errorFeedback(
+              e,
               e instanceof Error
                 ? e.message
                 : "Falha no envio. Confira o histórico antes de repetir.",
+            ).message,
           });
         } finally {
           if (!controller.signal.aborted) await refresh();
@@ -216,7 +230,9 @@ function UploadPage() {
       }
     } catch (e) {
       result = result.map((i) =>
-        i.state === "aguardando" ? { ...i, state: "erro", message: (e as Error).message } : i,
+        i.state === "aguardando"
+          ? { ...i, state: "erro", message: errorFeedback(e, (e as Error).message).message }
+          : i,
       );
       if (!controller.signal.aborted) setItems(result);
     } finally {
@@ -226,7 +242,7 @@ function UploadPage() {
         const s = uploadSummary(result);
         if (s.failed === result.length)
           toast.error("Nenhum arquivo foi concluído. Confira os motivos de recusa.");
-        else if (s.failed || s.review)
+        else if (s.failed || s.review || s.unknown)
           toast.warning("Envios finalizados com pendências. Confira o resumo.");
         else if (s.pending)
           toast.info("Arquivos recebidos. A leitura continuará em segundo plano.");
@@ -250,7 +266,7 @@ function UploadPage() {
           `Conferência concluída: ${result.removed} arquivo(s) temporário(s) removido(s).`,
         );
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(errorFeedback(e, (e as Error).message).message);
     }
   }
   const summary = uploadSummary(items);
@@ -269,7 +285,12 @@ function UploadPage() {
             Adicionar versões ao cadastro de {target.data?.nome ?? "pessoa selecionada"}
           </p>
           {target.isError && (
-            <p role="alert">Cadastro indisponível. Volte à lista de candidatos.</p>
+            <QueryError
+              error={target.error}
+              retry={() => target.refetch()}
+              busy={target.isFetching}
+              fallback="Cadastro indisponível. Volte à lista de candidatos."
+            />
           )}
           <p className="text-sm">
             {target.data?.email ?? "E-mail não informado"}. Cada arquivo será mantido separadamente.
@@ -364,8 +385,8 @@ function UploadPage() {
             {finished && (
               <p role="status" className="font-medium">
                 Resumo: {summary.completed} concluído(s), {summary.failed} com erro,{" "}
-                {summary.review} para revisão e {summary.pending} pendente(s). {summary.duplicates}{" "}
-                arquivo(s) já existente(s).
+                {summary.review} para revisão, {summary.pending} pendente(s) e {summary.unknown} sem
+                situação confirmada. {summary.duplicates} arquivo(s) já existente(s).
               </p>
             )}
             <Button asChild variant="outline">
@@ -389,8 +410,15 @@ function UploadPage() {
               Conferir e limpar envios interrompidos
             </Button>
           )}
-          {history.isError && <p role="alert">Não foi possível carregar o histórico.</p>}
-          {history.data?.length === 0 && (
+          {history.isError && (
+            <QueryError
+              error={history.error}
+              retry={() => history.refetch()}
+              busy={history.isFetching}
+              fallback="Não foi possível carregar o histórico."
+            />
+          )}
+          {!history.isError && history.data?.length === 0 && (
             <p className="text-sm text-muted-foreground">Nenhum documento recebido ainda.</p>
           )}
           {history.data?.map((doc) => (
@@ -406,8 +434,7 @@ function UploadPage() {
                 {labels[documentState(doc.state)]} · {sources[doc.source as keyof typeof sources]}
               </p>
               <p className="break-all text-muted-foreground">
-                {new Date(doc.created_at).toLocaleString("pt-BR")} · Usuário:{" "}
-                {doc.uploaded_by ?? "Conta removida"}
+                {displayDate(doc.created_at)} · Usuário: {doc.uploaded_by ?? "Conta removida"}
               </p>
               {doc.error_message && <p>{doc.error_message}</p>}
             </div>

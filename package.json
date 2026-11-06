@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
-    "test:interface": "bun test tests/collaboration-interface.test.tsx tests/reports-interface.test.tsx tests/privacy-interface.test.tsx"
+    "test:interface": "bun test tests/collaboration-interface.test.tsx tests/reports-interface.test.tsx tests/privacy-interface.test.tsx tests/reliability-interface.test.tsx"
   },
   "overrides": {
     "rolldown": "1.2.1"

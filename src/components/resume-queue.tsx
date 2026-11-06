@@ -1,3 +1,6 @@
+import { QueryError } from "@/components/query-feedback";
+import { errorFeedback, displayDate, requireSavedId } from "@/lib/ui-feedback";
+import { refreshCompanyLists } from "@/lib/company-browse";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -30,14 +33,14 @@ export function JobProgress({ job }: { job: Job }) {
   return (
     <div className="space-y-1 text-sm" role="status">
       <p className="font-medium">
-        {jobLabels[job.state] ?? job.state}
+        {jobLabels[job.state] ?? "Situação da leitura não confirmada"}
         {job.state === "running" ? ` · ${phaseLabels[job.phase] ?? "Processando"}` : ""}
       </p>
       <p>
         Leitura {job.generation} · Tentativa {job.attempts} de 3
       </p>
       {job.state === "retry_wait" && (
-        <p>Nova tentativa a partir de {new Date(job.available_at).toLocaleString("pt-BR")}.</p>
+        <p>Nova tentativa a partir de {displayDate(job.available_at)}.</p>
       )}
       {job.message && <p>{job.message}</p>}
       {job.state === "blocked" && (
@@ -97,17 +100,30 @@ export function CandidateQueue({
               p_action: mode,
             });
       if (response.error) throw response.error;
+      requireSavedId(response.data);
       return mode;
     },
     onSuccess: async (mode) => {
-      await client.invalidateQueries({ queryKey: ["candidate-queue", companyId, candidateId] });
-      await client.invalidateQueries({ queryKey: ["candidate", companyId, candidateId] });
+      await refreshCompanyLists(client, companyId);
       toast.info(mode === "cancel" ? "Leitura cancelada." : "Leitura adicionada à fila.");
     },
-    onError: () =>
-      toast.error("Não foi possível alterar a leitura. Atualize a página e confira seu acesso."),
+    onError: (error) =>
+      toast.error(
+        errorFeedback(
+          error,
+          "Não foi possível confirmar a alteração. Confira a fila antes de repetir.",
+        ).message,
+      ),
   });
-  if (query.isError) return <p role="alert">Não foi possível consultar a fila de leitura.</p>;
+  if (query.isError)
+    return (
+      <QueryError
+        error={query.error}
+        retry={() => query.refetch()}
+        busy={query.isFetching}
+        fallback="Não foi possível consultar a fila de leitura."
+      />
+    );
   if (!job) return null;
   return (
     <Card>
@@ -150,12 +166,12 @@ export function CandidateQueue({
         {!!job.resume_job_attempts.length && (
           <details>
             <summary className="cursor-pointer text-sm">Tentativas desta leitura</summary>
-            {job.resume_job_attempts
+            {[...job.resume_job_attempts]
               .sort((a, b) => a.attempt - b.attempt)
               .map((a) => (
                 <div className="mt-2 space-y-1 text-xs" key={a.attempt}>
                   <p>
-                    Tentativa {a.attempt} · {new Date(a.started_at).toLocaleString("pt-BR")} ·{" "}
+                    Tentativa {a.attempt} · {displayDate(a.started_at)} ·{" "}
                     {jobLabels[a.outcome] ??
                       (a.outcome === "interrupted" ? "Interrompida pelo sistema" : a.outcome)}
                     {a.message ? ` · ${a.message}` : ""}
@@ -192,7 +208,7 @@ export function CandidateQueue({
             {query.data.slice(1).map((previous) => (
               <div className="mt-3 rounded border p-3" key={previous.id}>
                 <JobProgress job={previous} />
-                <p>{new Date(previous.created_at).toLocaleString("pt-BR")}</p>
+                <p>{displayDate(previous.created_at)}</p>
                 {previous.resume_job_attempts.map((a) => (
                   <details key={a.attempt}>
                     <summary>
@@ -266,8 +282,9 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
       });
       if (error) throw error;
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ["resume-batches", companyId] }),
-    onError: () => toast.error("Não foi possível alterar o lote. Atualize e confira seu acesso."),
+    onSuccess: () => refreshCompanyLists(client, companyId),
+    onError: (error) =>
+      toast.error(errorFeedback(error, "Não foi possível confirmar a alteração do lote.").message),
   });
   const entryLabels: Record<string, string> = {
     waiting: "Aguardando recebimento",
@@ -286,8 +303,15 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
           Últimos 20 lotes. Atualização a cada 5 segundos. Falhas de leitura podem ser repetidas sem
           enviar o arquivo novamente; arquivos não recebidos precisam ser selecionados novamente.
         </p>
-        {query.isError && <p role="alert">Não foi possível consultar os lotes.</p>}
-        {query.data?.length === 0 && <p>Nenhum lote enviado.</p>}
+        {query.isError && (
+          <QueryError
+            error={query.error}
+            retry={() => query.refetch()}
+            busy={query.isFetching}
+            fallback="Não foi possível consultar os lotes."
+          />
+        )}
+        {!query.isError && query.data?.length === 0 && <p>Nenhum lote enviado.</p>}
         {query.data?.map((batch) => {
           const counts = { completed: 0, review: 0, failed: 0, cancelled: 0, pending: 0 };
           for (const entry of batch.entries) {
@@ -304,7 +328,7 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
           return (
             <div className="space-y-3 border-t pt-3" key={batch.id}>
               <p className="font-medium">
-                {new Date(batch.created_at).toLocaleString("pt-BR")} · {batch.file_count} arquivo(s)
+                {displayDate(batch.created_at)} · {batch.file_count} arquivo(s)
               </p>
               <p className="text-sm">
                 {counts.completed} concluído(s), {counts.failed} com falha, {counts.review} para
@@ -361,7 +385,7 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
                       </>
                     ) : (
                       <p className="text-sm">
-                        {entryLabels[entry.state]}
+                        {entryLabels[entry.state] ?? "Situação do recebimento não confirmada"}
                         {entry.message ? ` · ${entry.message}` : ""}
                       </p>
                     )}

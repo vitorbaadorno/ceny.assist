@@ -1,3 +1,5 @@
+import { processingLabel } from "@/lib/ui-feedback";
+import { QueryError } from "@/components/query-feedback";
 import { CandidateFavorite } from "@/components/candidate-collaboration";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -38,18 +40,7 @@ export const STATUS_FUNIL = [
   { value: "contratado", label: "Contratado" },
 ];
 
-export function processingLabel(status: string) {
-  switch (status) {
-    case "processando":
-      return { label: "Processando", variant: "secondary" as const };
-    case "revisao_manual":
-      return { label: "Revisão manual", variant: "outline" as const };
-    case "erro":
-      return { label: "Erro na leitura", variant: "destructive" as const };
-    default:
-      return { label: "Dados extraídos", variant: "default" as const };
-  }
-}
+export { processingLabel } from "@/lib/ui-feedback";
 
 function CandidatesPage() {
   const { companyId } = useCompany();
@@ -84,14 +75,16 @@ function CandidatesPage() {
         <BrowseSummary data={data} setPage={setPage} fetching={query.isFetching} />
       )}
       {isError ? (
-        <div role="alert">
-          Não foi possível consultar o acervo.{" "}
-          <Button variant="outline" onClick={() => query.refetch()}>
-            Tentar novamente
-          </Button>
-        </div>
+        <QueryError
+          error={query.error}
+          retry={() => query.refetch()}
+          busy={query.isFetching}
+          fallback="Não foi possível consultar o acervo."
+        />
       ) : isLoading ? (
-        <p className="text-sm text-muted-foreground">Carregando candidatos...</p>
+        <p role="status" className="text-sm text-muted-foreground">
+          Carregando candidatos...
+        </p>
       ) : filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">

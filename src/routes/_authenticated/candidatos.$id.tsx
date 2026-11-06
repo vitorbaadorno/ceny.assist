@@ -1,3 +1,5 @@
+import { QueryError, LoadingState } from "@/components/query-feedback";
+import { errorFeedback } from "@/lib/ui-feedback";
 import { CandidateNotes, CandidateFavorite } from "@/components/candidate-collaboration";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { useCompany } from "@/hooks/useCompany";
@@ -28,7 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { processingLabel } from "./index";
+import { processingLabel } from "@/lib/ui-feedback";
 
 export const Route = createFileRoute("/_authenticated/candidatos/$id")({
   head: () => ({
@@ -44,16 +46,17 @@ export const Route = createFileRoute("/_authenticated/candidatos/$id")({
   component: CandidateDetail,
 });
 function CandidateDetail() {
+  const { companyId } = useCompany();
+  const { id } = Route.useParams();
+  return <CandidateDetailContent key={companyId + ":" + id} />;
+}
+function CandidateDetailContent() {
   const { companyId, canEdit, canAdmin } = useCompany();
   const { id } = Route.useParams();
   const cache = useQueryClient();
   const navigate = useNavigate();
   const archive = useServerFn(archiveCandidate);
-  const {
-    data: candidate,
-    isLoading,
-    error,
-  } = useQuery({
+  const query = useQuery({
     queryKey: ["candidate", companyId, id],
     refetchInterval: 5000,
     queryFn: async ({ signal }) => {
@@ -63,22 +66,36 @@ function CandidateDetail() {
         .eq("company_id", companyId)
         .eq("id", id)
         .abortSignal(signal)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
   });
   const remove = useMutation({
-    mutationFn: async () => archive({ data: { companyId, candidateId: id } }),
+    mutationFn: async () => {
+      const result = await archive({ data: { companyId, candidateId: id } });
+      if (!result?.ok) throw new Error("Arquivamento não confirmado.");
+      return result;
+    },
     onSuccess: async () => {
       await refreshCompanyLists(cache, companyId);
       toast.success("Currículo arquivado.");
       navigate({ to: "/" });
     },
-    onError: () => toast.error("Não foi possível arquivar o currículo."),
+    onError: (error) =>
+      toast.error(errorFeedback(error, "Não foi possível confirmar o arquivamento.").message),
   });
-  if (error) return <p role="alert">Candidato indisponível ou acesso não autorizado.</p>;
-  if (isLoading || !candidate) return <p>Carregando candidato…</p>;
+  const candidate = query.data;
+  if (query.isError && (!candidate || !errorFeedback(query.error).retryable))
+    return <QueryError error={query.error} retry={() => query.refetch()} busy={query.isFetching} />;
+  if (query.isPending) return <LoadingState>Carregando candidato…</LoadingState>;
+  if (!candidate)
+    return (
+      <>
+        <QueryError error={{ code: "PGRST116" }} />
+        <Link to="/">Voltar para candidatos</Link>
+      </>
+    );
   const processing = processingLabel(candidate.processing_status);
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -89,6 +106,14 @@ function CandidateDetail() {
         <ArrowLeft className="size-4" />
         Voltar para candidatos
       </Link>
+      {query.isError && (
+        <QueryError
+          error={query.error}
+          retry={() => query.refetch()}
+          busy={query.isFetching}
+          fallback="Não foi possível atualizar. Os dados exibidos são da última consulta."
+        />
+      )}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{candidate.nome ?? "Currículo sem nome"}</h1>
@@ -121,13 +146,22 @@ function CandidateDetail() {
                   remover os dados ativos definitivamente, use “Eliminar dados”.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {remove.isError && (
+                <QueryError
+                  error={remove.error}
+                  fallback="Não foi possível confirmar o arquivamento. Tente novamente pelo botão abaixo."
+                />
+              )}
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={!canAdmin || remove.isPending}
-                  onClick={() => remove.mutate()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    remove.mutate();
+                  }}
                 >
-                  Arquivar currículo
+                  {remove.isPending ? "Arquivando…" : "Arquivar currículo"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

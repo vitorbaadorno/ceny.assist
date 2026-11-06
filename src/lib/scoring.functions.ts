@@ -1,3 +1,4 @@
+import { errorFeedback } from "@/lib/ui-feedback";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -24,7 +25,21 @@ export const rankJobCandidates = createServerFn({ method: "POST" })
     });
     if (error)
       throw new Error(
-        "Não foi possível publicar o ranking. O resultado anterior foi preservado. Aguarde outro cálculo ou confira alterações na base antes de tentar novamente.",
+        errorFeedback(
+          error,
+          "Não foi possível publicar o ranking. O resultado anterior foi preservado. Aguarde outro cálculo ou confira alterações na base antes de tentar novamente.",
+        ).message,
+      );
+    if (
+      !result ||
+      !Number.isInteger(result.count) ||
+      result.count < 0 ||
+      !Number.isInteger(result.pending) ||
+      result.pending < 0 ||
+      !result.runId
+    )
+      throw new Error(
+        "O serviço não confirmou a publicação do ranking. Confira o histórico antes de repetir.",
       );
     return result as { count: number; pending: number; runId: string };
   });

@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { QueryError } from "@/components/query-feedback";
+import { errorFeedback, displayDate } from "@/lib/ui-feedback";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +14,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 
-export function CandidateDocuments({
+function CandidateDocumentsContent({
   candidate,
   canEdit,
 }: {
@@ -21,6 +23,12 @@ export function CandidateDocuments({
 }) {
   const cache = useQueryClient();
   const sign = useServerFn(getResumeUrl);
+  const [opened, setOpened] = useState<{ id: string; url: string } | null>(null);
+  useEffect(() => {
+    if (!opened) return;
+    const timer = setTimeout(() => setOpened(null), 55000);
+    return () => clearTimeout(timer);
+  }, [opened]);
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<string | null>(null);
   const query = useQuery({
@@ -52,24 +60,24 @@ export function CandidateDocuments({
       await cache.invalidateQueries();
       toast.success("Currículo selecionado. Confira os dados e conclua a revisão novamente.");
     },
-    onError: () =>
-      toast.error("Não foi possível selecionar. Atualize o cadastro e confira seu acesso."),
+    onError: (error) =>
+      toast.error(
+        errorFeedback(
+          error,
+          "Não foi possível confirmar a seleção. Confira o cadastro antes de repetir.",
+        ).message,
+      ),
   });
   const open = useMutation({
     mutationFn: async (documentId: string) => {
       const result = await sign({
         data: { companyId: candidate.company_id, candidateId: candidate.id, documentId },
       });
-      const a = document.createElement("a");
-      a.href = result.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.click();
+      if (!result?.url) throw new Error("O acesso ao arquivo não foi confirmado.");
+      return { id: documentId, url: result.url };
     },
-    onError: () =>
-      toast.error(
-        "Não foi possível abrir o original. Confira se o envio terminou e se você ainda tem acesso.",
-      ),
+    onSuccess: setOpened,
+    onError: () => setOpened(null),
   });
   return (
     <Card>
@@ -89,15 +97,28 @@ export function CandidateDocuments({
             </Link>
           </Button>
         )}
-        {query.isError && <p role="alert">Não foi possível consultar os documentos.</p>}
-        {query.isLoading && <p>Carregando documentos…</p>}
-        {query.data?.length === 0 && (
+        {query.isError && (
+          <QueryError
+            error={query.error}
+            retry={() => query.refetch()}
+            busy={query.isFetching}
+            fallback="Não foi possível consultar os documentos."
+          />
+        )}
+        {open.isError && (
+          <QueryError
+            error={open.error}
+            fallback="Não foi possível preparar o acesso. Confira se o envio terminou e tente novamente."
+          />
+        )}
+        {query.isLoading && <p role="status">Carregando documentos…</p>}
+        {!query.isError && query.data?.length === 0 && (
           <p>
             Nenhum documento versionado. O original legado, se disponível, pode ser consultado
             durante a revisão.
           </p>
         )}
-        {query.data?.slice(0, 20).map((d) => (
+        {(!query.isError ? query.data : undefined)?.slice(0, 20).map((d) => (
           <div key={d.id} className="space-y-3 rounded border p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="break-all font-medium">
@@ -106,7 +127,7 @@ export function CandidateDocuments({
               {d.id === candidate.active_document_id && <Badge>Selecionado</Badge>}
             </div>
             <p className="text-xs text-muted-foreground">
-              Recebido em {new Date(d.created_at).toLocaleString("pt-BR")} · Origem:{" "}
+              Recebido em {displayDate(d.created_at)} · Origem:{" "}
               {
                 (
                   {
@@ -122,10 +143,13 @@ export function CandidateDocuments({
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
+                aria-describedby={!d.stored_at ? `file-unavailable-${d.id}` : undefined}
                 disabled={!d.stored_at || open.isPending}
                 onClick={() => open.mutate(d.id)}
               >
-                Abrir original
+                {open.isPending && open.variables === d.id
+                  ? "Preparando acesso…"
+                  : "Preparar acesso ao original"}
               </Button>
               {canEdit && d.id !== candidate.active_document_id && (
                 <Button
@@ -140,6 +164,30 @@ export function CandidateDocuments({
                 {expanded === d.id ? "Ocultar análises" : "Consultar análises"}
               </Button>
             </div>
+            {!d.stored_at && (
+              <p id={`file-unavailable-${d.id}`} className="text-sm">
+                Original indisponível: o recebimento do arquivo ainda não foi confirmado.
+              </p>
+            )}
+            {opened?.id === d.id && (
+              <div role="status" className="space-y-2 text-sm">
+                <p>
+                  Acesso temporário preparado. Se o navegador bloquear uma nova aba, use a opção
+                  nesta aba.
+                </p>
+                <a
+                  className="mr-4 underline"
+                  href={opened.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir original em outra aba
+                </a>
+                <a className="underline" href={opened.url}>
+                  Abrir original nesta aba
+                </a>
+              </div>
+            )}
             {d.error_message && (
               <p className="text-sm" role="status">
                 {d.error_message}
@@ -181,5 +229,14 @@ export function CandidateDocuments({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export function CandidateDocuments(props: Parameters<typeof CandidateDocumentsContent>[0]) {
+  return (
+    <CandidateDocumentsContent
+      key={props.candidate.company_id + ":" + props.candidate.id}
+      {...props}
+    />
   );
 }

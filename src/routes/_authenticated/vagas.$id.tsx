@@ -1,3 +1,5 @@
+import { QueryError, LoadingState } from "@/components/query-feedback";
+import { errorFeedback } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { RankingHistory } from "@/components/ranking-history";
 import { VacancyReports } from "@/components/vacancy-reports";
@@ -58,6 +60,11 @@ export const Route = createFileRoute("/_authenticated/vagas/$id")({
 });
 
 function JobDetail() {
+  const { companyId } = useCompany();
+  const { id } = Route.useParams();
+  return <JobDetailContent key={companyId + ":" + id} />;
+}
+function JobDetailContent() {
   const { companyId, canEdit, canAdmin } = useCompany();
   const { id } = Route.useParams();
   const queryClient = useQueryClient();
@@ -66,7 +73,7 @@ function JobDetail() {
   const archive = useServerFn(archiveJob);
   const [editing, setEditing] = useState(false);
 
-  const { data: job } = useQuery({
+  const query = useQuery({
     queryKey: ["job", companyId, id],
     refetchInterval: 5000,
     queryFn: async () => {
@@ -75,69 +82,72 @@ function JobDetail() {
         .select("*")
         .eq("company_id", companyId)
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
   });
 
+  const job = query.data;
   const recalc = useMutation({
     mutationFn: async (requestId: string) => rank({ data: { companyId, jobId: id, requestId } }),
-    onSuccess: (result) => {
-      for (const key of [
-        "ranking-runs",
-        "ranking-current",
-        "ranking-entries",
-        "ranking-pending",
-        "job-scores",
-      ])
-        queryClient.invalidateQueries({ queryKey: [key, companyId] });
+    onSuccess: async (result) => {
+      await refreshCompanyLists(queryClient, companyId);
       toast.success(
         result.count
           ? `${result.count} candidato(s) avaliados. ${result.pending} com pendências.`
           : `Cálculo concluído sem classificação final: ${result.pending} candidato(s) com pendências.`,
       );
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => toast.error(errorFeedback(error).message),
   });
 
   const changeStatus = useMutation({
     mutationFn: async () => {
       if (!job) throw new Error("Vaga indisponível.");
-      const { error } = await supabase.rpc("set_job_status", {
+      const { data, error } = await supabase.rpc("set_job_status", {
         p_company: companyId,
         p_job: id,
         p_expected_version: job.version,
         p_status: job.status === "aberta" ? "encerrada" : "aberta",
       });
       if (error) throw error;
+      const saved = data as { id?: string; company_id?: string } | null;
+      if (saved?.id !== id || saved.company_id !== companyId)
+        throw new Error("Alteração não confirmada. Confira a versão atual antes de repetir.");
     },
-    onSuccess: () => {
-      for (const key of [
-        "job",
-        "jobs",
-        "job-revisions",
-        "job-scores",
-        "linkable-jobs",
-        "ranking-current",
-        "ranking-runs",
-      ])
-        queryClient.invalidateQueries({ queryKey: [key, companyId] });
+    onSuccess: async () => {
+      await refreshCompanyLists(queryClient, companyId);
       toast.success("Situação da vaga atualizada. Os candidatos foram mantidos.");
     },
     onError: (error) => toast.error(jobError(error)),
   });
 
   const removeJob = useMutation({
-    mutationFn: async () => archive({ data: { companyId, jobId: id } }),
+    mutationFn: async () => {
+      const result = await archive({ data: { companyId, jobId: id } });
+      if (!result?.ok) throw new Error("Arquivamento não confirmado.");
+      return result;
+    },
     onSuccess: async () => {
       await refreshCompanyLists(queryClient, companyId);
       toast.success("Vaga arquivada.");
       navigate({ to: "/vagas" });
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) =>
+      toast.error(errorFeedback(error, "Não foi possível confirmar o arquivamento.").message),
   });
 
+  if (query.isError && (!job || !errorFeedback(query.error).retryable))
+    return <QueryError error={query.error} retry={() => query.refetch()} busy={query.isFetching} />;
+  if (query.isPending) return <LoadingState>Carregando vaga…</LoadingState>;
+  if (!job)
+    return (
+      <>
+        <QueryError error={{ code: "PGRST116" }} />
+        <Link to="/vagas">Voltar para vagas</Link>
+      </>
+    );
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <Link
@@ -147,6 +157,14 @@ function JobDetail() {
         <ArrowLeft className="size-4" /> Voltar para vagas
       </Link>
 
+      {query.isError && (
+        <QueryError
+          error={query.error}
+          retry={() => query.refetch()}
+          busy={query.isFetching}
+          fallback="Não foi possível atualizar. Os dados exibidos são da última consulta."
+        />
+      )}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{job?.titulo ?? "Vaga"}</h1>
@@ -214,11 +232,20 @@ function JobDetail() {
                   A vaga será arquivada e sairá do acesso da equipe. Os candidatos serão mantidos.
                 </AlertDialogDescription>
               </AlertDialogHeader>
+              {removeJob.isError && (
+                <QueryError
+                  error={removeJob.error}
+                  fallback="Não foi possível confirmar o arquivamento. Tente novamente pelo botão abaixo."
+                />
+              )}
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => removeJob.mutate()}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    removeJob.mutate();
+                  }}
                   disabled={!canAdmin || removeJob.isPending}
                 >
                   Arquivar vaga

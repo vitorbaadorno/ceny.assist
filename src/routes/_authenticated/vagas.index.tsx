@@ -1,3 +1,4 @@
+import { QueryError } from "@/components/query-feedback";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useBrowse, type BrowseFilters } from "@/lib/company-browse";
@@ -58,15 +59,15 @@ function JobsPage() {
       {data && !isError && (
         <BrowseSummary data={data} setPage={setPage} fetching={query.isFetching} />
       )}
-      {isLoading ? (
-        <p>Carregando vagas…</p>
-      ) : isError ? (
-        <div role="alert">
-          Não foi possível carregar as vagas.{" "}
-          <Button variant="outline" onClick={() => query.refetch()}>
-            Tentar novamente
-          </Button>
-        </div>
+      {isError ? (
+        <QueryError
+          error={query.error}
+          retry={() => query.refetch()}
+          busy={query.isFetching}
+          fallback="Não foi possível carregar as vagas."
+        />
+      ) : isLoading ? (
+        <p role="status">Carregando vagas…</p>
       ) : !visible.length ? (
         <p className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
           {data?.total === 0

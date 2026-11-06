@@ -1,3 +1,5 @@
+import { errorFeedback, displayDate, requireSavedId } from "@/lib/ui-feedback";
+import { QueryError } from "@/components/query-feedback";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +16,7 @@ export const decisionLabels: Record<string, string> = {
   rejeitado: "Não aprovado",
   contratado: "Contratado",
 };
-const when = (s: string) => new Date(s).toLocaleString("pt-BR");
+const when = displayDate;
 const author = (row: { actor_name: string | null; actor_id: string | null }) =>
   row.actor_name || row.actor_id || "Responsável não disponível";
 function errorMessage(error: unknown) {
@@ -23,7 +25,10 @@ function errorMessage(error: unknown) {
     ? "Outra pessoa alterou esta decisão. Confira a versão atual antes de salvar."
     : code === "42501"
       ? "Acesso indisponível. Confira sua permissão e o cadastro."
-      : "Não foi possível confirmar o salvamento. Confira o histórico e tente novamente; os registros anteriores foram preservados.";
+      : errorFeedback(
+          error,
+          "Não foi possível confirmar o salvamento. Confira o histórico e tente novamente; os registros anteriores foram preservados.",
+        ).message;
 }
 function HistoryPages({
   page,
@@ -107,15 +112,16 @@ export function CandidateFavorite({
       >
         {mutation.isPending ? "Salvando…" : favorite ? "★ Meu favorito" : "☆ Favoritar"}
       </Button>
-      {(mutation.isError || query.isError) && (
-        <p role="alert" className="text-xs">
-          Não foi possível atualizar os favoritos. Tente novamente.
-        </p>
+      {query.isError && (
+        <QueryError error={query.error} retry={() => query.refetch()} busy={query.isFetching} />
+      )}
+      {mutation.isError && (
+        <QueryError error={mutation.error} fallback="Não foi possível confirmar o favorito." />
       )}
     </div>
   );
 }
-export function CandidateNotes({
+function CandidateNotesContent({
   companyId,
   candidateId,
   jobId = null,
@@ -163,6 +169,7 @@ export function CandidateNotes({
         p_request: request.current.id,
       });
       if (r.error) throw r.error;
+      requireSavedId(r.data);
     },
     onSuccess: async () => {
       setBody("");
@@ -226,14 +233,14 @@ export function CandidateNotes({
         </p>
       )}
       {notes.isError ? (
-        <p role="alert">
-          Não foi possível consultar as notas.{" "}
-          <Button variant="outline" onClick={() => notes.refetch()}>
-            Tentar novamente
-          </Button>
-        </p>
+        <QueryError
+          error={notes.error}
+          retry={() => notes.refetch()}
+          busy={notes.isFetching}
+          fallback="Não foi possível consultar as notas. Você pode continuar preenchendo o rascunho."
+        />
       ) : notes.isLoading ? (
-        <p>Carregando notas…</p>
+        <p role="status">Carregando notas…</p>
       ) : (
         <>
           {notes.data?.count === 0 && (
@@ -253,7 +260,7 @@ export function CandidateNotes({
     </section>
   );
 }
-export function CandidateJobDecision({
+function CandidateJobDecisionContent({
   link,
   canEdit,
   open,
@@ -310,12 +317,12 @@ export function CandidateJobDecision({
         p_request: request.current.id,
       });
       if (r.error) throw r.error;
+      const saved = r.data as { version?: number } | null;
+      if (!saved || !Number.isInteger(saved.version) || saved.version! < version)
+        throw new Error("Decisão não confirmada.");
     },
     onSuccess: async () => {
-      await Promise.all([
-        cache.invalidateQueries({ queryKey: ["candidate-job-links", link.company_id] }),
-        cache.invalidateQueries({ queryKey: ["candidate-decisions", link.company_id] }),
-      ]);
+      await refreshCompanyLists(cache, link.company_id);
       setDirty(false);
       setReason("");
       request.current = null;
@@ -429,9 +436,14 @@ export function CandidateJobDecision({
       {save.isError && <p role="alert">{errorMessage(save.error)}</p>}
       <h4 className="text-sm font-semibold">Histórico de decisões e seleção</h4>
       {history.isError ? (
-        <p role="alert">Não foi possível carregar o histórico.</p>
+        <QueryError
+          error={history.error}
+          retry={() => history.refetch()}
+          busy={history.isFetching}
+          fallback="Não foi possível carregar o histórico."
+        />
       ) : history.isLoading ? (
-        <p>Carregando histórico…</p>
+        <p role="status">Carregando histórico…</p>
       ) : (
         <>
           {history.data?.count === 0 && (
@@ -484,5 +496,23 @@ export function CandidateJobWorkspace({
         </div>
       )}
     </details>
+  );
+}
+
+export function CandidateNotes(props: Parameters<typeof CandidateNotesContent>[0]) {
+  return (
+    <CandidateNotesContent
+      key={props.companyId + ":" + props.candidateId + ":" + props.jobId}
+      {...props}
+    />
+  );
+}
+
+export function CandidateJobDecision(props: Parameters<typeof CandidateJobDecisionContent>[0]) {
+  return (
+    <CandidateJobDecisionContent
+      key={props.link.company_id + ":" + props.link.candidate_id + ":" + props.link.job_id}
+      {...props}
+    />
   );
 }

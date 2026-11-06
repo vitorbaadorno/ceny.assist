@@ -1,3 +1,4 @@
+import { errorFeedback } from "@/lib/ui-feedback";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -14,7 +15,8 @@ export const archiveCandidate = createServerFn({ method: "POST" })
       p_company: data.companyId,
       p_id: data.candidateId,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throw new Error(errorFeedback(error, "Não foi possível confirmar o arquivamento.").message);
     return { ok: true };
   });
 
@@ -29,6 +31,7 @@ export const archiveJob = createServerFn({ method: "POST" })
       p_company: data.companyId,
       p_id: data.jobId,
     });
-    if (error) throw new Error(error.message);
+    if (error)
+      throw new Error(errorFeedback(error, "Não foi possível confirmar o arquivamento.").message);
     return { ok: true };
   });

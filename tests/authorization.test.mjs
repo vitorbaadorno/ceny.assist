@@ -1,3 +1,4 @@
+import { errorFeedback } from "../src/lib/ui-feedback.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -29,7 +30,9 @@ function load(file, names, dependencies = {}) {
     ...Object.values(dependencies),
   );
 }
-const { requireCompanyRole } = load("src/lib/company-access.ts", ["requireCompanyRole"]);
+const { requireCompanyRole } = load("src/lib/company-access.ts", ["requireCompanyRole"], {
+  errorFeedback,
+});
 const createServerFn = () => {
   let validate;
   return {
@@ -155,8 +158,10 @@ const { getResumeUrl } = load("src/lib/resumes.functions.ts", ["getResumeUrl"], 
   z,
   requireSupabaseAuth: {},
   requireCompanyRole,
+  errorFeedback,
 });
 const { archiveCandidate } = load("src/lib/records.functions.ts", ["archiveCandidate"], {
+  errorFeedback,
   createServerFn,
   z,
   requireSupabaseAuth: {},
@@ -171,7 +176,7 @@ const { rankCandidates } = load("supabase/functions/_shared/ranking.ts", ["rankC
 });
 
 test("membership authorization fails closed on database errors", async () => {
-  await assert.rejects(requireCompanyRole(db(), userId, companyId), /permissão/);
+  await assert.rejects(requireCompanyRole(db(), userId, companyId), /verificar seu acesso/);
 });
 test("resume signing rejects missing membership without accessing storage", async () => {
   const supabase = db();
@@ -184,7 +189,10 @@ test("resume signing rejects missing membership without accessing storage", asyn
   );
 });
 test("resume signing rejects another company candidate and does not sign", async () => {
-  const supabase = db({ company_members: member("owner") });
+  const supabase = db({
+    company_members: member("owner"),
+    candidates: { data: null, error: { code: "PGRST116" } },
+  });
   await assert.rejects(
     getResumeUrl({ data: { companyId, candidateId }, context: { supabase, userId } }),
     /indisponível/,
@@ -397,4 +405,20 @@ test("invalid provider output never becomes an AI result", async () => {
       new AbortController().signal,
     ),
   );
+});
+
+test("membership network failure is not reported as missing permission", async () => {
+  const supabase = db({ company_members: { data: null, error: new TypeError("Failed to fetch") } });
+  await assert.rejects(requireCompanyRole(supabase, userId, companyId), /Falha de conexão/);
+});
+test("resume query network failure never signs or pretends the document is missing", async () => {
+  const supabase = db({
+    company_members: member("owner"),
+    candidates: { data: null, error: new TypeError("Failed to fetch") },
+  });
+  await assert.rejects(
+    getResumeUrl({ data: { companyId, candidateId }, context: { supabase, userId } }),
+    /Falha de conexão/,
+  );
+  assert.ok(!supabase.calls.some((c) => c.bucket));
 });

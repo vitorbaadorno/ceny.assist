@@ -1,3 +1,5 @@
+import { QueryError } from "@/components/query-feedback";
+import { errorFeedback, displayDate, requireSavedId } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +36,7 @@ export function jobError(error: { code?: string; message?: string }) {
     return "Outra pessoa alterou esta vaga. Suas edições foram mantidas na tela. Confira a versão atual antes de salvar novamente.";
   if (error.code === "42501")
     return "Seu acesso não permite alterar esta vaga. Confira a empresa e sua permissão.";
+  if (errorFeedback(error).kind !== "unknown") return errorFeedback(error).message;
   if (!error.code || error.code === "22023") return error.message ?? "Confira os dados da vaga.";
   return "Não foi possível salvar. Confira os dados e tente novamente.";
 }
@@ -65,7 +68,7 @@ export function JobEditor({
     setError("");
     setMessage("");
   };
-  const { data: templates = [] } = useQuery({
+  const templatesQuery = useQuery({
     queryKey: ["job-templates", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -77,12 +80,13 @@ export function JobEditor({
       return data;
     },
   });
+  const templates = templatesQuery.data ?? [];
   const save = useMutation({
     mutationFn: async (approve: boolean) => {
       if (approve && !confirmed)
         throw new Error("Confirme a conferência da descrição e dos critérios.");
       const payload = validateJobPayload(form, approve);
-      const { error } = await supabase.rpc("save_job", {
+      const { data, error } = await supabase.rpc("save_job", {
         p_company: companyId,
         p_job: job?.id ?? null,
         p_expected_version: version,
@@ -90,6 +94,7 @@ export function JobEditor({
         p_approve: approve,
       });
       if (error) throw error;
+      requireSavedId((data as { id?: string } | null)?.id);
       return { approve, merged: payload.criteria.length !== form.criteria.length };
     },
     onSuccess: async ({ approve, merged }) => {
@@ -111,15 +116,16 @@ export function JobEditor({
       if (templateName.trim().length < 3 || templateName.trim().length > 160)
         throw new Error("Dê ao modelo um nome de 3 a 160 caracteres.");
       const payload = validateJobPayload(form);
-      const { error } = await supabase.rpc("create_job_template", {
+      const { data, error } = await supabase.rpc("create_job_template", {
         p_company: companyId,
         p_name: templateName.trim(),
         p_payload: payload as unknown as Json,
       });
       if (error) throw error;
+      requireSavedId(data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["job-templates", companyId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["job-templates", companyId] });
       setMessage("Modelo salvo para reutilização pela equipe.");
       setError("");
       setTemplateName("");
@@ -146,6 +152,17 @@ export function JobEditor({
             save.mutate(false);
           }}
         >
+          {templatesQuery.isError && (
+            <>
+              <QueryError
+                error={templatesQuery.error}
+                retry={() => templatesQuery.refetch()}
+                busy={templatesQuery.isFetching}
+                fallback="Os modelos estão indisponíveis."
+              />
+              <p className="text-sm">Você pode continuar preenchendo a vaga manualmente.</p>
+            </>
+          )}
           <fieldset disabled={busy} className="space-y-5 disabled:opacity-70">
             {changedElsewhere && (
               <div role="alert" className="rounded-lg border border-amber-400 p-3 text-sm">
@@ -543,6 +560,9 @@ export function JobHistory({ companyId, jobId }: { companyId: string; jobId: str
     data: rows = [],
     isLoading,
     isError,
+    error,
+    refetch,
+    isFetching,
   } = useQuery({
     queryKey: ["job-revisions", companyId, jobId, page],
     queryFn: async () => {
@@ -573,7 +593,14 @@ export function JobHistory({ companyId, jobId }: { companyId: string; jobId: str
       </CardHeader>
       <CardContent className="space-y-3">
         {isLoading && <p>Carregando histórico…</p>}
-        {isError && <p role="alert">Não foi possível carregar o histórico.</p>}
+        {isError && (
+          <QueryError
+            error={error}
+            retry={refetch}
+            busy={isFetching}
+            fallback="Não foi possível carregar o histórico."
+          />
+        )}
         {rows.map((row) => {
           const before = row.before_data as Record<string, Json> | null,
             after = row.after_data as Record<string, Json>;
@@ -592,7 +619,7 @@ export function JobHistory({ companyId, jobId }: { companyId: string; jobId: str
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {row.actor_name ||
                     (row.actor_id ? `Membro ${row.actor_id}` : "Sistema / registro anterior")}{" "}
-                  · {new Date(row.created_at).toLocaleString("pt-BR")}
+                  · {displayDate(row.created_at)}
                 </span>
               </summary>
               <div className="mt-3 space-y-2">

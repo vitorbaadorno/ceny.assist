@@ -1,3 +1,4 @@
+import { errorFeedback } from "./ui-feedback.ts";
 import { experienceMonths } from "../../supabase/functions/_shared/experience.ts";
 
 export type ReviewEntry = {
@@ -102,7 +103,10 @@ export function reviewError(error: { code?: string; message?: string }) {
     return "Seu acesso foi retirado ou você não tem permissão para revisar este candidato.";
   if (["22023", "22007", "22008"].includes(error.code ?? ""))
     return "Confira os campos: e-mail, telefone, datas, períodos e limites de texto devem ser válidos.";
-  return "Não foi possível confirmar o salvamento. Seu rascunho continua nesta tela; confira a versão atual antes de tentar novamente.";
+  return errorFeedback(
+    error,
+    "Não foi possível confirmar o salvamento. Seu rascunho continua nesta tela; confira a versão atual antes de tentar novamente.",
+  ).message;
 }
 export function reviewFieldName(path: string) {
   return path

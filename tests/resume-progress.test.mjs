@@ -4,6 +4,7 @@ import { documentState, uploadSummary } from "../src/lib/resume-progress.ts";
 test("all failures produce zero successes and no pending files", () => {
   assert.deepEqual(uploadSummary([{ state: "erro" }, { state: "erro" }]), {
     completed: 0,
+    unknown: 0,
     review: 0,
     failed: 2,
     pending: 0,
@@ -18,6 +19,6 @@ test("mixed batch separates completed, review, errors, pending and reused docume
         duplicate: state === "completed",
       })),
     ),
-    { completed: 1, review: 1, failed: 1, pending: 3, duplicates: 1 },
+    { completed: 1, unknown: 0, review: 1, failed: 1, pending: 3, duplicates: 1 },
   );
 });

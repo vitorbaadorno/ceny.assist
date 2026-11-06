@@ -1,3 +1,5 @@
+import { QueryError } from "@/components/query-feedback";
+import { displayDate, requireSavedId } from "@/lib/ui-feedback";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +73,7 @@ export function ApprenticeCaseReview({
       </Button>
       {open && (
         <CaseForm
+          key={`${companyId}:${runId}:${candidateId}`}
           companyId={companyId}
           runId={runId}
           candidateId={candidateId}
@@ -136,12 +139,14 @@ function CaseForm({
   });
   const save = useMutation({
     mutationFn: async () => {
+      if (outdated || latest.isError || latest.data === undefined)
+        throw new Error("Confira a versão atual antes de salvar.");
       const r = await supabase.rpc("record_apprentice_review", {
         p_company: companyId,
         p_run: runId,
         p_candidate: candidateId,
         p_request: request,
-        p_expected_version: latest.data ?? 0,
+        p_expected_version: latest.data,
         p_status: status,
         p_justification: reason,
         p_legal_responsible: legalName,
@@ -149,16 +154,16 @@ function CaseForm({
         p_confirmed: confirmed,
       });
       if (r.error) throw r.error;
+      requireSavedId((r.data as { id?: string } | null)?.id);
     },
-    onSuccess: () => {
-      cache.invalidateQueries({ queryKey: key });
+    onSuccess: async () => {
+      await cache.invalidateQueries({ queryKey: key });
       setReason("");
       setConfirmed(false);
       setRequest(crypto.randomUUID());
     },
   });
-  const disabled =
-    outdated || latest.isLoading || latest.isError || history.isError || save.isPending;
+  const disabled = save.isPending;
   function edited() {
     setRequest(crypto.randomUUID());
     save.reset();
@@ -247,6 +252,9 @@ function CaseForm({
       <Button
         disabled={
           disabled ||
+          outdated ||
+          latest.isPending ||
+          latest.isError ||
           !confirmed ||
           reason.trim().length < 20 ||
           (status === "legal_recorded" &&
@@ -257,20 +265,37 @@ function CaseForm({
         {save.isPending ? "Salvando…" : "Registrar conferência"}
       </Button>
       {save.isSuccess && <p role="status">Conferência registrada no histórico.</p>}
-      {(save.isError || history.isError || latest.isError) && (
-        <p role="alert">
-          Não foi possível confirmar o registro. Confira seu acesso e atualize os dados; outra
-          pessoa pode ter registrado uma conferência. Repetir sem alterar os campos não duplica o
-          registro.
-        </p>
+      {save.isError && (
+        <QueryError
+          error={save.error}
+          fallback="Não foi possível confirmar o registro. Confira o histórico antes de repetir; seu rascunho foi mantido."
+        />
+      )}
+      {latest.isError && (
+        <>
+          <QueryError
+            error={latest.error}
+            retry={() => latest.refetch()}
+            busy={latest.isFetching}
+          />
+          <p>Continue preenchendo. Para salvar, é necessário confirmar a versão atual.</p>
+        </>
+      )}
+      {history.isError && (
+        <QueryError
+          error={history.error}
+          retry={() => history.refetch()}
+          busy={history.isFetching}
+          fallback="Não foi possível consultar o histórico. O preenchimento continua disponível."
+        />
       )}
       <h3 className="font-medium">Histórico de conferências</h3>
-      {history.data?.length === 0 && <p>Nenhuma conferência registrada.</p>}
+      {!history.isError && history.data?.length === 0 && <p>Nenhuma conferência registrada.</p>}
       {history.data?.map((r) => (
         <article key={r.id} className="space-y-1 border-t pt-3">
           <p>
-            {new Date(r.created_at).toLocaleString("pt-BR")} ·{" "}
-            {r.actor_name || "Administrador registrado"} · Revisão {r.version}
+            {displayDate(r.created_at)} · {r.actor_name || "Administrador registrado"} · Revisão{" "}
+            {r.version}
           </p>
           <p>
             {r.status === "pending_legal"

@@ -1,5 +1,5 @@
 export type UploadState =
-  "aguardando" | "enviando" | "enviado" | "lendo" | "ok" | "revisao" | "erro";
+  "aguardando" | "enviando" | "enviado" | "lendo" | "ok" | "revisao" | "erro" | "desconhecido";
 export function documentState(state: string): UploadState {
   return (
     (
@@ -15,12 +15,13 @@ export function documentState(state: string): UploadState {
         erro: "erro",
         cleaning: "erro",
       } as Record<string, UploadState>
-    )[state] ?? "enviado"
+    )[state] ?? "desconhecido"
   );
 }
 export function uploadSummary(items: { state: UploadState; duplicate?: boolean }[]) {
   return {
     completed: items.filter((i) => i.state === "ok").length,
+    unknown: items.filter((i) => i.state === "desconhecido").length,
     review: items.filter((i) => i.state === "revisao").length,
     failed: items.filter((i) => i.state === "erro").length,
     pending: items.filter((i) => ["aguardando", "enviando", "enviado", "lendo"].includes(i.state))

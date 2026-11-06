@@ -1,3 +1,4 @@
+import { errorFeedback } from "@/lib/ui-feedback";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -13,7 +14,11 @@ export async function requireCompanyRole(
     .eq("company_id", companyId)
     .eq("user_id", userId)
     .single();
-  if (error || !data || !roles.includes(data.role)) {
+  if (error && error.code !== "PGRST116")
+    throw new Error(
+      errorFeedback(error, "Não foi possível verificar seu acesso. Tente novamente.").message,
+    );
+  if (!data || !roles.includes(data.role)) {
     throw new Error("Você não tem permissão para esta operação na empresa selecionada.");
   }
   return data.role;

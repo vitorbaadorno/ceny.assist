@@ -10,7 +10,8 @@ export async function invokeResume<T>(body: unknown, signal?: AbortSignal): Prom
     data: { session },
     error,
   } = await supabase.auth.getSession();
-  if (error || !session) throw new Error("Sessão indisponível. Entre novamente.");
+  if (error) throw error;
+  if (!session) throw new Error("Sessão expirada. Entre novamente.");
   const response = await fetch(`${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/ceny-worker`, {
     method: "POST",
     headers: {
@@ -21,8 +22,13 @@ export async function invokeResume<T>(body: unknown, signal?: AbortSignal): Prom
     body: JSON.stringify(body),
     signal: signal ?? AbortSignal.timeout(120000),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? "Operação indisponível.");
+  const result = await response.json().catch(() => null);
+  if (!response.ok)
+    throw Object.assign(new Error(result?.error ?? "Operação indisponível."), {
+      status: response.status,
+    });
+  if (!result)
+    throw new Error("O serviço não confirmou a operação. Confira o histórico antes de repetir.");
   return result;
 }
 export async function sendResume(
@@ -37,7 +43,8 @@ export async function sendResume(
     data: { session },
     error,
   } = await supabase.auth.getSession();
-  if (error || !session) throw new Error("Sessão indisponível. Entre novamente.");
+  if (error) throw error;
+  if (!session) throw new Error("Sessão expirada. Entre novamente.");
   const params = new URLSearchParams({
     action: "upload",
     companyId,
@@ -62,8 +69,11 @@ export async function sendResume(
       signal,
     },
   );
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error ?? "Envio recusado.");
+  const result = await response.json().catch(() => null);
+  if (!response.ok)
+    throw Object.assign(new Error(result?.error ?? "Envio recusado."), { status: response.status });
+  if (!result?.documentId || !result?.candidateId || typeof result.state !== "string")
+    throw new Error("O serviço não confirmou o envio. Confira o histórico antes de repetir.");
   return result as {
     documentId: string;
     candidateId: string;
