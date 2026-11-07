@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import { z } from "zod";
 import { validateJobPayload } from "../supabase/functions/_shared/job-criteria.ts";
-import { scoreCandidate } from "../supabase/functions/_shared/scoring.ts";
+import { scoreCandidate, prepareAssessment } from "../supabase/functions/_shared/scoring.ts";
 import { assessApprenticeAge, ageReferenceDate } from "../supabase/functions/_shared/age.ts";
 import { FileRejected, FILE_LIMITS } from "../supabase/functions/_shared/file-policy.ts";
 import { extractionFixture } from "./extraction-fixture.mjs";
@@ -169,7 +169,7 @@ const { archiveCandidate } = load("src/lib/records.functions.ts", ["archiveCandi
 });
 const { rankCandidates } = load("supabase/functions/_shared/ranking.ts", ["rankCandidates"], {
   requireCompanyRole,
-  scoreCandidate,
+  prepareAssessment,
   validateJobPayload,
   assessApprenticeAge,
   ageReferenceDate,

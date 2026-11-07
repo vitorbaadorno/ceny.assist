@@ -105,43 +105,10 @@ export const extractionValidator = z
 export type ResumeExtraction = z.infer<typeof extractionValidator>;
 
 // Generate the transport schema from the same pinned Zod schema used to validate.
-function jsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
-  if (schema instanceof z.ZodNullable)
-    return { anyOf: [jsonSchema(schema.unwrap()), { type: "null" }] };
-  if (schema instanceof z.ZodObject) {
-    const fields = schema.shape;
-    return {
-      type: "object",
-      properties: Object.fromEntries(
-        Object.entries(fields).map(([key, value]) => [key, jsonSchema(value as z.ZodTypeAny)]),
-      ),
-      required: Object.keys(fields),
-      additionalProperties: false,
-    };
-  }
-  if (schema instanceof z.ZodArray)
-    return {
-      type: "array",
-      items: jsonSchema(schema.element),
-      maxItems: schema._def.maxLength?.value,
-    };
-  if (schema instanceof z.ZodEnum) return { type: "string", enum: schema.options };
-  if (schema instanceof z.ZodBoolean) return { type: "boolean" };
-  if (schema instanceof z.ZodNumber)
-    return {
-      type: schema.isInt ? "integer" : "number",
-      minimum: schema.minValue ?? undefined,
-      maximum: schema.maxValue ?? undefined,
-    };
-  if (schema instanceof z.ZodString)
-    return {
-      type: "string",
-      minLength: schema.minLength ?? undefined,
-      maxLength: schema.maxLength ?? undefined,
-    };
-  throw new Error("Unsupported extraction schema");
-}
-export const extractionSchema = jsonSchema(extractionValidator);
+export const extractionSchema = z.toJSONSchema(extractionValidator, {
+  target: "draft-7",
+  io: "input",
+});
 const normalized = (s: string) =>
   s.normalize("NFKC").replace(/\s+/g, " ").trim().toLocaleLowerCase();
 const unique = (values: string[]) => [

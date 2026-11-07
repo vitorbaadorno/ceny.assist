@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
-import { z } from "npm:zod@3.25.76";
+import { z } from "npm:zod@4.6.7";
 import type { Database } from "../_shared/database.ts";
 import { rankCandidates } from "../_shared/ranking.ts";
 import { processResume } from "../_shared/resumes.ts";

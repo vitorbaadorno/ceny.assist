@@ -1,3 +1,4 @@
+import { candidateStates, vacancyStates, processingStates } from "@/lib/workflow-states";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import type { BrowseFilters, BrowsePage } from "@/lib/company-browse";
@@ -87,26 +88,13 @@ export function CompanySearch({
               label="Situação geral anterior"
               value={filters.status ?? "todos"}
               onChange={(v) => set("status", v)}
-              options={[
-                ["todos", "Todas"],
-                ["novo", "Novo"],
-                ["em_analise", "Em análise"],
-                ["aprovado", "Aprovado"],
-                ["rejeitado", "Rejeitado"],
-                ["contratado", "Contratado"],
-              ]}
+              options={[["todos", "Todas"], ...Object.entries(candidateStates)]}
             />
             <FilterSelect
               label="Leitura"
               value={filters.processing ?? "todos"}
               onChange={(v) => set("processing", v)}
-              options={[
-                ["todos", "Todas"],
-                ["processando", "Em processamento"],
-                ["concluido", "Concluída"],
-                ["revisao_manual", "Revisão manual"],
-                ["erro", "Erro na leitura"],
-              ]}
+              options={[["todos", "Todas"], ...Object.entries(processingStates)]}
             />
             <FilterSelect
               label="Revisão humana"
@@ -137,11 +125,7 @@ export function CompanySearch({
               label="Situação"
               value={filters.status ?? "todas"}
               onChange={(v) => set("status", v)}
-              options={[
-                ["todas", "Todas"],
-                ["aberta", "Abertas"],
-                ["encerrada", "Encerradas"],
-              ]}
+              options={[["todas", "Todas"], ...Object.entries(vacancyStates)]}
             />
           </>
         )}

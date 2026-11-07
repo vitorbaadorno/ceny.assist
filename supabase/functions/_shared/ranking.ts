@@ -1,6 +1,6 @@
 import { assessApprenticeAge, ageReferenceDate } from "./age.ts";
 import { requireCompanyRole } from "./access.ts";
-import { scoreCandidate, type CandidateForScore } from "./scoring.ts";
+import { prepareAssessment, type CandidateForScore } from "./scoring.ts";
 import type { Json, WorkerContext } from "./context.ts";
 type Run = {
   id: string;
@@ -33,6 +33,11 @@ export async function rankCandidates(
   if (run.status === "completed")
     return { count: run.eligible, pending: run.total - run.eligible, runId: run.id };
   try {
+    const evaluate = prepareAssessment(run.job_snapshot);
+    const ageDate =
+      run.job_snapshot.categoria === "jovem_aprendiz"
+        ? ageReferenceDate(new Date(run.created_at))
+        : null;
     let cursor = "";
     for (;;) {
       let query = context.supabase
@@ -49,21 +54,15 @@ export async function rankCandidates(
       if (!page?.length) break;
       const rows = page.map((e) => {
         const c = e.snapshot as unknown as CandidateForScore & { dados_efetivos: Json };
-        const result = scoreCandidate(
-          { ...c, dados_extraidos: c.dados_efetivos },
-          run.job_snapshot,
-        );
+        const result = evaluate({ ...c, dados_extraidos: c.dados_efetivos });
         return {
           candidate_id: e.candidate_id,
           score: result.score,
           details: {
             ...result.details,
-            ...(run.job_snapshot.categoria === "jovem_aprendiz"
+            ...(ageDate
               ? {
-                  aprendizagem: assessApprenticeAge(
-                    c.data_nascimento,
-                    ageReferenceDate(new Date(run.created_at)),
-                  ),
+                  aprendizagem: assessApprenticeAge(c.data_nascimento, ageDate),
                 }
               : {}),
           },

@@ -71,7 +71,6 @@ export function CandidateFavorite({
   const query = useQuery({
     queryKey: ["candidate-favorites", companyId, candidateId],
     enabled: value === undefined,
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("candidate_favorites")
@@ -140,7 +139,6 @@ function CandidateNotesContent({
   const request = useRef<{ body: string; id: string } | null>(null);
   const notes = useQuery({
     queryKey: ["candidate-notes", companyId, candidateId, jobId, page],
-    refetchInterval: 5000,
     queryFn: async ({ signal }) => {
       let q = supabase
         .from("candidate_notes")
@@ -287,7 +285,6 @@ function CandidateJobDecisionContent({
   const conflict = version !== link.decision_version;
   const history = useQuery({
     queryKey: ["candidate-decisions", link.company_id, link.candidate_id, link.job_id, page],
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("candidate_decision_events")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { readCompanyPage } from "@/data/company-browse";
 import type { Tables } from "@/integrations/supabase/types";
 
 export type BrowseFilters = Partial<
@@ -58,7 +58,7 @@ export function useBrowse<T>(
     const timer = setTimeout(() => setDebounced(serialized), 250);
     return () => clearTimeout(timer);
   }, [serialized]);
-  const result = useQuery({
+  const result = useQuery<BrowsePage<T>>({
     queryKey: [
       key ?? (kind === "ranking" ? "ranking-entries" : kind),
       companyId,
@@ -70,18 +70,15 @@ export function useBrowse<T>(
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: "always",
-    refetchInterval: 5000,
+    refetchInterval: (q) =>
+      kind === "candidates" &&
+      q.state.data?.items.some(
+        (row) => (row as CandidateListItem).processing_status === "processando",
+      )
+        ? 5000
+        : false,
     queryFn: async ({ signal }) => {
-      const args = { p_company: companyId, p_filters: JSON.parse(debounced), p_page: page };
-      const request =
-        kind === "ranking"
-          ? supabase.rpc("browse_ranking", { ...args, p_run: runId! })
-          : kind === "jobs"
-            ? supabase.rpc("browse_jobs", args)
-            : supabase.rpc("browse_candidates", args);
-      const { data, error } = await request.abortSignal(signal);
-      if (error) throw error;
-      return data as unknown as BrowsePage<T>;
+      return readCompanyPage<T>(kind, companyId, JSON.parse(debounced), page, signal, runId);
     },
   });
   // Never display cached rows as the result of a different, not-yet-issued query.
@@ -101,6 +98,8 @@ export function refreshCompanyLists(cache: QueryClient, companyId: string) {
       "job-scores",
       "person-documents",
       "resume-documents",
+      "document-analysis",
+      "attempt-detail",
       "company-usage",
       "company-operations",
       "company-activity",

@@ -9,6 +9,7 @@ import type { Tables, Json } from "@/integrations/supabase/types";
 import {
   criterionLabels,
   normalizeCriteria,
+  readCriteria,
   suggestCriteria,
   validateJobPayload,
   type JobCriterion,
@@ -28,7 +29,7 @@ const fromJob = (job?: Tables<"jobs">): JobPayload =>
         titulo: job.titulo,
         descricao: job.descricao ?? "",
         categoria: job.categoria as JobPayload["categoria"],
-        criteria: job.criteria as unknown as JobCriterion[],
+        criteria: readCriteria(job.criteria) ?? [],
       }
     : blank;
 export function jobError(error: { code?: string; message?: string }) {
@@ -81,8 +82,13 @@ export function JobEditor({
     },
   });
   const templates = templatesQuery.data ?? [];
+  const incompatible = job && readCriteria(job.criteria) === null;
   const save = useMutation({
     mutationFn: async (approve: boolean) => {
+      if (incompatible && !form.criteria.length)
+        throw new Error(
+          "Consulte o histórico e informe os critérios antes de substituir os dados incompatíveis.",
+        );
       if (approve && !confirmed)
         throw new Error("Confirme a conferência da descrição e dos critérios.");
       const payload = validateJobPayload(form, approve);
@@ -164,6 +170,12 @@ export function JobEditor({
             </>
           )}
           <fieldset disabled={busy} className="space-y-5 disabled:opacity-70">
+            {incompatible && (
+              <p role="alert">
+                Os critérios armazenados são incompatíveis. Consulte o histórico da vaga antes de
+                substituí-los.
+              </p>
+            )}
             {changedElsewhere && (
               <div role="alert" className="rounded-lg border border-amber-400 p-3 text-sm">
                 Esta vaga mudou desde que você abriu a edição. Seu rascunho permanece aqui.
@@ -208,7 +220,12 @@ export function JobEditor({
                   onClick={() => {
                     const t = templates.find((item) => item.id === templateId);
                     if (t) {
-                      change(t.payload as unknown as JobPayload);
+                      try {
+                        change(validateJobPayload(t.payload as unknown as JobPayload));
+                      } catch {
+                        toast.error("Modelo com campos incompatíveis. O rascunho foi preservado.");
+                        return;
+                      }
                       setSuggestions([]);
                     }
                   }}
@@ -684,7 +701,7 @@ export function JobHistory({ companyId, jobId }: { companyId: string; jobId: str
 function renderCriteria(value: Json | undefined) {
   if (!Array.isArray(value)) return "—";
   return (
-    (value as unknown as JobCriterion[])
+    (readCriteria(value) ?? [])
       .map(
         (c) =>
           `${c.text}${c.kind === "experience" ? ` (${c.min_years} anos)` : ""} · ${c.required ? "obrigatório" : "diferencial"} · peso ${c.weight}${c.source ? ` · origem: ${c.source}` : ""}`,

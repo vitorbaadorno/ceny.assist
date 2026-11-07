@@ -1,3 +1,4 @@
+import { vacancyStates } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -91,7 +92,7 @@ function JobsPage() {
                 <p className="font-medium">{job.titulo}</p>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">
-                    {job.status === "aberta" ? "Aberta" : "Encerrada"}
+                    {vacancyStates[job.status] ?? "Situação a conferir"}
                   </Badge>
                   <Badge variant={job.approved_hash ? "secondary" : "outline"}>
                     {job.approved_hash ? "Critérios aprovados" : "Critérios a conferir"}

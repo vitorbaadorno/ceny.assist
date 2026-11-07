@@ -57,12 +57,16 @@ export type ReportAccess = {
   access_id: string;
   accessed_at: string;
 };
-export const reportDate = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "medium",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(value));
+export function reportDate(value: string) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "medium",
+        timeZone: "America/Sao_Paulo",
+      }).format(date)
+    : "Data não informada";
+}
 export const reportStates: Record<string, string> = {
   atendido: "Atendido",
   parcial: "Parcialmente comprovado",

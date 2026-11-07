@@ -1,4 +1,20 @@
+import { z } from "zod";
 import type { MatchDetails } from "@/lib/scoring";
+const scoreView = z.object({
+  pontuacao_antes_limite: z.number(),
+  criterios: z.array(
+    z.object({
+      text: z.string(),
+      estado: z.enum(["atendido", "parcial", "sem_informacao", "nao_atendido"]),
+      pontos: z.number(),
+      weight: z.number(),
+      motivo: z.string(),
+      evidencias: z.array(
+        z.object({ trecho: z.string(), origem: z.string(), pagina: z.number().nullish() }),
+      ),
+    }),
+  ),
+});
 export function ScoreExplanation({
   details,
   jobVersion,
@@ -6,6 +22,8 @@ export function ScoreExplanation({
   details: MatchDetails;
   jobVersion: number | null;
 }) {
+  if (!scoreView.safeParse(details).success)
+    return <p>Detalhamento indisponível para esta versão da avaliação.</p>;
   return (
     <>
       {details.criterios && (

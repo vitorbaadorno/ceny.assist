@@ -161,3 +161,18 @@ export function suggestCriteria(description: string): JobCriterion[] {
   }
   return suggestions;
 }
+
+// Preserve the stored snapshot. Editors and views can flag incompatible legacy data.
+export function readCriteria(value: unknown): JobCriterion[] | null {
+  try {
+    if (!Array.isArray(value) || value.length > 60) return null;
+    return value.map((row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row))
+        throw new Error("Critério inválido.");
+      // Early revisions omitted source. Keep order and duplicate entries in the historical snapshot.
+      return normalizeCriteria([{ source: null, ...row }])[0]!;
+    });
+  } catch {
+    return null;
+  }
+}

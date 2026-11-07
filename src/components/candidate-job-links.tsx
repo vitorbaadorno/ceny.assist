@@ -73,7 +73,6 @@ export function CandidateJobLinks({
   const [jobPage, setJobPage] = useState(0);
   const links = useQuery({
     queryKey: ["candidate-job-links", companyId, "person", candidateId, page, showInactive],
-    refetchInterval: 5000,
     queryFn: async () => {
       let q = supabase
         .from("candidate_job_links")
@@ -89,7 +88,6 @@ export function CandidateJobLinks({
   const jobs = useQuery({
     queryKey: ["linkable-jobs", companyId, jobPage],
     enabled: canEdit,
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("jobs")
@@ -218,7 +216,6 @@ export function JobTalentPool({
   const [poolPage, setPoolPage] = useState(0);
   const links = useQuery({
     queryKey: ["candidate-job-links", companyId, "job", jobId, page, selection],
-    refetchInterval: 5000,
     queryFn: async () => {
       let q = supabase
         .from("candidate_job_links")

@@ -1,4 +1,6 @@
-import { useRef } from "react";
+import { jobFields, readBatchHistory } from "@/data/resume-queue";
+import { jobLabels, phaseLabels, isActiveJob } from "@/lib/workflow-states";
+import { useRef, useState } from "react";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate, requireSavedId } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
@@ -10,7 +12,10 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Job = Tables<"resume_jobs">;
+type Job = Pick<
+  Tables<"resume_jobs">,
+  "state" | "phase" | "generation" | "attempts" | "available_at" | "message"
+>;
 // A retry after an uncertain network response carries the same command identifier.
 function useQueueCommand() {
   const keys = useRef(new Map<string, string>());
@@ -25,25 +30,6 @@ function useQueueCommand() {
     },
   };
 }
-export const jobLabels: Record<string, string> = {
-  queued: "Na fila",
-  running: "Em leitura",
-  retry_wait: "Aguardando nova tentativa",
-  succeeded: "Concluído",
-  review: "Revisão do RH necessária",
-  failed: "Tentativas esgotadas",
-  blocked: "Configuração necessária",
-  cancelled: "Cancelado",
-};
-const phaseLabels: Record<string, string> = {
-  downloading: "Obtendo original",
-  validating: "Conferindo documento",
-  reading: "Extraindo informações",
-  saving: "Salvando resultado",
-};
-export const isActiveJob = (job?: Job | null) =>
-  !!job && ["queued", "running", "retry_wait"].includes(job.state);
-
 export function JobProgress({ job }: { job: Job }) {
   return (
     <div className="space-y-1 text-sm" role="status">
@@ -87,7 +73,9 @@ export function CandidateQueue({
     queryFn: async () => {
       let q = supabase
         .from("resume_jobs")
-        .select("*,resume_job_attempts(*)")
+        .select(
+          `${jobFields},resume_job_attempts(attempt,started_at,outcome,message,model_reported,model_requested,duration_ms,input_tokens,output_tokens,total_tokens,prompt_version,prompt_hash)` as const,
+        )
         .eq("company_id", companyId)
         .eq("candidate_id", candidateId)
         .order("generation", { ascending: false })
@@ -97,7 +85,7 @@ export function CandidateQueue({
       if (error) throw error;
       return data;
     },
-    refetchInterval: 5000,
+    refetchInterval: (q) => (q.state.data?.some(isActiveJob) ? 5000 : false),
   });
   const job = query.data?.[0];
   const command = useQueueCommand();
@@ -199,8 +187,7 @@ export function CandidateQueue({
                     {a.message ? ` · ${a.message}` : ""}
                   </p>
                   <p>
-                    Modelo: {a.model_reported ?? a.model_requested ?? "Não registrado"} ·
-                    Duração:{" "}
+                    Modelo: {a.model_reported ?? a.model_requested ?? "Não registrado"} · Duração:{" "}
                     {a.duration_ms === null
                       ? "Não informada"
                       : `${(a.duration_ms / 1000).toFixed(1)} s`}
@@ -216,9 +203,12 @@ export function CandidateQueue({
                         Instruções usadas: {a.prompt_version}
                       </summary>
                       <p className="break-all">Identificador: {a.prompt_hash}</p>
-                      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">
-                        {a.prompt_snapshot}
-                      </pre>
+                      <AttemptDetail
+                        companyId={companyId}
+                        jobId={job.id}
+                        attempt={a.attempt}
+                        field="prompt_snapshot"
+                      />
                     </details>
                   )}
                 </div>
@@ -243,9 +233,12 @@ export function CandidateQueue({
                       Duração: {a.duration_ms ?? "Não informada"} ms · Consumo:{" "}
                       {a.total_tokens ?? "Não informado"} tokens
                     </p>
-                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
-                      {JSON.stringify(a.extraction, null, 2)}
-                    </pre>
+                    <AttemptDetail
+                      companyId={companyId}
+                      jobId={previous.id}
+                      attempt={a.attempt}
+                      field="extraction"
+                    />
                   </details>
                 ))}
               </div>
@@ -264,37 +257,11 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
   const client = useQueryClient();
   const query = useQuery({
     queryKey: ["resume-batches", companyId],
-    queryFn: async () => {
-      const batches = await supabase
-        .from("resume_batches")
-        .select("*,resume_batch_entries(*),resume_batch_items(*)")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (batches.error) throw batches.error;
-      const ids = [
-        ...new Set(batches.data.flatMap((b) => b.resume_batch_items.map((i) => i.document_id))),
-      ];
-      const jobs = ids.length
-        ? await supabase
-            .from("resume_jobs")
-            .select("*")
-            .eq("company_id", companyId)
-            .in("document_id", ids)
-            .order("generation", { ascending: false })
-        : { data: [], error: null };
-      if (jobs.error) throw jobs.error;
-      return batches.data.map((b) => ({
-        ...b,
-        entries: b.resume_batch_entries
-          .sort((a, c) => a.slot - c.slot)
-          .map((entry) => {
-            const doc = b.resume_batch_items.find((i) => i.slot === entry.slot);
-            return { ...entry, job: jobs.data?.find((j) => j.document_id === doc?.document_id) };
-          }),
-      }));
-    },
-    refetchInterval: 5000,
+    queryFn: () => readBatchHistory(companyId),
+    refetchInterval: (q) =>
+      q.state.data?.some((b) => b.entries.some((e) => e.state === "waiting" || isActiveJob(e.job)))
+        ? 5000
+        : false,
   });
   const command = useQueueCommand();
   const action = useMutation({
@@ -313,9 +280,7 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
     },
     onSuccess: () => refreshCompanyLists(client, companyId),
     onError: (error) =>
-      toast.error(
-        errorFeedback(error, "Não foi possível confirmar a alteração do lote.").message,
-      ),
+      toast.error(errorFeedback(error, "Não foi possível confirmar a alteração do lote.").message),
   });
   const entryLabels: Record<string, string> = {
     waiting: "Aguardando recebimento",
@@ -331,9 +296,8 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm text-muted-foreground">
-          Últimos 20 lotes. Atualização a cada 5 segundos. Falhas de leitura podem ser repetidas
-          sem enviar o arquivo novamente; arquivos não recebidos precisam ser selecionados
-          novamente.
+          Últimos 20 lotes. Atualização a cada 5 segundos. Falhas de leitura podem ser repetidas sem
+          enviar o arquivo novamente; arquivos não recebidos precisam ser selecionados novamente.
         </p>
         {query.isError && (
           <QueryError
@@ -429,5 +393,49 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
         })}
       </CardContent>
     </Card>
+  );
+}
+
+function AttemptDetail({
+  companyId,
+  jobId,
+  attempt,
+  field,
+}: {
+  companyId: string;
+  jobId: string;
+  attempt: number;
+  field: "prompt_snapshot" | "extraction";
+}) {
+  const [open, setOpen] = useState(false);
+  const detail = useQuery({
+    queryKey: ["attempt-detail", companyId, jobId, attempt, field],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resume_job_attempts")
+        .select(field)
+        .eq("job_id", jobId)
+        .eq("attempt", attempt)
+        .single();
+      if (error) throw error;
+      const value = (data as Record<string, unknown>)[field];
+      return typeof value === "string" ? value : JSON.stringify(value ?? null, null, 2);
+    },
+  });
+  return (
+    <>
+      {!open ? (
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          Mostrar conteúdo registrado
+        </Button>
+      ) : detail.error ? (
+        <QueryError error={detail.error} retry={detail.refetch} />
+      ) : (
+        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">
+          {detail.data ?? "Consultando conteúdo…"}
+        </pre>
+      )}
+    </>
   );
 }

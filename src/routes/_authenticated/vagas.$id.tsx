@@ -1,3 +1,5 @@
+import { readCriteria } from "../../../supabase/functions/_shared/job-criteria";
+import { vacancyStates } from "@/lib/workflow-states";
 import { QueryError, LoadingState } from "@/components/query-feedback";
 import { errorFeedback } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
@@ -75,7 +77,6 @@ function JobDetailContent() {
 
   const query = useQuery({
     queryKey: ["job", companyId, id],
-    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("jobs")
@@ -277,9 +278,7 @@ function JobDetailContent() {
               : "Vaga regular"}
           </p>
           <p>
-            <Badge variant="outline">
-              {job?.status === "aberta" ? "Vaga aberta" : "Vaga encerrada"}
-            </Badge>{" "}
+            <Badge variant="outline">{vacancyStates[job.status] ?? "Situação a conferir"}</Badge>{" "}
             <Badge variant={job?.approved_hash ? "secondary" : "outline"}>
               {job?.approved_hash ? "Critérios aprovados" : "Aguardando aprovação do RH"}
             </Badge>
@@ -292,7 +291,12 @@ function JobDetailContent() {
                 : "Descrição e critérios conferidos pelo RH."}
           </p>
           <p>{JOB_RULE}</p>
-          {((job?.criteria ?? []) as unknown as JobCriterion[]).map((c, i) => (
+          {readCriteria(job?.criteria) === null && (
+            <p role="alert">
+              Critérios incompatíveis. Confira o histórico antes de substituir os critérios.
+            </p>
+          )}
+          {(readCriteria(job?.criteria) ?? []).map((c, i) => (
             <p key={i}>
               <strong>{c.required ? "Obrigatório" : "Diferencial desejável"}</strong> ·{" "}
               {criterionLabels[c.kind]}: {c.text}

@@ -190,7 +190,7 @@ export function RankingHistory({
   const [pendingPage, setPendingPage] = useState(0);
   const runs = useQuery({
     queryKey: ["ranking-runs", companyId, job.id, historyPage],
-    refetchInterval: 5000,
+    refetchInterval: (q) => (q.state.data?.some((r) => r.status === "processing") ? 5000 : false),
     queryFn: async () => {
       const r = await supabase
         .from("ranking_runs")
@@ -206,7 +206,6 @@ export function RankingHistory({
   });
   const latest = useQuery({
     queryKey: ["ranking-current", companyId, job.id, selected?.id],
-    refetchInterval: 5000,
     queryFn: async () => {
       let q = supabase
         .from("ranking_runs")
@@ -228,7 +227,6 @@ export function RankingHistory({
   const entries = useBrowse<Entry>("ranking", companyId, filters, entryPage, run?.id);
   const pending = useQuery({
     queryKey: ["ranking-pending", companyId, pendingPage],
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("candidates")

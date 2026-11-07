@@ -1,3 +1,4 @@
+import { processingStates } from "./workflow-states.ts";
 export type ErrorKind =
   "session" | "permission" | "missing" | "connection" | "conflict" | "limit" | "unknown";
 export function errorFeedback(error: unknown, fallback = "Não foi possível concluir a operação.") {
@@ -9,6 +10,13 @@ export function errorFeedback(error: unknown, fallback = "Não foi possível con
     name?: string;
     message?: string;
   };
+  if (value.code === "INVALID_RESPONSE")
+    return {
+      kind: "unknown" as const,
+      message:
+        "O serviço retornou dados incompatíveis. Atualize a consulta ou consulte o responsável pela empresa.",
+      retryable: true,
+    };
   const rawStatus = value.status ?? value.statusCode ?? value.context?.status;
   const status = rawStatus === undefined ? undefined : Number(rawStatus);
   const message = value.message ?? "";
@@ -77,13 +85,13 @@ export const retryQuery = (failures: number, error: unknown) =>
 export function processingLabel(status: string | null | undefined) {
   switch (status) {
     case "processando":
-      return { label: "Processando", variant: "secondary" as const };
+      return { label: processingStates.processando, variant: "secondary" as const };
     case "revisao_manual":
-      return { label: "Revisão manual", variant: "outline" as const };
+      return { label: processingStates.revisao_manual, variant: "outline" as const };
     case "erro":
-      return { label: "Erro na leitura", variant: "destructive" as const };
+      return { label: processingStates.erro, variant: "destructive" as const };
     case "concluido":
-      return { label: "Dados extraídos", variant: "default" as const };
+      return { label: processingStates.concluido, variant: "default" as const };
     default:
       return { label: "Situação da leitura não confirmada", variant: "outline" as const };
   }

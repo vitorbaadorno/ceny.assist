@@ -1,3 +1,4 @@
+import { documentInProgress } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate } from "@/lib/ui-feedback";
 import { useEffect, useState } from "react";
@@ -33,11 +34,13 @@ function CandidateDocumentsContent({
   const [expanded, setExpanded] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["person-documents", candidate.company_id, candidate.id, page],
-    refetchInterval: 5000,
+    refetchInterval: (q) => (q.state.data?.some(documentInProgress) ? 5000 : false),
     queryFn: async () => {
       const r = await supabase
         .from("resume_documents")
-        .select("*")
+        .select(
+          "id,version,filename,state,error_message,created_at,stored_at,source,uploaded_by,byte_size,page_count,sha256",
+        )
         .eq("company_id", candidate.company_id)
         .eq("candidate_id", candidate.id)
         .order("version", { ascending: false })
@@ -202,7 +205,11 @@ function CandidateDocumentsContent({
                   canEdit={canEdit}
                   showHistory
                 />
-                <CandidateAnalysis value={d.latest_extraction} />
+                <DocumentAnalysis
+                  companyId={candidate.company_id}
+                  documentId={d.id}
+                  state={d.state}
+                />
                 <details className="text-xs">
                   <summary>Identificação do conteúdo</summary>
                   <p className="break-all">SHA-256: {d.sha256}</p>
@@ -239,4 +246,31 @@ export function CandidateDocuments(props: Parameters<typeof CandidateDocumentsCo
       {...props}
     />
   );
+}
+
+function DocumentAnalysis({
+  companyId,
+  documentId,
+  state,
+}: {
+  companyId: string;
+  documentId: string;
+  state: string;
+}) {
+  const query = useQuery({
+    queryKey: ["document-analysis", companyId, documentId, state],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("resume_documents")
+        .select("latest_extraction")
+        .eq("company_id", companyId)
+        .eq("id", documentId)
+        .single();
+      if (error) throw error;
+      return data.latest_extraction;
+    },
+  });
+  if (query.error) return <QueryError error={query.error} retry={query.refetch} />;
+  if (query.isPending) return <p role="status">Consultando leitura…</p>;
+  return <CandidateAnalysis value={query.data} />;
 }

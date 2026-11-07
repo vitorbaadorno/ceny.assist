@@ -58,7 +58,6 @@ function CandidateDetailContent() {
   const archive = useServerFn(archiveCandidate);
   const query = useQuery({
     queryKey: ["candidate", companyId, id],
-    refetchInterval: 5000,
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("candidates")
@@ -70,6 +69,7 @@ function CandidateDetailContent() {
       if (error) throw error;
       return data;
     },
+    refetchInterval: (q) => (q.state.data?.processing_status === "processando" ? 5000 : false),
   });
   const remove = useMutation({
     mutationFn: async () => {

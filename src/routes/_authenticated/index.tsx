@@ -1,3 +1,4 @@
+import { candidateStates } from "@/lib/workflow-states";
 import { processingLabel } from "@/lib/ui-feedback";
 import { QueryError } from "@/components/query-feedback";
 import { CandidateFavorite } from "@/components/candidate-collaboration";
@@ -31,14 +32,6 @@ export const Route = createFileRoute("/_authenticated/")({
   }),
   component: CandidatesPage,
 });
-
-export const STATUS_FUNIL = [
-  { value: "novo", label: "Novo" },
-  { value: "em_analise", label: "Em análise" },
-  { value: "aprovado", label: "Aprovado" },
-  { value: "rejeitado", label: "Rejeitado" },
-  { value: "contratado", label: "Contratado" },
-];
 
 export { processingLabel } from "@/lib/ui-feedback";
 
@@ -126,7 +119,7 @@ function CandidatesPage() {
                       </Badge>
                       <Badge variant="secondary">
                         Geral (anterior):{" "}
-                        {STATUS_FUNIL.find((s) => s.value === candidate.status)?.label ??
+                        {candidateStates[candidate.status as keyof typeof candidateStates] ??
                           candidate.status}
                       </Badge>
                     </div>

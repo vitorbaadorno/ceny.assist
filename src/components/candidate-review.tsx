@@ -82,7 +82,6 @@ function CandidateReviewContent({
   const corrections = (candidate.correcoes_rh ?? {}) as Record<string, unknown>;
   const history = useQuery({
     queryKey: ["candidate-revisions", candidate.company_id, candidate.id, limit],
-    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidate_revisions")
@@ -97,7 +96,6 @@ function CandidateReviewContent({
   });
   const scores = useQuery({
     queryKey: ["candidate-scores", candidate.company_id, candidate.id],
-    refetchInterval: 5000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("candidate_scores")

@@ -725,6 +725,7 @@ export type Database = {
         Row: {
           action: string;
           actor_id: string | null;
+          source_document_id: string | null;
           actor_name: string | null;
           candidate_id: string;
           changes: Json;
@@ -736,6 +737,7 @@ export type Database = {
         Insert: {
           action: string;
           actor_id?: string | null;
+          source_document_id?: string | null;
           actor_name?: string | null;
           candidate_id: string;
           changes: Json;
@@ -747,6 +749,7 @@ export type Database = {
         Update: {
           action?: string;
           actor_id?: string | null;
+          source_document_id?: string | null;
           actor_name?: string | null;
           candidate_id?: string;
           changes?: Json;
@@ -1744,6 +1747,25 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      batch_current_jobs: {
+        Args: { p_company: string; p_documents: string[] };
+        Returns: {
+          id: string;
+          document_id: string;
+          candidate_id: string;
+          state: string;
+          phase: string;
+          generation: number;
+          attempts: number;
+          available_at: string;
+          message: string | null;
+          created_at: string;
+        }[];
+      };
+      browse_job_cards: {
+        Args: { p_company: string; p_filters?: Json; p_page?: number };
+        Returns: Json;
+      };
       ops_control_queue: {
         Args: {
           p_company: string;

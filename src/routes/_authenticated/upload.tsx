@@ -1,3 +1,4 @@
+import { documentInProgress } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
@@ -93,14 +94,14 @@ function UploadContent() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("resume_documents")
-        .select("*")
+        .select("id,candidate_id,filename,state,source,created_at,uploaded_by,error_message")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
       return data;
     },
-    refetchInterval: 5000,
+    refetchInterval: (q) => (q.state.data?.some(documentInProgress) ? 5000 : false),
   });
   useEffect(() => {
     if (!history.data) return;

@@ -6,7 +6,7 @@
     "npm:pdf-lib@1.17.1": "1.17.1",
     "npm:pngjs@7.0.0": "7.0.0",
     "npm:saxes@6.0.0": "6.0.0",
-    "npm:zod@3.25.76": "3.25.76"
+    "npm:zod@4.6.7": "4.6.7"
   },
   "npm": {
     "@pdf-lib/standard-fonts@1.0.0": {
@@ -102,8 +102,8 @@
     "xmlchars@2.2.0": {
       "integrity": "sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw=="
     },
-    "zod@3.25.76": {
-      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
+    "zod@4.6.7": {
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg=="
     }
   },
   "workspace": {
@@ -112,7 +112,7 @@
       "npm:pdf-lib@1.17.1",
       "npm:pngjs@7.0.0",
       "npm:saxes@6.0.0",
-      "npm:zod@3.25.76"
+      "npm:zod@4.6.7"
     ]
   }
 }

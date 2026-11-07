@@ -105,7 +105,6 @@ function CaseForm({
   const key = ["apprentice-reviews", companyId, runId, candidateId];
   const history = useQuery({
     queryKey: [...key, page],
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("apprentice_case_reviews")
@@ -122,7 +121,6 @@ function CaseForm({
   // Latest version is queried independently of the history page.
   const latest = useQuery({
     queryKey: [...key, "latest"],
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase
         .from("apprentice_case_reviews")

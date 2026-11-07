@@ -1,3 +1,4 @@
+import { readCriteria } from "../../supabase/functions/_shared/job-criteria";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +24,6 @@ export function CandidateComparison({
   const result = useQuery({
     queryKey: ["candidate-comparison", companyId, jobId, ids],
     enabled: ids.length >= 2,
-    refetchInterval: 5000,
     queryFn: async ({ signal }) => {
       const r = await supabase
         .rpc("compare_job_candidates", { p_company: companyId, p_job: jobId, p_candidates: ids })
@@ -33,9 +33,12 @@ export function CandidateComparison({
     },
   });
   const data = result.data;
-  const criteria = ((data?.run?.job_snapshot as unknown as Tables<"jobs"> | null)?.criteria ??
-    data?.job.criteria ??
-    []) as unknown as JobCriterion[];
+  const criteria =
+    readCriteria(
+      (data?.run?.job_snapshot as unknown as Tables<"jobs"> | null)?.criteria ??
+        data?.job.criteria ??
+        [],
+    ) ?? [];
   return (
     <section className="space-y-3 rounded-lg border p-4">
       <h3 className="font-semibold">Comparar candidatos lado a lado ({ids.length}/4)</h3>

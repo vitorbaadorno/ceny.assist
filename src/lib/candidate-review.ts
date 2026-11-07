@@ -60,17 +60,31 @@ export function reviewData(candidate: {
   observacoes: string | null;
 }): ReviewData {
   const d = (candidate.dados_efetivos ?? {}) as Partial<ReviewData>;
+  const strings = (list: unknown): string[] =>
+    Array.isArray(list) ? list.filter((v): v is string => typeof v === "string") : [];
+  const entries = (list: unknown): ReviewEntry[] =>
+    Array.isArray(list)
+      ? (list
+          .filter((v) => v && typeof v === "object" && !Array.isArray(v))
+          .map((v) =>
+            Object.fromEntries(
+              Object.entries(v).filter(
+                ([, x]) => x === null || typeof x === "string" || typeof x === "boolean",
+              ),
+            ),
+          ) as ReviewEntry[])
+      : [];
   return {
     nome_completo: candidate.nome,
     email: candidate.email,
     telefone: candidate.telefone,
     localizacao: candidate.localizacao,
     data_nascimento: candidate.data_nascimento,
-    formacao_academica: d.formacao_academica ?? [],
-    experiencias: d.experiencias ?? [],
-    skills: candidate.skills ?? [],
-    idiomas: d.idiomas ?? [],
-    certificacoes: d.certificacoes ?? [],
+    formacao_academica: entries(d.formacao_academica),
+    experiencias: entries(d.experiencias),
+    skills: strings(candidate.skills),
+    idiomas: strings(d.idiomas),
+    certificacoes: strings(d.certificacoes),
     anos_experiencia_total: candidate.anos_experiencia,
     status: candidate.status,
     observacoes: candidate.observacoes,

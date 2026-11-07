@@ -1,37 +1,7 @@
+import { analysisView } from "@/lib/analysis-view";
 import type { Json } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-type Analysis = {
-  schema_version?: string;
-  resumo_profissional?: {
-    titulo: string | null;
-    sintese: string | null;
-    areas: string[];
-    senioridade: string | null;
-  };
-  projetos?: Array<{
-    nome: string | null;
-    descricao: string | null;
-    tecnologias: string[];
-    url: string | null;
-    periodo: string | null;
-  }>;
-  evidencias?: Array<{
-    campo: string;
-    trecho: string;
-    pagina: number | null;
-    paragrafo: number | null;
-    tipo: string;
-    confianca: number;
-    verificacao: string;
-  }>;
-  experiencia_calculada?: {
-    meses_confirmados: number | null;
-    completa: boolean;
-    referencia: string;
-  };
-  controle_qualidade?: { cobertura_evidencias: number; motivos_revisao: string[] };
-};
 const fieldName = (field: string) =>
   field
     .replaceAll("nome_completo", "Nome")
@@ -42,14 +12,26 @@ const fieldName = (field: string) =>
     .replaceAll("skills", "Competências")
     .replaceAll("_", " ");
 export function CandidateAnalysis({ value }: { value: Json }) {
-  const data = value as Analysis;
-  if (data?.schema_version !== "2")
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    value["schema_version"] !== "2"
+  )
     return (
       <p className="text-xs text-muted-foreground">
         Esta leitura é anterior à conferência por evidências. Reprocesse o original para obter o
         novo relatório.
       </p>
     );
+  const parsed = analysisView.safeParse(value);
+  if (!parsed.success)
+    return (
+      <p role="alert">
+        A leitura contém campos incompatíveis. Confira o original ou solicite uma nova análise.
+      </p>
+    );
+  const data = parsed.data;
   const summary = data.resumo_profissional;
   return (
     <div className="space-y-4">

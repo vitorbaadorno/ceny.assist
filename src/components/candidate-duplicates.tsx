@@ -27,7 +27,6 @@ export function CandidateDuplicates({
   const [reason, setReason] = useState("");
   const query = useQuery({
     queryKey: ["candidate-duplicates", candidate.company_id, candidate.id, candidate.data_version],
-    refetchInterval: 5000,
     queryFn: async () => {
       const r = await supabase.rpc("suggest_candidate_duplicates", {
         p_company: candidate.company_id,
