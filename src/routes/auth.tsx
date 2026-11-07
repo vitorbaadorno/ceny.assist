@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import { ShieldCheck } from "lucide-react";
 import { PASSWORD_HELP, PASSWORD_MIN_LENGTH, passwordError } from "@/lib/auth-security";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: z.object({ reauth: z.literal("entrar").optional().catch(undefined) }),
   head: () => ({
     meta: [
       { title: "Entrar | Triagem de Currículos" },
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const { reauth } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup" | "recovery" | "confirm">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,9 +46,9 @@ function AuthPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && session && !authError)
+    if (!loading && session && !authError && (!reauth || recoverySession))
       navigate({ to: recoverySession ? "/reset-password" : "/" });
-  }, [loading, session, navigate, authError, recoverySession]);
+  }, [loading, session, navigate, authError, recoverySession, reauth]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -134,6 +137,11 @@ function AuthPage() {
             {authError && (
               <p role="alert" className="text-sm text-destructive">
                 {authError}
+              </p>
+            )}
+            {reauth && (
+              <p role="status" className="text-sm">
+                Entre novamente para renovar seu acesso.
               </p>
             )}
             <form className="space-y-4" onSubmit={handleSubmit}>

@@ -11,6 +11,7 @@ test("errors expose alert semantics, session action and a bounded retry control"
   const session = renderToStaticMarkup(<QueryError error={{ status: 401 }} retry={() => {}} />);
   expect(session).toContain('role="alert"');
   expect(session).toContain("Entrar novamente");
+  expect(session).toContain("/auth?reauth=entrar");
   expect(session).not.toContain("Tentar novamente");
   const denied = renderToStaticMarkup(<QueryError error={{ code: "42501" }} retry={() => {}} />);
   expect(denied).toContain("não tem permissão");

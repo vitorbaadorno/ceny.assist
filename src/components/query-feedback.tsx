@@ -17,7 +17,7 @@ export function QueryError({
     <div role="alert" className="space-y-2 rounded border p-3 text-sm">
       <p>{feedback.message}</p>
       {feedback.kind === "session" ? (
-        <a className="underline" href="/auth">
+        <a className="underline" href="/auth?reauth=entrar">
           Entrar novamente
         </a>
       ) : feedback.retryable && retry ? (
