@@ -1744,6 +1744,16 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      ops_control_queue: {
+        Args: {
+          p_company: string;
+          p_request: string;
+          p_job: string | null;
+          p_batch: string | null;
+          p_action: string;
+        };
+        Returns: Json;
+      };
       ops_dashboard: {
         Args: { p_company: string; p_month: string; p_page: number };
         Returns: Json;

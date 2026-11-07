@@ -291,12 +291,41 @@ begin
  into r from private.ops_policy p where p.company_id=p_company;
  return r;
 end$$;
+-- Batch controls can create several generations. Persist a receipt in the same transaction.
+create table private.ops_queue_requests(
+ company_id uuid not null references public.companies on delete cascade,request_id uuid not null,
+ job_id uuid references public.resume_jobs on delete cascade,batch_id uuid references public.resume_batches on delete cascade,
+ action text not null,result jsonb not null,primary key(company_id,request_id),
+ check(num_nonnulls(job_id,batch_id)=1));
+create index ops_queue_requests_job on private.ops_queue_requests(job_id) where job_id is not null;
+create index ops_queue_requests_batch on private.ops_queue_requests(batch_id) where batch_id is not null;
+alter table private.ops_queue_requests enable row level security;
+revoke all on private.ops_queue_requests from public,anon,authenticated,service_role;
+create function private.ops_control_queue(p_company uuid,p_request uuid,p_job uuid,p_batch uuid,p_action text) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare prev private.ops_queue_requests; result jsonb;
+begin
+ if not private.has_role(p_company,array['owner','admin','recruiter']) then raise exception 'Sem permissão.' using errcode='42501';end if;
+ if num_nonnulls(p_job,p_batch)<>1 or p_request is null or p_action is null or p_action not in('cancel','retry') then raise exception 'Solicitação inválida.' using errcode='22023';end if;
+ perform 1 from public.companies where id=p_company for update;
+ if not private.has_role(p_company,array['owner','admin','recruiter']) then raise exception 'Sem permissão.' using errcode='42501';end if;
+ select * into prev from private.ops_queue_requests where company_id=p_company and request_id=p_request;
+ if found then
+   if prev.job_id is distinct from p_job or prev.batch_id is distinct from p_batch or prev.action<>p_action then raise exception 'Solicitação já utilizada.' using errcode='22023';end if;
+   return prev.result;
+ end if;
+ if p_batch is null then result:=to_jsonb(private.control_resume_job(p_company,p_job,p_action));
+ else result:=to_jsonb(private.control_resume_batch(p_company,p_batch,p_action));end if;
+ insert into private.ops_queue_requests values(p_company,p_request,p_job,p_batch,p_action,result);
+ perform private.ops_event(p_company,auth.uid(),'activity','queue_'||p_action,p_request,'database');
+ return result;
+end$$;
 -- Expose only typed invoker stubs; privileged routines and the underlying ledger stay private.
 do $$declare f record;begin
  for f in select p.proname,pg_get_function_arguments(p.oid) args,pg_get_function_identity_arguments(p.oid) identity_args,pg_get_function_result(p.oid) result,p.pronargs
  from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='private' and p.proname like 'ops\_%' escape '\' loop
  execute format('revoke all on function private.%I(%s) from public,anon,authenticated,service_role',f.proname,f.identity_args);
- if f.proname in ('ops_dashboard','ops_history','ops_configure','ops_reconcile','ops_report_error','ops_quota_status') then
+ if f.proname in ('ops_dashboard','ops_history','ops_configure','ops_reconcile','ops_report_error','ops_quota_status','ops_control_queue') then
  execute format('create function public.%I(%s) returns %s language sql security invoker set search_path='''' as %L',f.proname,f.args,f.result,
  format('select private.%I(%s)',f.proname,(select string_agg('$'||i,',' order by i) from generate_series(1,f.pronargs) i)));
  execute format('revoke all on function public.%I(%s) from public,anon,authenticated,service_role',f.proname,f.identity_args);

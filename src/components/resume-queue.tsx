@@ -11,20 +11,34 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Job = Tables<"resume_jobs">;
+// A retry after an uncertain network response carries the same command identifier.
+function useQueueCommand() {
+  const keys = useRef(new Map<string, string>());
+  return {
+    start(scope: string) {
+      const key = keys.current.get(scope) ?? crypto.randomUUID();
+      keys.current.set(scope, key);
+      return key;
+    },
+    finish(scope: string) {
+      keys.current.delete(scope);
+    },
+  };
+}
 export const jobLabels: Record<string, string> = {
   queued: "Na fila",
   running: "Em leitura",
   retry_wait: "Aguardando nova tentativa",
-  succeeded: "Concluído",
-  review: "Revisão do RH necessária",
+  succeeded: "ConcluÃ­do",
+  review: "RevisÃ£o do RH necessÃ¡ria",
   failed: "Tentativas esgotadas",
-  blocked: "Configuração necessária",
+  blocked: "ConfiguraÃ§Ã£o necessÃ¡ria",
   cancelled: "Cancelado",
 };
 const phaseLabels: Record<string, string> = {
   downloading: "Obtendo original",
   validating: "Conferindo documento",
-  reading: "Extraindo informações",
+  reading: "Extraindo informaÃ§Ãµes",
   saving: "Salvando resultado",
 };
 export const isActiveJob = (job?: Job | null) =>
@@ -34,18 +48,18 @@ export function JobProgress({ job }: { job: Job }) {
   return (
     <div className="space-y-1 text-sm" role="status">
       <p className="font-medium">
-        {jobLabels[job.state] ?? "Situação da leitura não confirmada"}
-        {job.state === "running" ? ` · ${phaseLabels[job.phase] ?? "Processando"}` : ""}
+        {jobLabels[job.state] ?? "SituaÃ§Ã£o da leitura nÃ£o confirmada"}
+        {job.state === "running" ? ` Â· ${phaseLabels[job.phase] ?? "Processando"}` : ""}
       </p>
       <p>
-        Leitura {job.generation} · Tentativa {job.attempts} de 3
+        Leitura {job.generation} Â· Tentativa {job.attempts} de 3
       </p>
       {job.state === "retry_wait" && (
         <p>Nova tentativa a partir de {displayDate(job.available_at)}.</p>
       )}
       {job.message && <p>{job.message}</p>}
       {job.state === "blocked" && (
-        <p>O administrador precisa corrigir a configuração antes de repetir.</p>
+        <p>O administrador precisa corrigir a configuraÃ§Ã£o antes de repetir.</p>
       )}
       {job.state === "review" && (
         <p>Confira e corrija os dados do candidato antes de solicitar outra leitura.</p>
@@ -86,38 +100,40 @@ export function CandidateQueue({
     refetchInterval: 5000,
   });
   const job = query.data?.[0];
-  const pending = useRef<{ document: string; id: string } | null>(null);
+  const command = useQueueCommand();
   const action = useMutation({
     mutationFn: async (mode: "retry" | "cancel" | "reprocess") => {
       const document = documentId ?? job!.document_id;
-      if (mode === "reprocess" && pending.current?.document !== document)
-        pending.current = { document, id: crypto.randomUUID() };
+      const scope = [companyId, mode, mode === "reprocess" ? document : job!.id].join("/");
+      const request = command.start(scope);
       const response =
         mode === "reprocess"
           ? await supabase.rpc("request_document_analysis", {
               p_company: companyId,
               p_document: documentId ?? job!.document_id,
-              p_request: pending.current!.id,
+              p_request: request,
             })
-          : await supabase.rpc("control_resume_job", {
+          : await supabase.rpc("ops_control_queue", {
+              p_request: request,
+              p_batch: null,
               p_company: companyId,
               p_job: job!.id,
               p_action: mode,
             });
       if (response.error) throw response.error;
       requireSavedId(response.data);
-      if (mode === "reprocess") pending.current = null;
+      command.finish(scope);
       return mode;
     },
     onSuccess: async (mode) => {
       await refreshCompanyLists(client, companyId);
-      toast.info(mode === "cancel" ? "Leitura cancelada." : "Leitura adicionada à fila.");
+      toast.info(mode === "cancel" ? "Leitura cancelada." : "Leitura adicionada Ã  fila.");
     },
     onError: (error) =>
       toast.error(
         errorFeedback(
           error,
-          "Não foi possível confirmar a alteração. Confira a fila antes de repetir.",
+          "NÃ£o foi possÃ­vel confirmar a alteraÃ§Ã£o. Confira a fila antes de repetir.",
         ).message,
       ),
   });
@@ -127,19 +143,19 @@ export function CandidateQueue({
         error={query.error}
         retry={() => query.refetch()}
         busy={query.isFetching}
-        fallback="Não foi possível consultar a fila de leitura."
+        fallback="NÃ£o foi possÃ­vel consultar a fila de leitura."
       />
     );
   if (!job) return null;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Leitura do currículo</CardTitle>
+        <CardTitle>Leitura do currÃ­culo</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <JobProgress job={job} />
         <p className="text-xs text-muted-foreground">
-          A leitura continua ao sair desta página. Até 2 documentos simultâneos por empresa e 2
+          A leitura continua ao sair desta pÃ¡gina. AtÃ© 2 documentos simultÃ¢neos por empresa e 2
           minutos por tentativa.
         </p>
         {canEdit && (
@@ -164,7 +180,7 @@ export function CandidateQueue({
                 disabled={action.isPending}
                 onClick={() => action.mutate("reprocess")}
               >
-                Reprocessar currículo
+                Reprocessar currÃ­culo
               </Button>
             )}
           </div>
@@ -177,26 +193,27 @@ export function CandidateQueue({
               .map((a) => (
                 <div className="mt-2 space-y-1 text-xs" key={a.attempt}>
                   <p>
-                    Tentativa {a.attempt} · {displayDate(a.started_at)} ·{" "}
+                    Tentativa {a.attempt} Â· {displayDate(a.started_at)} Â·{" "}
                     {jobLabels[a.outcome] ??
                       (a.outcome === "interrupted" ? "Interrompida pelo sistema" : a.outcome)}
-                    {a.message ? ` · ${a.message}` : ""}
+                    {a.message ? ` Â· ${a.message}` : ""}
                   </p>
                   <p>
-                    Modelo: {a.model_reported ?? a.model_requested ?? "Não registrado"} · Duração:{" "}
+                    Modelo: {a.model_reported ?? a.model_requested ?? "NÃ£o registrado"} Â·
+                    DuraÃ§Ã£o:{" "}
                     {a.duration_ms === null
-                      ? "Não informada"
+                      ? "NÃ£o informada"
                       : `${(a.duration_ms / 1000).toFixed(1)} s`}
                   </p>
                   <p>
-                    Consumo informado pelo provedor: {a.input_tokens ?? "Não informado"} tokens de
-                    entrada · {a.output_tokens ?? "Não informado"} de saída ·{" "}
-                    {a.total_tokens ?? "Não informado"} no total.
+                    Consumo informado pelo provedor: {a.input_tokens ?? "NÃ£o informado"} tokens de
+                    entrada Â· {a.output_tokens ?? "NÃ£o informado"} de saÃ­da Â·{" "}
+                    {a.total_tokens ?? "NÃ£o informado"} no total.
                   </p>
                   {a.prompt_version && (
                     <details>
                       <summary className="cursor-pointer">
-                        Instruções usadas: {a.prompt_version}
+                        InstruÃ§Ãµes usadas: {a.prompt_version}
                       </summary>
                       <p className="break-all">Identificador: {a.prompt_hash}</p>
                       <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words">
@@ -218,13 +235,13 @@ export function CandidateQueue({
                 {previous.resume_job_attempts.map((a) => (
                   <details key={a.attempt}>
                     <summary>
-                      Tentativa {a.attempt} ·{" "}
-                      {a.model_reported ?? a.model_requested ?? "Modelo não registrado"} ·{" "}
-                      {a.prompt_version ?? "Instruções não registradas"}
+                      Tentativa {a.attempt} Â·{" "}
+                      {a.model_reported ?? a.model_requested ?? "Modelo nÃ£o registrado"} Â·{" "}
+                      {a.prompt_version ?? "InstruÃ§Ãµes nÃ£o registradas"}
                     </summary>
                     <p>
-                      Duração: {a.duration_ms ?? "Não informada"} ms · Consumo:{" "}
-                      {a.total_tokens ?? "Não informado"} tokens
+                      DuraÃ§Ã£o: {a.duration_ms ?? "NÃ£o informada"} ms Â· Consumo:{" "}
+                      {a.total_tokens ?? "NÃ£o informado"} tokens
                     </p>
                     <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
                       {JSON.stringify(a.extraction, null, 2)}
@@ -279,18 +296,26 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
     },
     refetchInterval: 5000,
   });
+  const command = useQueueCommand();
   const action = useMutation({
     mutationFn: async ({ batch, mode }: { batch: string; mode: "retry" | "cancel" }) => {
-      const { error } = await supabase.rpc("control_resume_batch", {
+      const scope = [companyId, batch, mode].join("/");
+      const { data, error } = await supabase.rpc("ops_control_queue", {
+        p_request: command.start(scope),
+        p_job: null,
         p_company: companyId,
         p_batch: batch,
         p_action: mode,
       });
       if (error) throw error;
+      if (typeof data !== "number") throw new Error("Alteração do lote não confirmada.");
+      command.finish(scope);
     },
     onSuccess: () => refreshCompanyLists(client, companyId),
     onError: (error) =>
-      toast.error(errorFeedback(error, "Não foi possível confirmar a alteração do lote.").message),
+      toast.error(
+        errorFeedback(error, "NÃ£o foi possÃ­vel confirmar a alteraÃ§Ã£o do lote.").message,
+      ),
   });
   const entryLabels: Record<string, string> = {
     waiting: "Aguardando recebimento",
@@ -302,19 +327,20 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Histórico de lotes</CardTitle>
+        <CardTitle>HistÃ³rico de lotes</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         <p className="text-sm text-muted-foreground">
-          Últimos 20 lotes. Atualização a cada 5 segundos. Falhas de leitura podem ser repetidas sem
-          enviar o arquivo novamente; arquivos não recebidos precisam ser selecionados novamente.
+          Ãšltimos 20 lotes. AtualizaÃ§Ã£o a cada 5 segundos. Falhas de leitura podem ser repetidas
+          sem enviar o arquivo novamente; arquivos nÃ£o recebidos precisam ser selecionados
+          novamente.
         </p>
         {query.isError && (
           <QueryError
             error={query.error}
             retry={() => query.refetch()}
             busy={query.isFetching}
-            fallback="Não foi possível consultar os lotes."
+            fallback="NÃ£o foi possÃ­vel consultar os lotes."
           />
         )}
         {!query.isError && query.data?.length === 0 && <p>Nenhum lote enviado.</p>}
@@ -334,11 +360,11 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
           return (
             <div className="space-y-3 border-t pt-3" key={batch.id}>
               <p className="font-medium">
-                {displayDate(batch.created_at)} · {batch.file_count} arquivo(s)
+                {displayDate(batch.created_at)} Â· {batch.file_count} arquivo(s)
               </p>
               <p className="text-sm">
-                {counts.completed} concluído(s), {counts.failed} com falha, {counts.review} para
-                revisão, {counts.cancelled} cancelado(s) e {counts.pending} pendente(s).
+                {counts.completed} concluÃ­do(s), {counts.failed} com falha, {counts.review} para
+                revisÃ£o, {counts.cancelled} cancelado(s) e {counts.pending} pendente(s).
               </p>
               {canEdit && (
                 <div className="flex flex-wrap gap-2">
@@ -372,7 +398,7 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
                 <summary className="cursor-pointer text-sm">Consultar arquivos do lote</summary>
                 {!batch.entries.length && (
                   <p className="text-sm">
-                    Lote anterior ao histórico detalhado. Consulte os documentos abaixo.
+                    Lote anterior ao histÃ³rico detalhado. Consulte os documentos abaixo.
                   </p>
                 )}
                 {batch.entries.map((entry) => (
@@ -391,8 +417,8 @@ export function BatchHistory({ companyId, canEdit }: { companyId: string; canEdi
                       </>
                     ) : (
                       <p className="text-sm">
-                        {entryLabels[entry.state] ?? "Situação do recebimento não confirmada"}
-                        {entry.message ? ` · ${entry.message}` : ""}
+                        {entryLabels[entry.state] ?? "SituaÃ§Ã£o do recebimento nÃ£o confirmada"}
+                        {entry.message ? ` Â· ${entry.message}` : ""}
                       </p>
                     )}
                   </div>

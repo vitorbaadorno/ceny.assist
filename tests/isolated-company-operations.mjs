@@ -77,8 +77,29 @@ const request = (key) =>
   );
 const ids = await Promise.all(keys.map(request));
 assert.equal(ids[0], ids[1]);
-await checked(
-  user.rpc("control_resume_job", { p_company: company, p_job: ids[0], p_action: "cancel" }),
+const cancel = {
+  p_company: company,
+  p_request: randomUUID(),
+  p_job: ids[0],
+  p_batch: null,
+  p_action: "cancel",
+};
+assert.deepEqual(
+  await Promise.all([1, 2].map(() => checked(user.rpc("ops_control_queue", cancel)))),
+  [ids[0], ids[0]],
+);
+const batchRetry = {
+  p_company: company,
+  p_request: randomUUID(),
+  p_job: null,
+  p_batch: batches[winner],
+  p_action: "retry",
+};
+assert.equal(await checked(user.rpc("ops_control_queue", batchRetry)), 0);
+assert.equal(await checked(user.rpc("ops_control_queue", batchRetry)), 0);
+assert.equal(
+  (await user.rpc("ops_control_queue", { ...batchRetry, p_action: "cancel" })).error?.code,
+  "22023",
 );
 assert.equal(await request(keys[1]), ids[0]);
 const extra = await user.rpc("request_document_analysis", {

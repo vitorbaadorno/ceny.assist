@@ -6,6 +6,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CompanyOperations } from "./company-operations";
 import { Label } from "@/components/ui/label";
 
 const roles: Record<string, string> = {
@@ -15,8 +16,6 @@ const roles: Record<string, string> = {
   viewer: "Gestor — somente consulta",
 };
 const inputStyle = "rounded border bg-background p-2 text-sm";
-
-import { CompanyOperations } from "./company-operations";
 
 export function CompanySettings() {
   const { companyId, role, canAdmin, selectCompany } = useCompany();

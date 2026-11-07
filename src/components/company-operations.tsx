@@ -292,6 +292,8 @@ const labels: Record<string, string> = {
   member_delete: "Retirou acesso",
   invitation_insert: "Criou convite",
   invitation_update: "Atualizou convite",
+  queue_cancel: "Cancelou processamento",
+  queue_retry: "Repetiu processamento",
   settings_changed: "Alterou configurações",
   attempt_reconciled: "Conciliou custo de IA",
   storage_reconciled: "Conciliou armazenamento",
@@ -396,6 +398,7 @@ export function CompanyOperations({ companyId }: { companyId: string }) {
   return (
     <section className="space-y-5 rounded-lg border p-5">
       <h2 className="text-lg font-semibold">Operações da empresa</h2>
+      <UsageAlert companyId={companyId} />
       <div className="flex flex-wrap gap-2">
         {[
           ["usage", "Consumo"],
