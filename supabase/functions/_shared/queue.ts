@@ -139,9 +139,12 @@ export async function runResumeJob(admin: Client, job: Job) {
     });
     // If persistence itself failed, the lease expires and the next scheduler tick recovers it.
     if (saveError)
-      console.error(
-        "Não foi possível registrar o resultado da tentativa; a reserva será recuperada.",
-      );
+      console.error({
+        source: "queue",
+        operation: job.id,
+        company: job.company_id,
+        code: "settlement_failed",
+      });
     return { id: job.id, saved: !saveError };
   } finally {
     clearTimeout(timer);

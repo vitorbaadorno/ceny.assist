@@ -6,7 +6,9 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
 }
 
-function createSupabaseFetch(supabaseKey: string): typeof fetch {
+import { monitoredFetch } from "@/lib/operation-diagnostics";
+
+function createSupabaseFetch(base: string, supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
       typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
@@ -25,7 +27,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set("apikey", supabaseKey);
-    return fetch(input, { ...init, headers });
+    return monitoredFetch(base, input, { ...init, headers });
   };
 }
 
@@ -48,7 +50,7 @@ function createSupabaseClient() {
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
+      fetch: createSupabaseFetch(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY),
     },
     auth: {
       detectSessionInUrl: false,

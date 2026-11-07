@@ -16,6 +16,8 @@ const roles: Record<string, string> = {
 };
 const inputStyle = "rounded border bg-background p-2 text-sm";
 
+import { CompanyOperations } from "./company-operations";
+
 export function CompanySettings() {
   const { companyId, role, canAdmin, selectCompany } = useCompany();
   const { user } = useAuth();
@@ -117,11 +119,12 @@ export function CompanySettings() {
   return (
     <section className="mx-auto max-w-3xl space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold">Empresas e acessos</h1>
+        <h1 className="text-2xl font-semibold">Configurações da empresa</h1>
         <p className="text-sm text-muted-foreground">
           Configure sua empresa, aceite convites e gerencie as permissões da equipe.
         </p>
       </header>
+      {companyId && canAdmin && <CompanyOperations key={companyId} companyId={companyId} />}
       {!companyId && (
         <p className="rounded border p-4">
           Você ainda não selecionou uma empresa com acesso ativo. Aceite um convite ou cadastre a

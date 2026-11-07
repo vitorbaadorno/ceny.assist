@@ -50,7 +50,6 @@ export async function sendResume(
     companyId,
     batchId,
     slot: String(slot),
-    filename: file.name,
   });
   if (candidateId) {
     params.set("candidateId", candidateId);
@@ -64,6 +63,7 @@ export async function sendResume(
         Authorization: `Bearer ${session.access_token}`,
         apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
         "Content-Type": "application/octet-stream",
+        "x-ceny-filename": encodeURIComponent(file.name),
       },
       body: file,
       signal,

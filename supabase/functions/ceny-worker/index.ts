@@ -26,7 +26,8 @@ const input = z.discriminatedUnion("action", [
 ]);
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-client-info, x-ceny-filename",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) =>
@@ -53,9 +54,14 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const context = { supabase, admin, userId: auth.user.id };
+  const operation = crypto.randomUUID();
+  let company: string | undefined;
+  let action = "query";
   try {
     const url = new URL(req.url);
     if (url.searchParams.get("action") === "upload") {
+      const filename = req.headers.get("x-ceny-filename");
+      if (filename) url.searchParams.set("filename", decodeURIComponent(filename));
       const args = z
         .object({
           companyId: z.string().uuid(),
@@ -70,11 +76,15 @@ Deno.serve(async (req) => {
           "Confirme a identidade antes de adicionar uma versão.",
         )
         .parse(Object.fromEntries([...url.searchParams].filter(([key]) => key !== "action")));
+      company = args.companyId;
+      action = "upload";
       return json(await receiveResume(req, args, context));
     }
     const body = input.parse(
       JSON.parse(new TextDecoder().decode(await readLimitedBody(req, 8192))),
     );
+    company = body.companyId;
+    action = body.action === "extract" ? "reprocess" : body.action === "cleanup" ? "erase" : "rank";
     return json(
       body.action === "rank"
         ? await rankCandidates(body, context)
@@ -83,6 +93,23 @@ Deno.serve(async (req) => {
           : await processResume(body, context),
     );
   } catch (error) {
+    const code =
+      error instanceof FileRejected || error instanceof z.ZodError ? "invalid" : "service";
+    if (company) {
+      // The user-scoped RPC independently verifies membership before accepting a company.
+      await supabase
+        .rpc("ops_report_error", {
+          p_company: company,
+          p_operation: operation,
+          p_action: action,
+          p_code: code,
+        })
+        .then(
+          () => {},
+          () => {},
+        );
+    }
+    console.error({ source: "worker", operation, action, code });
     if (error instanceof FileRejected) return json({ error: error.message }, 422);
     if (error instanceof z.ZodError) return json({ error: "Solicitação inválida." }, 400);
     // Never send provider responses, resume content or DB internals to a caller.

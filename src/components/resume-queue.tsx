@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate, requireSavedId } from "@/lib/ui-feedback";
 import { refreshCompanyLists } from "@/lib/company-browse";
@@ -85,14 +86,18 @@ export function CandidateQueue({
     refetchInterval: 5000,
   });
   const job = query.data?.[0];
+  const pending = useRef<{ document: string; id: string } | null>(null);
   const action = useMutation({
     mutationFn: async (mode: "retry" | "cancel" | "reprocess") => {
+      const document = documentId ?? job!.document_id;
+      if (mode === "reprocess" && pending.current?.document !== document)
+        pending.current = { document, id: crypto.randomUUID() };
       const response =
         mode === "reprocess"
           ? await supabase.rpc("request_document_analysis", {
               p_company: companyId,
               p_document: documentId ?? job!.document_id,
-              p_request: crypto.randomUUID(),
+              p_request: pending.current!.id,
             })
           : await supabase.rpc("control_resume_job", {
               p_company: companyId,
@@ -101,6 +106,7 @@ export function CandidateQueue({
             });
       if (response.error) throw response.error;
       requireSavedId(response.data);
+      if (mode === "reprocess") pending.current = null;
       return mode;
     },
     onSuccess: async (mode) => {

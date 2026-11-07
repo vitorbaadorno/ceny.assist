@@ -1,4 +1,5 @@
 import { CompanyProvider, useCompany } from "@/hooks/useCompany";
+import { UsageAlert } from "@/components/company-operations";
 import { CompanySettings } from "@/components/company-settings";
 import { PrivacyCenter } from "@/components/privacy-center";
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
@@ -88,7 +89,7 @@ function CompanyLayout() {
             setSettings((v) => !v);
           }}
         >
-          {settings ? "Voltar ao trabalho" : "Empresas e acessos"}
+          {settings ? "Voltar ao trabalho" : "Configurações da empresa"}
         </Button>
         <Button
           variant="secondary"
@@ -148,11 +149,14 @@ function CompanyLayout() {
         ) : companyError ? (
           <p role="alert">Não foi possível consultar suas empresas. Recarregue a página.</p>
         ) : settings || !companyId ? (
-          <CompanySettings />
+          <CompanySettings key={companyId} />
         ) : privacy ? (
           <PrivacyCenter onOpenCandidate={() => setPrivacy(false)} />
         ) : (
-          <Outlet />
+          <>
+            <UsageAlert key={companyId} companyId={companyId} />
+            <Outlet />
+          </>
         )}
       </main>
     </div>

@@ -86,6 +86,10 @@ async function receiveValidatedResume(
     p_pages: validated.pages,
     p_candidate: data.candidateId,
   });
+  if (error?.code === "P5401")
+    throw new FileRejected("Limite mensal de envios da empresa atingido.");
+  if (error?.code === "P5402")
+    throw new FileRejected("Limite mensal de análises da empresa atingido.");
   if (error || !reservation)
     throw new FileRejected(
       "Não foi possível registrar o documento. O lote pode ter expirado ou o currículo já estar arquivado.",

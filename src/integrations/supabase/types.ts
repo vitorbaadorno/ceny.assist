@@ -1744,6 +1744,38 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      ops_dashboard: {
+        Args: { p_company: string; p_month: string; p_page: number };
+        Returns: Json;
+      };
+      ops_history: { Args: { p_company: string; p_kind: string; p_page: number }; Returns: Json };
+      ops_quota_status: { Args: { p_company: string }; Returns: Json };
+      ops_configure: {
+        Args: {
+          p_company: string;
+          p_version: number;
+          p_upload: number | null;
+          p_analysis: number | null;
+          p_warn: number;
+          p_activity_days: number;
+          p_error_days: number;
+        };
+        Returns: number;
+      };
+      ops_reconcile: {
+        Args: {
+          p_company: string;
+          p_month: string;
+          p_job: string | null;
+          p_attempt: number | null;
+          p_usd: number;
+        };
+        Returns: undefined;
+      };
+      ops_report_error: {
+        Args: { p_company: string; p_operation: string; p_action: string; p_code: string };
+        Returns: undefined;
+      };
       reconcile_privacy_restore_objects: {
         Args: { p_company: string; p_erased: string[]; p_objects: string[] };
         Returns: string;

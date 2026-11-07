@@ -68,6 +68,10 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/apprentice_age.sql > artifacts/apprentice-age.txt
       - name: Privacy Storage erasure and isolated backup recovery
         run: node tests/isolated-privacy.mjs
+      - name: Company operations, quotas, costs and restricted audit
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_operations.sql
+          node tests/isolated-company-operations.mjs
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321

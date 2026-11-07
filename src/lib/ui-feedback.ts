@@ -1,5 +1,5 @@
 export type ErrorKind =
-  "session" | "permission" | "missing" | "connection" | "conflict" | "unknown";
+  "session" | "permission" | "missing" | "connection" | "conflict" | "limit" | "unknown";
 export function errorFeedback(error: unknown, fallback = "Não foi possível concluir a operação.") {
   const value = (error ?? {}) as {
     code?: string;
@@ -43,6 +43,7 @@ export function errorFeedback(error: unknown, fallback = "Não foi possível con
     /registro não encontrado|currículo indisponível|documento indisponível/i.test(message)
   )
     kind = "missing";
+  else if (["P5401", "P5402"].includes(value.code ?? "")) kind = "limit";
   else if (value.code === "40001") kind = "conflict";
   else if (
     status === 0 ||
@@ -62,6 +63,10 @@ export function errorFeedback(error: unknown, fallback = "Não foi possível con
     connection: "Falha de conexão com o serviço. Confira sua internet e tente novamente.",
     conflict:
       "O registro mudou desde a última consulta. Confira a versão atual antes de salvar novamente.",
+    limit:
+      value.code === "P5401"
+        ? "Limite mensal de envios da empresa atingido."
+        : "Limite mensal de análises da empresa atingido.",
     unknown: fallback,
   };
   return { kind, message: messages[kind], retryable: kind === "connection" || kind === "unknown" };
