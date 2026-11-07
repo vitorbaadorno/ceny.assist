@@ -2,6 +2,12 @@
 
 Branch independente `ceny-versaonova`, criada sem histórico da `main`. Esta etapa implementa isolamento por empresa no novo projeto Supabase `wikerxujjvmoksrmjywo` (Ceny Assist).
 
+## Executar, testar e publicar
+
+A instalação de referência usa Node 24.19.0, Bun 1.3.14 e Supabase CLI 2.122.0. Use a versão do Node em `.nvmrc` e a do Bun indicada em `packageManager`. Execute `bun install --frozen-lockfile` na raiz. As duas funções Edge têm mapas de importação e arquivos `deno.lock` próprios. O guia reúne a configuração local, a publicação por ambiente, o armazenamento privado e o procedimento para arquivos antigos.
+
+[Guia de operação, instalação e migração](docs/seguranca/plataforma-e-migracao.md)
+
 ## Desenvolvimento
 
 ```powershell

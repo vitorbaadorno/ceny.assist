@@ -1,3 +1,4 @@
+begin;
 do $$declare u record; d record; cards jsonb;begin
  select * into strict u from upgrade_ids;select * into strict d from upgrade_manifest;
  if not exists(select 1 from public.jobs j join private.legacy_job_states l on l.job_id=j.id where j.id=u.vacancy and j.status='indefinida' and l.original_status='legacy_unknown') then raise exception 'Legacy state lost';end if;
@@ -11,3 +12,4 @@ do $$declare u record; d record; cards jsonb;begin
  if (select count(*) from public.batch_current_jobs(u.tenant,array[d.id,d.id]))<>1 then raise exception 'Latest generation not unique';end if;
  begin update public.jobs set status='invalid' where id=u.vacancy; raise exception 'Invalid status accepted';exception when check_violation then null;end;
 end$$;
+rollback;

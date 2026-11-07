@@ -1,3 +1,4 @@
+begin;
 -- Keep the inventory stable while validating historical relationships. A busy system
 -- can retry the entire migration without leaving partially applied changes.
 set local lock_timeout='10s';
@@ -101,3 +102,5 @@ do $$begin
  and b.scores=(select count(*) from public.candidate_scores))
  then raise exception 'Inventário divergente. Reverter a migração.';end if;
 end$$;
+
+commit;

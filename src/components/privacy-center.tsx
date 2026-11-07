@@ -198,7 +198,6 @@ function PrivacyAdmin({
   });
   const history = useQuery({
     queryKey: ["privacy-history", companyId, historyPage],
-    refetchInterval: 10000,
     queryFn: async () => {
       const from = historyPage * 50,
         to = from + 50;
@@ -240,6 +239,8 @@ function PrivacyAdmin({
         events: events.data!,
       };
     },
+    refetchInterval: (q) =>
+      q.state.data?.operations.some((o) => o.state !== "completed") ? 10000 : false,
   });
   const action = useMutation({
     mutationFn: async (fn: () => PromiseLike<{ error: { message: string } | null }>) => {

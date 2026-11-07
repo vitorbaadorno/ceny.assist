@@ -37,7 +37,7 @@ function ReportBuilder({
 }: {
   companyId: string;
   jobId: string;
-  run: Tables<"ranking_runs">;
+  run: Pick<Tables<"ranking_runs">, "id" | "completed_at" | "stale">;
   onGenerated: (id: string) => void;
 }) {
   const [selected, setSelected] = useState<Record<string, string>>({});
@@ -259,7 +259,7 @@ export function VacancyReports({
     queryFn: async ({ signal }) => {
       const r = await supabase
         .from("ranking_runs")
-        .select("*")
+        .select("id,completed_at,stale")
         .eq("company_id", companyId)
         .eq("job_id", jobId)
         .eq("status", "completed")

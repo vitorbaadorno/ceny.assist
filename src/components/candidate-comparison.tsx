@@ -1,3 +1,4 @@
+import { readComparison } from "@/lib/candidate-comparison";
 import { readCriteria } from "../../supabase/functions/_shared/job-criteria";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -29,7 +30,7 @@ export function CandidateComparison({
         .rpc("compare_job_candidates", { p_company: companyId, p_job: jobId, p_candidates: ids })
         .abortSignal(signal);
       if (r.error) throw r.error;
-      return r.data as unknown as ComparisonData;
+      return readComparison(r.data);
     },
   });
   const data = result.data;

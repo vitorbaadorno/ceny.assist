@@ -1,3 +1,57 @@
+import { z } from "zod";
+const displayFields = {
+  nome: z.string().nullish(),
+  localizacao: z.string().nullish(),
+  anos_experiencia: z.number().nullish(),
+  skills: z.array(z.string()).nullish(),
+};
+const entryView = z.looseObject({
+  reason: z.string().nullish(),
+  score: z.number().nullish(),
+  snapshot: z.looseObject(displayFields),
+  details: z
+    .looseObject({
+      criterios: z
+        .array(
+          z.looseObject({
+            kind: z.string(),
+            text: z.string(),
+            motivo: z.string().optional(),
+            estado: z.string(),
+            evidencias: z
+              .array(z.looseObject({ trecho: z.string(), pagina: z.number().nullish() }))
+              .optional(),
+          }),
+        )
+        .nullish(),
+    })
+    .nullish(),
+});
+const comparisonView = z.looseObject({
+  job: z.looseObject({ version: z.number() }),
+  run: z
+    .looseObject({
+      job_snapshot: z.looseObject({ version: z.number() }),
+      completed_at: z.string().nullish(),
+    })
+    .nullable(),
+  candidates: z
+    .array(
+      z.object({
+        current: z.looseObject({ id: z.string(), ...displayFields }),
+        entry: entryView.nullable(),
+      }),
+    )
+    .max(10),
+});
+export function readComparison(value: unknown): ComparisonData {
+  const result = comparisonView.safeParse(value);
+  if (!result.success)
+    throw Object.assign(new Error("Comparação com dados incompatíveis."), {
+      code: "INVALID_RESPONSE",
+    });
+  return result.data as unknown as ComparisonData;
+}
 import type { Tables } from "@/integrations/supabase/types";
 import type { MatchDetails } from "./scoring";
 import type { JobCriterion } from "../../supabase/functions/_shared/job-criteria";

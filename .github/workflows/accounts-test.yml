@@ -75,7 +75,7 @@ jobs:
       - name: Upgrade legacy data and verify relationships on disposable Supabase
         run: |
           supabase db reset --local --no-seed --version 20261107181433
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 --single-transaction -f supabase/tests/platform_before.sql -f "$(echo supabase/migrations/*_platform_integrity.sql)" -f supabase/tests/platform_after.sql
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/platform_before.sql -f "$(echo supabase/migrations/*_platform_integrity.sql)" -f supabase/tests/platform_after.sql
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
