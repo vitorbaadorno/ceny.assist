@@ -124,9 +124,16 @@ do $$begin
  if not exists(select 1 from ceny_before_integrity b where
  b.jobs=(select count(*) from public.jobs) and b.candidates=(select count(*) from public.candidates)
  and b.documents=(select count(*) from public.resume_documents) and b.revisions=(select count(*) from public.candidate_revisions)
- and b.job_revisions=(select count(*) from public.job_revisions) and b.evaluations=(select count(*) from public.ranking_entries)
+ -- The audit trigger appends one immutable revision for each repaired status.
+ and b.job_revisions+(select count(*) from private.legacy_job_states)=(select count(*) from public.job_revisions) and b.evaluations=(select count(*) from public.ranking_entries)
  and b.scores=(select count(*) from public.candidate_scores))
  then raise exception 'Inventário divergente. Reverter a migração.';end if;
+ if exists (
+   select 1 from private.legacy_job_states l join public.jobs j on j.id=l.job_id
+   where not exists (select 1 from public.job_revisions r
+      where r.company_id=j.company_id and r.job_id=j.id and r.version=j.version
+      and r.before_data->>'status'=l.original_status and r.after_data->>'status'=j.status)
+ ) then raise exception 'Revisão de correção histórica ausente.';end if;
 end$$;
 
 commit;
