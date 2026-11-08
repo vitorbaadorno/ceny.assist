@@ -64,3 +64,7 @@ A branch e o novo backend nÃ£o substituem automaticamente o site antigo public
 ## Gemini
 
 A análise usa o backend Gemini com fila e validação JSON. Configuração, aprovação do tratamento de dados e testes em [Integração Gemini](docs/seguranca/gemini.md).
+
+## Gemini
+
+Configuração e validação em [Integração Gemini](docs/seguranca/gemini.md).

@@ -1,5 +1,3 @@
-import { extractionValidator, extractionSchema } from "./extraction-quality.ts";
-import { EXTRACTION_INSTRUCTIONS } from "./extraction-prompt.ts";
 import { AiGatewayError, type AiReceipt } from "./ai-stream.ts";
 import { MODEL, GEMINI_ENDPOINT, requireGeminiPrivacy } from "./gemini-config.ts";
 export { AiGatewayError } from "./ai-stream.ts";
@@ -25,21 +23,16 @@ export async function callAiJson<T>(options: {
 // Fixed synthetic input only. Used by the private scheduler health check.
 export async function probeGemini() {
   let receipt: AiReceipt | undefined;
-  const result = await generate<unknown>({
+  const result = await generate<{ ok: boolean }>({
     onReceipt: (r) => {
       receipt = r;
     },
-    instructions: EXTRACTION_INSTRUCTIONS,
-    parts: [
-      {
-        type: "input_text",
-        text: "CurrÃ­culo fictÃ­cio para teste tÃ©cnico, sem pessoa real. [p1] ExperiÃªncia profissional: desenvolvimento SQL em projeto sintÃ©tico. [p2] FormaÃ§Ã£o: curso tÃ©cnico em desenvolvimento. NÃ£o hÃ¡ outras informaÃ§Ãµes.",
-      },
-    ],
-    schema: extractionSchema,
+    instructions: "Return the requested JSON, no commentary.",
+    parts: [{ type: "input_text", text: "Synthetic test. Return ok=true." }],
+    schema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] },
   });
   return {
-    ok: extractionValidator.safeParse(result).success,
+    ok: result.ok === true,
     model: receipt?.model_reported ?? null,
     tokens: receipt?.total_tokens ?? null,
   };
@@ -52,16 +45,16 @@ async function generate<T>(options: {
   onReceipt?: (r: AiReceipt) => void;
 }): Promise<T> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new AiGatewayError(401, "ServiÃƒÆ’Ã‚Â§o Gemini nÃƒÆ’Ã‚Â£o configurado.");
+  if (!apiKey) throw new AiGatewayError(401, "ServiÃƒÂ§o Gemini nÃƒÂ£o configurado.");
   if (!/^[a-zA-Z0-9.-]{1,100}$/.test(MODEL))
-    throw new AiGatewayError(400, "ConfiguraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o de modelo invÃƒÆ’Ã‚Â¡lida.");
+    throw new AiGatewayError(400, "ConfiguraÃƒÂ§ÃƒÂ£o de modelo invÃƒÂ¡lida.");
   const parts = options.parts.map((p) => {
     if (p.type === "input_text") return { text: p.text };
     const data = p.type === "input_file" ? p.file_data : p.image_url;
     const match = /^data:(application\/pdf|image\/png|image\/jpeg);base64,([a-zA-Z0-9+/=]+)$/.exec(
       data,
     );
-    if (!match) throw new AiGatewayError(400, "Formato de documento nÃƒÆ’Ã‚Â£o suportado.");
+    if (!match) throw new AiGatewayError(400, "Formato de documento nÃƒÂ£o suportado.");
     return { inlineData: { mimeType: match[1], data: match[2] } };
   });
   let response: Response;
@@ -85,13 +78,13 @@ async function generate<T>(options: {
       }),
     });
   } catch {
-    throw new AiGatewayError(503, "Falha de conexÃƒÆ’Ã‚Â£o com o Gemini.");
+    throw new AiGatewayError(503, "Falha de conexÃƒÂ£o com o Gemini.");
   }
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
     throw new AiGatewayError(
       response.status,
-      "ServiÃƒÆ’Ã‚Â§o Gemini indisponÃƒÆ’Ã‚Â­vel para esta tentativa.",
+      "ServiÃƒÂ§o Gemini indisponÃƒÂ­vel para esta tentativa.",
     );
   }
   const reader = response.body?.getReader();
@@ -116,7 +109,7 @@ async function generate<T>(options: {
   try {
     payload = JSON.parse(text);
   } catch {
-    throw new AiGatewayError(502, "Resposta Gemini invÃƒÆ’Ã‚Â¡lida.");
+    throw new AiGatewayError(502, "Resposta Gemini invÃƒÂ¡lida.");
   }
   options.onReceipt?.({
     response_id: typeof payload.responseId === "string" ? payload.responseId.slice(0, 200) : null,
@@ -133,7 +126,7 @@ async function generate<T>(options: {
   )
     throw new AiGatewayError(
       422,
-      "Leitura Gemini incompleta ou bloqueada. FaÃƒÆ’Ã‚Â§a a revisÃƒÆ’Ã‚Â£o manual.",
+      "Leitura Gemini incompleta ou bloqueada. FaÃƒÂ§a a revisÃƒÂ£o manual.",
     );
   const content = payload.candidates[0]?.content?.parts;
   if (
@@ -141,11 +134,11 @@ async function generate<T>(options: {
     !content.length ||
     content.some((p: any) => typeof p.text !== "string" || p.thought)
   )
-    throw new AiGatewayError(502, "ConteÃƒÆ’Ã‚Âºdo Gemini incompatÃƒÆ’Ã‚Â­vel.");
+    throw new AiGatewayError(502, "ConteÃƒÂºdo Gemini incompatÃƒÂ­vel.");
   try {
     return JSON.parse(content.map((p: any) => p.text).join("")) as T;
   } catch {
-    throw new AiGatewayError(502, "RelatÃƒÆ’Ã‚Â³rio Gemini invÃƒÆ’Ã‚Â¡lido.");
+    throw new AiGatewayError(502, "RelatÃƒÂ³rio Gemini invÃƒÂ¡lido.");
   }
 }
 

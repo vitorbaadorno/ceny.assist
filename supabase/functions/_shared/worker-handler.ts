@@ -48,10 +48,10 @@ const json = (body: unknown, status = 200) =>
 
 export async function handleRequest(req: Request) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-  if (req.method !== "POST") return json({ error: "MÃƒÆ’Ã‚Â©todo invÃƒÆ’Ã‚Â¡lido." }, 405);
+  if (req.method !== "POST") return json({ error: "MÃƒÂ©todo invÃƒÂ¡lido." }, 405);
   const authorization = req.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer "))
-    return json({ error: "AutenticaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o necessÃƒÆ’Ã‚Â¡ria." }, 401);
+    return json({ error: "AutenticaÃƒÂ§ÃƒÂ£o necessÃƒÂ¡ria." }, 401);
   const url = Deno.env.get("SUPABASE_URL")!;
   const supabase = createClient<Database>(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authorization } },
@@ -59,7 +59,7 @@ export async function handleRequest(req: Request) {
   });
   const { data: auth, error } = await supabase.auth.getUser(authorization.slice(7));
   if (error || !auth.user || auth.user.is_anonymous)
-    return json({ error: "SessÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida." }, 401);
+    return json({ error: "SessÃƒÂ£o invÃƒÂ¡lida." }, 401);
   const admin = createClient<Database>(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -68,7 +68,7 @@ export async function handleRequest(req: Request) {
   let company: string | undefined;
   let action = "query";
   const admit = async (company: string) => {
-    if(!new URL(req.url).pathname.endsWith("/analisar-curriculo")) return true;
+    if (!new URL(req.url).pathname.endsWith("/analisar-curriculo")) return true;
     const r = await supabase.rpc("admit_ai_request", { p_company: company });
     return !r.error && r.data === true;
   };
@@ -88,7 +88,7 @@ export async function handleRequest(req: Request) {
         })
         .refine(
           (args) => !args.candidateId || args.identityConfirmed === "true",
-          "Confirme a identidade antes de adicionar uma versÃƒÆ’Ã‚Â£o.",
+          "Confirme a identidade antes de adicionar uma versÃƒÂ£o.",
         )
         .parse(Object.fromEntries([...url.searchParams].filter(([key]) => key !== "action")));
       company = args.companyId;
@@ -96,7 +96,7 @@ export async function handleRequest(req: Request) {
         return json(
           {
             error:
-              "Limite de solicitaÃ§Ãµes ou acesso indisponÃ­vel. Aguarde um minuto e confira sua permissÃ£o.",
+              "Limite de solicitações ou acesso indisponível. Aguarde um minuto e confira sua permissão.",
           },
           429,
         );
@@ -111,7 +111,7 @@ export async function handleRequest(req: Request) {
       return json(
         {
           error:
-            "Limite de solicitaÃ§Ãµes ou acesso indisponÃ­vel. Aguarde um minuto e confira sua permissÃ£o.",
+            "Limite de solicitações ou acesso indisponível. Aguarde um minuto e confira sua permissão.",
         },
         429,
       );
@@ -154,7 +154,7 @@ export async function handleRequest(req: Request) {
         !job.data ||
         !candidate.data?.active_document_id
       )
-        return json({ error: "VÃƒÂ­nculo, vaga aprovada ou documento indisponÃƒÂ­vel." }, 403);
+        return json({ error: "VÃ­nculo, vaga aprovada ou documento indisponÃ­vel." }, 403);
       const result = await supabase.rpc("request_document_analysis", {
         p_company: body.companyId,
         p_document: candidate.data.active_document_id,
@@ -164,7 +164,7 @@ export async function handleRequest(req: Request) {
         return json(
           {
             error:
-              "NÃƒÂ£o foi possÃƒÂ­vel reservar a anÃƒÂ¡lise. Confira as permissÃƒÂµes e os limites da empresa.",
+              "NÃ£o foi possÃ­vel reservar a anÃ¡lise. Confira as permissÃµes e os limites da empresa.",
           },
           409,
         );
@@ -204,12 +204,12 @@ export async function handleRequest(req: Request) {
     }
     console.error({ source: "worker", operation, action, code });
     if (error instanceof FileRejected) return json({ error: error.message }, 422);
-    if (error instanceof z.ZodError) return json({ error: "SolicitaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o invÃƒÆ’Ã‚Â¡lida." }, 400);
+    if (error instanceof z.ZodError) return json({ error: "SolicitaÃƒÂ§ÃƒÂ£o invÃƒÂ¡lida." }, 400);
     // Never send provider responses, resume content or DB internals to a caller.
     return json(
       {
         error:
-          "OperaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o indisponÃƒÆ’Ã‚Â­vel. Confira seu acesso e a configuraÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o do serviÃƒÆ’Ã‚Â§o.",
+          "OperaÃƒÂ§ÃƒÂ£o indisponÃƒÂ­vel. Confira seu acesso e a configuraÃƒÂ§ÃƒÂ£o do serviÃƒÂ§o.",
       },
       403,
     );
