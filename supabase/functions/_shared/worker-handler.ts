@@ -1,4 +1,3 @@
-import { requireCompanyRole } from "./access.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.116.0";
 import { z } from "npm:zod@4.6.7";
 import type { Database } from "./database.ts";
@@ -117,47 +116,10 @@ export async function handleRequest(req: Request) {
       );
     action = body.action === "extract" ? "reprocess" : body.action === "cleanup" ? "erase" : "rank";
     if (body.action === "analyze") {
-      await requireCompanyRole(supabase, auth.user.id, body.companyId, [
-        "owner",
-        "admin",
-        "recruiter",
-      ]);
-      const link = await supabase
-        .from("candidate_job_links")
-        .select("candidate_id")
-        .eq("company_id", body.companyId)
-        .eq("candidate_id", body.candidateId)
-        .eq("job_id", body.jobId)
-        .eq("active", true)
-        .maybeSingle();
-      const job = await supabase
-        .from("jobs")
-        .select("id")
-        .eq("company_id", body.companyId)
-        .eq("id", body.jobId)
-        .eq("status", "aberta")
-        .eq("excluido", false)
-        .not("approved_hash", "is", null)
-        .maybeSingle();
-      const candidate = await supabase
-        .from("candidates")
-        .select("active_document_id")
-        .eq("company_id", body.companyId)
-        .eq("id", body.candidateId)
-        .eq("excluido", false)
-        .maybeSingle();
-      if (
-        link.error ||
-        job.error ||
-        candidate.error ||
-        !link.data ||
-        !job.data ||
-        !candidate.data?.active_document_id
-      )
-        return json({ error: "VÃ­nculo, vaga aprovada ou documento indisponÃ­vel." }, 403);
-      const result = await supabase.rpc("request_document_analysis", {
+      const result = await supabase.rpc("request_vacancy_analysis", {
         p_company: body.companyId,
-        p_document: candidate.data.active_document_id,
+        p_candidate: body.candidateId,
+        p_job: body.jobId,
         p_request: body.requestId,
       });
       if (result.error || !result.data)

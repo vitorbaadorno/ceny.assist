@@ -1747,6 +1747,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      request_vacancy_analysis: {
+        Args: { p_company: string; p_candidate: string; p_job: string; p_request: string };
+        Returns: string;
+      };
       admit_ai_request: { Args: { p_company: string }; Returns: boolean };
       batch_current_jobs: {
         Args: { p_company: string; p_documents: string[] };
