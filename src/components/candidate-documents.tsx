@@ -1,3 +1,4 @@
+import { readDocumentVersions } from "@/data/resume-documents";
 import { documentInProgress } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate } from "@/lib/ui-feedback";
@@ -34,20 +35,8 @@ function CandidateDocumentsContent({
   const [expanded, setExpanded] = useState<string | null>(null);
   const query = useQuery({
     queryKey: ["person-documents", candidate.company_id, candidate.id, page],
+    queryFn: ({ signal }) => readDocumentVersions(candidate.company_id, candidate.id, page, signal),
     refetchInterval: (q) => (q.state.data?.some(documentInProgress) ? 5000 : false),
-    queryFn: async () => {
-      const r = await supabase
-        .from("resume_documents")
-        .select(
-          "id,version,filename,state,error_message,created_at,stored_at,source,uploaded_by,byte_size,page_count,sha256",
-        )
-        .eq("company_id", candidate.company_id)
-        .eq("candidate_id", candidate.id)
-        .order("version", { ascending: false })
-        .range(page * 20, page * 20 + 20);
-      if (r.error) throw r.error;
-      return r.data;
-    },
   });
   const choose = useMutation({
     mutationFn: async (documentId: string) => {

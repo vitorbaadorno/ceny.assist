@@ -2,8 +2,7 @@ import { vacancyStates } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { useCompany } from "@/hooks/useCompany";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useBrowse, type BrowseFilters } from "@/lib/company-browse";
-import type { Tables } from "@/integrations/supabase/types";
+import { useBrowse, type JobListItem, type BrowseFilters } from "@/lib/company-browse";
 import { CompanySearch, BrowseSummary } from "@/components/company-search";
 import { useState } from "react";
 import { JobEditor } from "@/components/job-editor";
@@ -25,7 +24,7 @@ function JobsPage() {
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<BrowseFilters>({});
   const [page, setPage] = useState(0);
-  const query = useBrowse<Tables<"jobs">>("jobs", companyId, filters, page);
+  const query = useBrowse<JobListItem>("jobs", companyId, filters, page);
   const { data, isLoading, isError } = query;
   const visible = data?.items ?? [];
   return (

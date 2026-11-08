@@ -1,3 +1,4 @@
+import { readCandidate } from "@/data/recruitment-records";
 import { QueryError, LoadingState } from "@/components/query-feedback";
 import { errorFeedback } from "@/lib/ui-feedback";
 import { CandidateNotes, CandidateFavorite } from "@/components/candidate-collaboration";
@@ -58,17 +59,7 @@ function CandidateDetailContent() {
   const archive = useServerFn(archiveCandidate);
   const query = useQuery({
     queryKey: ["candidate", companyId, id],
-    queryFn: async ({ signal }) => {
-      const { data, error } = await supabase
-        .from("candidates")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("id", id)
-        .abortSignal(signal)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: ({ signal }) => readCandidate(companyId, id, signal),
     refetchInterval: (q) => (q.state.data?.processing_status === "processando" ? 5000 : false),
   });
   const remove = useMutation({

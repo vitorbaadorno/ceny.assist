@@ -21,6 +21,32 @@ create table private.legacy_score_runs(
 alter table private.legacy_job_states enable row level security;
 alter table private.legacy_score_runs enable row level security;
 revoke all on private.legacy_job_states,private.legacy_score_runs from public,anon,authenticated,service_role;
+-- Existing normal writes still accept only the two operational states. A legacy row
+-- may enter or remain in review until the responsible team explicitly resolves it.
+create or replace function private.guard_job_criteria() returns trigger language plpgsql set search_path='' as $$
+declare p jsonb;old_hash text;
+begin
+ if length(btrim(new.titulo)) not between 3 and 160 or length(coalesce(new.descricao,''))>20000 or new.experiencia_minima not between 0 and 100 or new.experiencia_minima::text in ('NaN','Infinity','-Infinity')
+ or (new.status not in ('aberta','encerrada') and not (
+     tg_op='UPDATE' and new.status='indefinida' and old.status not in ('aberta','encerrada')
+   )) or new.categoria not in ('regular','jovem_aprendiz') then raise exception 'Dados de vaga inválidos' using errcode='22023';end if;
+ new.titulo:=btrim(new.titulo);new.criteria:=private.normalize_job_criteria(new.criteria);
+ -- Canonical criteria own all legacy scoring columns.
+ new.requisitos_obrigatorios:=array(select c->>'text' from jsonb_array_elements(new.criteria)c where c->>'kind'='skill' and (c->>'required')::boolean);
+ new.requisitos_desejaveis:=array(select c->>'text' from jsonb_array_elements(new.criteria)c where c->>'kind'='skill' and not(c->>'required')::boolean);
+ new.experiencia_minima:=coalesce((select (c->>'min_years')::numeric from jsonb_array_elements(new.criteria)c where c->>'kind'='experience'),0);
+ new.formacao_exigida:=(select c->>'text' from jsonb_array_elements(new.criteria)c where c->>'kind'='education');
+ new.localizacao:=(select c->>'text' from jsonb_array_elements(new.criteria)c where c->>'kind'='location');
+ p:=private.job_payload(new.titulo,coalesce(new.descricao,''),new.categoria,new.criteria);
+ if new.approved_hash is distinct from private.job_hash(p) then new.approved_hash:=null;new.approved_by:=null;new.approved_at:=null;end if;
+ if new.approved_hash is not null then perform private.validate_job_payload(p,true);end if;
+ if tg_op='UPDATE' then
+  new.version:=old.version;
+  if row(new.titulo,new.descricao,new.categoria,new.criteria,new.status,new.approved_hash,new.approved_by,new.approved_at,new.excluido) is distinct from row(old.titulo,old.descricao,old.categoria,old.criteria,old.status,old.approved_hash,old.approved_by,old.approved_at,old.excluido) then new.version:=old.version+1;end if;
+ end if;
+ return new;
+end $$;
+
 insert into private.legacy_job_states select id,status from public.jobs where status not in('aberta','encerrada','indefinida');
 update public.jobs j set status=case lower(trim(l.original_status)) when 'aberta' then 'aberta' when 'encerrada' then 'encerrada' else 'indefinida' end
  from private.legacy_job_states l where j.id=l.job_id;

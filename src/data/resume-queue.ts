@@ -28,3 +28,25 @@ export async function readBatchHistory(companyId: string) {
       }),
   }));
 }
+
+export async function readCandidateQueue(
+  companyId: string,
+  candidateId: string,
+  documentId: string | null | undefined,
+  showHistory: boolean,
+  signal: AbortSignal,
+) {
+  let q = supabase
+    .from("resume_jobs")
+    .select(
+      `${jobFields},resume_job_attempts(attempt,started_at,outcome,message,model_reported,model_requested,duration_ms,input_tokens,output_tokens,total_tokens,prompt_version,prompt_hash)` as const,
+    )
+    .eq("company_id", companyId)
+    .eq("candidate_id", candidateId)
+    .order("generation", { ascending: false })
+    .limit(showHistory ? 100 : 1);
+  if (documentId) q = q.eq("document_id", documentId);
+  const { data, error } = await q.abortSignal(signal);
+  if (error) throw error;
+  return data;
+}

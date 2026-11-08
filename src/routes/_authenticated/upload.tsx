@@ -1,3 +1,4 @@
+import { readRecentDocuments } from "@/data/resume-documents";
 import { documentInProgress } from "@/lib/workflow-states";
 import { QueryError } from "@/components/query-feedback";
 import { errorFeedback, displayDate } from "@/lib/ui-feedback";
@@ -91,16 +92,7 @@ function UploadContent() {
   );
   const history = useQuery({
     queryKey: ["resume-documents", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("resume_documents")
-        .select("id,candidate_id,filename,state,source,created_at,uploaded_by,error_message")
-        .eq("company_id", companyId)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) throw error;
-      return data;
-    },
+    queryFn: ({ signal }) => readRecentDocuments(companyId, signal),
     refetchInterval: (q) => (q.state.data?.some(documentInProgress) ? 5000 : false),
   });
   useEffect(() => {

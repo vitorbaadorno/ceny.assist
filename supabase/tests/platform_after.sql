@@ -10,6 +10,6 @@ do $$declare u record; d record; cards jsonb;begin
  cards:=public.browse_job_cards(u.tenant);
  if (cards->>'total')::int<>1 or cards#>>'{items,0,id}'<>u.vacancy::text or (cards#>'{items,0}')?'criteria' then raise exception 'Unexpected list projection';end if;
  if (select count(*) from public.batch_current_jobs(u.tenant,array[d.id,d.id]))<>1 then raise exception 'Latest generation not unique';end if;
- begin update public.jobs set status='invalid' where id=u.vacancy; raise exception 'Invalid status accepted';exception when check_violation then null;end;
+ begin update public.jobs set status='invalid' where id=u.vacancy; raise exception 'Invalid status accepted';exception when check_violation or invalid_parameter_value then null;end;
 end$$;
 rollback;

@@ -29,6 +29,17 @@ export type BrowsePage<T> = {
   page: number;
   pageSize: number;
 };
+export type JobListItem = Pick<
+  Tables<"jobs">,
+  | "id"
+  | "titulo"
+  | "descricao"
+  | "categoria"
+  | "status"
+  | "created_at"
+  | "approved_hash"
+  | "requisitos_obrigatorios"
+>;
 export type CandidateListItem = Pick<
   Tables<"candidates">,
   | "id"

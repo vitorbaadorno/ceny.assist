@@ -1,3 +1,4 @@
+import { readVacancy } from "@/data/recruitment-records";
 import { readCriteria } from "../../../supabase/functions/_shared/job-criteria";
 import { vacancyStates } from "@/lib/workflow-states";
 import { QueryError, LoadingState } from "@/components/query-feedback";
@@ -77,16 +78,7 @@ function JobDetailContent() {
 
   const query = useQuery({
     queryKey: ["job", companyId, id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: ({ signal }) => readVacancy(companyId, id, signal),
   });
 
   const job = query.data;

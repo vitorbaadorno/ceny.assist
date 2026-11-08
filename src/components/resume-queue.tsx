@@ -1,4 +1,5 @@
-import { jobFields, readBatchHistory } from "@/data/resume-queue";
+import { readCandidateQueue } from "@/data/resume-queue";
+import { readBatchHistory } from "@/data/resume-queue";
 import { jobLabels, phaseLabels, isActiveJob } from "@/lib/workflow-states";
 import { useRef, useState } from "react";
 import { QueryError } from "@/components/query-feedback";
@@ -70,21 +71,8 @@ export function CandidateQueue({
   const client = useQueryClient();
   const query = useQuery({
     queryKey: ["candidate-queue", companyId, candidateId, documentId, showHistory],
-    queryFn: async () => {
-      let q = supabase
-        .from("resume_jobs")
-        .select(
-          `${jobFields},resume_job_attempts(attempt,started_at,outcome,message,model_reported,model_requested,duration_ms,input_tokens,output_tokens,total_tokens,prompt_version,prompt_hash)` as const,
-        )
-        .eq("company_id", companyId)
-        .eq("candidate_id", candidateId)
-        .order("generation", { ascending: false })
-        .limit(showHistory ? 100 : 1);
-      if (documentId) q = q.eq("document_id", documentId);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data;
-    },
+    queryFn: ({ signal }) =>
+      readCandidateQueue(companyId, candidateId, documentId, showHistory, signal),
     refetchInterval: (q) => (q.state.data?.some(isActiveJob) ? 5000 : false),
   });
   const job = query.data?.[0];
