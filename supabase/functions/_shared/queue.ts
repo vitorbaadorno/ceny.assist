@@ -52,9 +52,10 @@ export async function runResumeJob(admin: Client, job: Job) {
                 instructions: EXTRACTION_INSTRUCTIONS,
                 request: EXTRACTION_REQUEST,
                 schema: extractionSchema,
-                reasoning: "low",
+                temperature: 0.1,
                 minimization: AI_MINIMIZATION_VERSION,
-                store: false,
+                provider: "google-gemini",
+                data_tier: "paid-reviewed",
               }),
             }
           : {}),

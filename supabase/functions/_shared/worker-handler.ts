@@ -126,7 +126,7 @@ export async function handleRequest(req: Request) {
         return json(
           {
             error:
-              "NÃ£o foi possÃ­vel reservar a anÃ¡lise. Confira as permissÃµes e os limites da empresa.",
+              "Não foi possível reservar a análise. Confira as permissões e os limites da empresa.",
           },
           409,
         );
