@@ -24,6 +24,7 @@ export async function callAiJson<T>(options: {
 export async function probeGemini() {
   let receipt: AiReceipt | undefined;
   const result = await generate<{ ok: boolean }>({
+    signal:AbortSignal.timeout(30000),
     onReceipt: (r) => {
       receipt = r;
     },

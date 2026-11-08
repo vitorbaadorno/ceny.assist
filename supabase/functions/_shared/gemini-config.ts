@@ -1,6 +1,6 @@
 // Backend configuration. A different paid model requires only a secret change.
 export const MODEL =
-  (typeof Deno !== "undefined" ? Deno.env.get("GEMINI_MODEL") : undefined) ?? "gemini-3.8-flash";
+  (typeof Deno !== "undefined" ? Deno.env.get("GEMINI_MODEL") : undefined) ?? "gemini-2.5-flash";
 export const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/";
 export function requireGeminiPrivacy() {
   if (

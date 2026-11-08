@@ -20,7 +20,7 @@ test("Gemini uses backend auth header, low temperature, schema and reports usage
   env(t);
   let receipt;
   t.mock.method(globalThis, "fetch", async (url, init) => {
-    assert.match(url, /generativelanguage.googleapis.com.*gemini-3.8-flash:generateContent$/);
+    assert.match(url, /generativelanguage.googleapis.com.*gemini-2.5-flash:generateContent$/);
     assert.ok(!url.includes("synthetic-test"));
     assert.equal(init.headers["x-goog-api-key"], "synthetic-test");
     const b = JSON.parse(init.body);
