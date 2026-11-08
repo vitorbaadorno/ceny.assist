@@ -70,26 +70,6 @@ export function CandidateAnalysis({ value }: { value: Json }) {
           <p>Senioridade sugerida: {summary?.senioridade ?? "Não informada"}</p>
         </CardContent>
       </Card>
-      {(data.pontos_esclarecer.length > 0 || data.perguntas_entrevista.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Esclarecimentos e entrevista</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Sugestões da IA para conferência do RH</p>
-            <ul>
-              {data.pontos_esclarecer.map((v, i) => (
-                <li key={"gap" + i}>{v}</li>
-              ))}
-            </ul>
-            <ol>
-              {data.perguntas_entrevista.map((v, i) => (
-                <li key={"question" + i}>{v}</li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
       <Card>
         <CardHeader>
           <CardTitle>Projetos relevantes</CardTitle>
@@ -107,26 +87,6 @@ export function CandidateAnalysis({ value }: { value: Json }) {
           ))}
         </CardContent>
       </Card>
-      {(data.pontos_esclarecer.length > 0 || data.perguntas_entrevista.length > 0) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Esclarecimentos e entrevista</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>Sugestões da IA para conferência do RH</p>
-            <ul>
-              {data.pontos_esclarecer.map((v, i) => (
-                <li key={"gap" + i}>{v}</li>
-              ))}
-            </ul>
-            <ol>
-              {data.perguntas_entrevista.map((v, i) => (
-                <li key={"question" + i}>{v}</li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
       <Card>
         <CardHeader>
           <CardTitle>Conferência da leitura</CardTitle>

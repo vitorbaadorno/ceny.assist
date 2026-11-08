@@ -66,3 +66,18 @@ test("unknown queue state has no success claim", () => {
   expect(html).toContain("Situação da leitura não confirmada");
   expect(html).not.toContain("Concluído");
 });
+
+test("Gemini clarification and interview suggestions appear once in the report", async () => {
+  const { CandidateAnalysis } = await import("../src/components/candidate-analysis");
+  const html = renderToStaticMarkup(
+    <CandidateAnalysis
+      value={{
+        schema_version: "2",
+        pontos_esclarecer: ["Confirmar projeto"],
+        perguntas_entrevista: ["Como usou SQL?"],
+      }}
+    />,
+  );
+  expect(html.split("Esclarecimentos e entrevista").length - 1).toBe(1);
+  expect(html).toContain("Como usou SQL?");
+});
