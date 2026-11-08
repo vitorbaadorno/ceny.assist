@@ -1747,6 +1747,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admit_ai_request: { Args: { p_company: string }; Returns: boolean };
       batch_current_jobs: {
         Args: { p_company: string; p_documents: string[] };
         Returns: {

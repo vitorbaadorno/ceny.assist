@@ -1,60 +1,66 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { callAiJson } from "../supabase/functions/_shared/ai.ts";
-test("gateway uses fixed schema and privacy setting, propagates signal and reports terminal usage", async (t) => {
-  const oldFetch = globalThis.fetch,
-    oldDeno = globalThis.Deno;
-  t.after(() => {
-    globalThis.fetch = oldFetch;
-    globalThis.Deno = oldDeno;
-  });
-  globalThis.Deno = { env: { get: () => "synthetic-key" } };
-  const text = '{"nome":"Ana"}';
-  globalThis.fetch = async (url, options) => {
-    assert.equal(url, "https://ai.gateway.lovable.dev/v1/responses");
-    const body = JSON.parse(options.body);
-    assert.equal(body.store, false);
-    assert.equal(body.stream, true);
-    assert.equal(body.text.format.strict, true);
-    assert.equal(body.tools, undefined);
-    assert.ok(options.signal);
-    const event = {
-      type: "response.completed",
-      response: {
-        id: "synthetic",
-        status: "completed",
-        model: "test-model",
-        output_text: text,
-        usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 },
-      },
-    };
-    return new Response(`data: ${JSON.stringify(event)}\n\n`);
-  };
-  let receipt;
-  const result = await callAiJson({
-    instructions: "synthetic",
-    parts: [],
-    schemaName: "test",
-    schema: {},
-    signal: new AbortController().signal,
-    onReceipt: (r) => {
-      receipt = r;
+const options = {
+  instructions: "fixture",
+  parts: [{ type: "input_text", text: "synthetic" }],
+  schemaName: "test",
+  schema: { type: "object" },
+};
+function env(t, paid = true) {
+  const prior = globalThis.Deno;
+  t.after(() => (globalThis.Deno = prior));
+  globalThis.Deno = {
+    env: {
+      get: (k) => (k === "CENY_GEMINI_DATA_TIER" ? (paid ? "paid" : "free") : "synthetic-test"),
     },
+  };
+}
+test("Gemini uses backend auth header, low temperature, schema and reports usage", async (t) => {
+  env(t);
+  let receipt;
+  t.mock.method(globalThis, "fetch", async (url, init) => {
+    assert.match(url, /generativelanguage.googleapis.com.*gemini-3.8-flash:generateContent$/);
+    assert.ok(!url.includes("synthetic-test"));
+    assert.equal(init.headers["x-goog-api-key"], "synthetic-test");
+    const b = JSON.parse(init.body);
+    assert.equal(b.generationConfig.temperature, 0.1);
+    assert.deepEqual(b.generationConfig.responseJsonSchema, options.schema);
+    assert.equal(b.tools, undefined);
+    return Response.json({
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: '{"ok":true}' }] } }],
+      usageMetadata: { totalTokenCount: 15 },
+      modelVersion: "fixture",
+    });
   });
-  assert.deepEqual(result, { nome: "Ana" });
+  assert.deepEqual(await callAiJson({ ...options, onReceipt: (r) => (receipt = r) }), { ok: true });
   assert.equal(receipt.total_tokens, 15);
 });
-test("HTTP provider errors never expose provider details or become valid JSON output", async (t) => {
-  const oldFetch = globalThis.fetch,
-    oldDeno = globalThis.Deno;
-  t.after(() => {
-    globalThis.fetch = oldFetch;
-    globalThis.Deno = oldDeno;
+test("free or unreviewed processing never sends a resume", async (t) => {
+  env(t, false);
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async () => {
+    calls++;
   });
-  globalThis.Deno = { env: { get: () => "synthetic-key" } };
-  globalThis.fetch = async () => new Response("PRIVATE EMAIL AND PROVIDER DETAIL", { status: 500 });
-  await assert.rejects(
-    callAiJson({ instructions: "test", parts: [], schemaName: "test", schema: {} }),
-    (e) => e.status === 500 && !e.message.includes("PRIVATE"),
-  );
+  await assert.rejects(callAiJson(options), { name: "AiPrivacyPending" });
+  assert.equal(calls, 0);
+});
+test("provider details, blocked output, truncated and malformed JSON fail safely", async (t) => {
+  env(t);
+  for (const response of [
+    new Response("SECRET PROVIDER BODY", { status: 429 }),
+    Response.json({
+      candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ text: '{"ok":true}' }] } }],
+    }),
+    Response.json({ promptFeedback: { blockReason: "SAFETY" } }),
+    Response.json({
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: "invalid" }] } }],
+    }),
+  ]) {
+    t.mock.method(globalThis, "fetch", async () => response);
+    await assert.rejects(
+      callAiJson(options),
+      (e) => !e.message.includes("SECRET") && e.name === "AiGatewayError",
+    );
+  }
 });

@@ -2,6 +2,8 @@ import { z } from "zod";
 const text = z.string().nullish();
 const strings = z.array(z.string()).optional().default([]);
 export const analysisView = z.object({
+  pontos_esclarecer: strings,
+  perguntas_entrevista: strings,
   schema_version: z.literal("2"),
   resumo_profissional: z
     .object({ titulo: text, sintese: text, areas: strings, senioridade: text })

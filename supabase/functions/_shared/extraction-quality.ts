@@ -98,6 +98,8 @@ export const extractionValidator = z
           .max(6),
       })
       .strict(),
+    pontos_esclarecer: z.array(z.string().min(1).max(500)).max(12).default([]),
+    perguntas_entrevista: z.array(z.string().min(1).max(500)).max(12).default([]),
     confianca: z.number().min(0).max(1),
     campos_incertos: z.array(z.string().min(1).max(150)).max(200),
   })

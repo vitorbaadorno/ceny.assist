@@ -51,5 +51,11 @@ update private.ops_events set at=now()-interval '40 days' where company_id=pg_te
 select private.ops_prune();
 select pg_temp.ok('expired errors purged',not exists(select 1 from private.ops_events where company_id=pg_temp.id('company') and kind='error'));
 select pg_temp.ok('activities still retained',exists(select 1 from private.ops_events where company_id=pg_temp.id('company') and kind='activity'));
+select set_config('request.jwt.claims',json_build_object('sub',pg_temp.id('owner'),'role','authenticated')::text,true);
+set local role authenticated;
+select pg_temp.ok('ten tenant requests admitted',bool_and(public.admit_ai_request(pg_temp.id('company')))) from generate_series(1,10);
+select pg_temp.ok('eleventh request limited',not public.admit_ai_request(pg_temp.id('company')));
+select pg_temp.denied('foreign tenant rate window denied',$s$select public.admit_ai_request(pg_temp.id('elsewhere'))$s$);
+reset role;
 table results;
 rollback;

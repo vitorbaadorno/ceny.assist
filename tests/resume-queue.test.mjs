@@ -37,7 +37,7 @@ function worker({ extract, configured = true, timeout = false } = {}) {
     }
   }
   const deps = {
-    requireAiPrivacyReview,
+    requireGeminiPrivacy: () => requireAiPrivacyReview(configured ? "test-review" : undefined),
     AI_MINIMIZATION_VERSION,
     extractResume:
       extract ?? (async () => ({ status: "concluido", extraction: { nome_completo: "Fixture" } })),

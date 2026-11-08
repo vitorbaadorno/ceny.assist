@@ -339,6 +339,8 @@ const loadExtraction = (callAiJson) =>
     requireCompanyRole,
     z,
     callAiJson,
+    requireGeminiPrivacy: () => {},
+    Buffer,
     prepareProfessionalText,
     requireAiPrivacyReview,
     Deno: { env: { get: () => "synthetic-privacy-review" } },

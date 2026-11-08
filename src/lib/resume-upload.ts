@@ -12,16 +12,19 @@ export async function invokeResume<T>(body: unknown, signal?: AbortSignal): Prom
   } = await supabase.auth.getSession();
   if (error) throw error;
   if (!session) throw new Error("Sessão expirada. Entre novamente.");
-  const response = await fetch(`${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/ceny-worker`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `${import.meta.env["VITE_SUPABASE_URL"]}/functions/v1/analisar-curriculo`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"],
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: signal ?? AbortSignal.timeout(120000),
     },
-    body: JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(120000),
-  });
+  );
   const result = await response.json().catch(() => null);
   if (!response.ok)
     throw Object.assign(new Error(result?.error ?? "Operação indisponível."), {

@@ -1,4 +1,5 @@
-import { AI_MINIMIZATION_VERSION, requireAiPrivacyReview } from "./ai-privacy.ts";
+import { AI_MINIMIZATION_VERSION } from "./ai-privacy.ts";
+import { requireGeminiPrivacy } from "./gemini-config.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.116.0";
 import type { Database, Json } from "./database.ts";
 import { extractResume } from "./resumes.ts";
@@ -76,9 +77,9 @@ export async function runResumeJob(admin: Client, job: Job) {
     }
   };
   try {
-    requireAiPrivacyReview(Deno.env.get("CENY_AI_PRIVACY_REVIEW_REFERENCE"));
+    requireGeminiPrivacy();
     await abortable(audit(true), signal);
-    if (!Deno.env.get("LOVABLE_API_KEY")) throw new AiGatewayError(401, "Configuração ausente.");
+    if (!Deno.env.get("GEMINI_API_KEY")) throw new AiGatewayError(401, "Configuração ausente.");
     await phase("downloading");
     const { data: document, error: docError } = await abortable(
       admin

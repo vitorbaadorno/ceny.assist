@@ -33,6 +33,9 @@ port = 54324
 # JWT is verified with auth.getUser in the function, compatible with signing keys.
 verify_jwt = false
 
+[functions.analisar-curriculo]
+verify_jwt = false
+
 [functions.ceny-queue]
 # A private scheduler token is verified against Supabase Vault; public keys are refused.
 verify_jwt = false
