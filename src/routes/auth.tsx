@@ -1,3 +1,4 @@
+import { PasswordInput } from "@/components/password-input";
 import { z } from "zod";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -181,9 +182,9 @@ function AuthPage() {
                       </Button>
                     )}
                   </div>
-                  <Input
+                  <PasswordInput
+                    key={mode}
                     id="password"
-                    type="password"
                     minLength={mode === "signup" ? PASSWORD_MIN_LENGTH : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     value={password}
@@ -196,9 +197,9 @@ function AuthPage() {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">{PASSWORD_HELP}</p>
                   <Label htmlFor="confirmation">Confirmar senha</Label>
-                  <Input
+                  <PasswordInput
                     id="confirmation"
-                    type="password"
+                    visibilityLabel="confirmação de senha"
                     autoComplete="new-password"
                     value={confirmation}
                     onChange={(e) => setConfirmation(e.target.value)}
