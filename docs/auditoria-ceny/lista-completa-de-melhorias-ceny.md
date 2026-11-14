@@ -1,0 +1,325 @@
+- **Proteção dos dados de cada empresa — urgente**
+  - [ ] Criar o cadastro de empresas dentro da Ceny.
+  - [ ] Vincular cada usuário às empresas em que está autorizado a trabalhar.
+  - [ ] Separar candidatos, currículos, vagas, avaliações, notas e relatórios por empresa.
+  - [ ] Impedir que uma empresa veja, altere, baixe ou exclua informações de outra.
+  - [ ] Aplicar essa proteção também ao acesso direto aos dados, e não apenas às telas.
+  - [ ] Impedir a associação de um candidato de uma empresa a uma vaga de outra.
+  - [ ] Restringir o acesso aos perfis dos usuários conforme a empresa e a necessidade de cada pessoa.
+  - [ ] Proteger os arquivos originais com as mesmas regras de acesso dos candidatos.
+  - [ ] Conferir a autorização do usuário antes de liberar qualquer link de currículo.
+  - [ ] Conferir a empresa e a permissão de quem solicita exclusões ou arquivamentos.
+  - [ ] Impedir alterações indevidas nas pontuações e nos resultados produzidos pela IA.
+  - [ ] Identificar a empresa responsável pelos registros antigos antes de distribuí-los entre os clientes.
+  - [ ] Manter registros antigos sem responsável confirmado fora do acesso das empresas até a conferência.
+  - [ ] Confirmar, em ambiente autorizado, se as regras de proteção em uso correspondem às que foram auditadas.
+
+- **Contas, acesso e permissões**
+  - [ ] Criar um processo de primeiro acesso com configuração da empresa e do responsável.
+  - [ ] Exigir convite ou aprovação para liberar acesso aos dados de uma empresa.
+  - [ ] Criar funções de administrador, profissional de RH e gestor com acesso apenas para consulta.
+  - [ ] Definir quem pode convidar usuários, enviar currículos, corrigir dados, avaliar candidatos e excluir informações.
+  - [ ] Permitir consultar, alterar e retirar o acesso dos membros da equipe.
+  - [ ] Bloquear operações de usuários cujo acesso foi retirado.
+  - [ ] Permitir a troca segura de empresa para quem trabalha em mais de uma.
+  - [ ] Limpar as informações da sessão anterior ao sair da conta ou trocar de empresa.
+  - [ ] Tratar falhas ao sair da conta e confirmar se a saída realmente ocorreu.
+  - [ ] Padronizar as exigências de senha no cadastro e na redefinição.
+  - [ ] Garantir um caminho seguro para recuperar o acesso administrativo à empresa.
+  - [ ] Validar cadastro, confirmação de e-mail, entrada, recuperação de senha e links expirados em um ambiente de testes.
+
+- **Recebimento e envio de currículos**
+  - [ ] Definir e informar claramente quais formatos de arquivo são aceitos.
+  - [ ] Acrescentar suporte a currículos em Word no formato DOCX.
+  - [ ] Conferir o conteúdo real do arquivo, além do nome e da extensão.
+  - [ ] Definir limites de tamanho, páginas e quantidade de arquivos por envio.
+  - [ ] Aplicar os limites também no recebimento e no armazenamento dos arquivos.
+  - [ ] Recusar arquivos vazios, corrompidos, incompatíveis ou potencialmente perigosos.
+  - [ ] Proteger a leitura de documentos que possam consumir memória ou processamento em excesso.
+  - [ ] Explicar o motivo da recusa de cada arquivo.
+  - [ ] Impedir que uma falha no cadastro deixe um arquivo armazenado sem candidato ou documento correspondente.
+  - [ ] Identificar e limpar arquivos que tenham ficado sem vínculo após uma falha.
+  - [ ] Evitar criar candidatos ou cobrar processamento em duplicidade quando o usuário repetir um envio.
+  - [ ] Registrar quem enviou cada currículo, quando foi enviado e qual é sua origem.
+  - [ ] Mostrar separadamente arquivos aguardando envio, enviados, em leitura, concluídos e com erro.
+  - [ ] Corrigir a mensagem de sucesso exibida mesmo quando todos os arquivos falham.
+  - [ ] Apresentar um resumo final com quantos arquivos deram certo, falharam ou precisam de revisão.
+  - [ ] Atualizar a lista de candidatos assim que os novos registros estiverem disponíveis.
+
+- **Processamento de vários currículos**
+  - [ ] Fazer o processamento continuar mesmo que a pessoa feche ou troque de página.
+  - [ ] Guardar o andamento de cada lote para consulta posterior.
+  - [ ] Permitir repetir apenas os arquivos que falharam.
+  - [ ] Permitir cancelar trabalhos ainda não iniciados.
+  - [ ] Definir um tempo máximo de espera para cada tentativa de leitura.
+  - [ ] Repetir automaticamente falhas temporárias, com intervalo e limite de tentativas.
+  - [ ] Distinguir falhas temporárias de arquivos que precisam de intervenção do RH.
+  - [ ] Evitar que o mesmo currículo seja processado duas vezes ao mesmo tempo.
+  - [ ] Recuperar trabalhos interrompidos por reinício ou falha do sistema.
+  - [ ] Limitar quantos documentos cada empresa pode processar simultaneamente.
+  - [ ] Mostrar no detalhe do candidato o andamento real da leitura e do reprocessamento.
+
+- **Leitura e interpretação dos currículos pela IA**
+  - [ ] Validar a qualidade da leitura de PDFs com texto, PDFs digitalizados e fotos.
+  - [ ] Validar a leitura de DOCX quando o suporte for implementado.
+  - [ ] Melhorar a leitura de currículos com colunas, tabelas, baixa resolução e diferentes idiomas.
+  - [ ] Conferir se a resposta da IA contém os campos e os tipos de informação esperados antes de salvar.
+  - [ ] Recusar respostas vazias, incompletas, inválidas ou interrompidas.
+  - [ ] Impedir que uma resposta seja considerada concluída quando o serviço de IA informa uma falha.
+  - [ ] Tratar corretamente falhas no recebimento de uma resposta enviada aos poucos.
+  - [ ] Validar e-mails, datas, listas de competências e valores numéricos retornados.
+  - [ ] Manter informações ausentes como não informadas, sem inventá-las.
+  - [ ] Diferenciar informações encontradas no currículo de interpretações feitas pela IA.
+  - [ ] Encaminhar campos importantes duvidosos para revisão humana, mesmo quando a confiança geral da IA for alta.
+  - [ ] Medir a precisão da leitura em vez de confiar apenas na nota que a própria IA atribui à resposta.
+  - [ ] Identificar o trecho ou a página que sustenta cada informação importante.
+  - [ ] Acrescentar um resumo profissional estruturado do candidato.
+  - [ ] Identificar projetos relevantes em um campo próprio.
+  - [ ] Melhorar a leitura de cargos, períodos de trabalho e datas de formação.
+  - [ ] Conferir o cálculo do tempo de experiência e evitar contar duas vezes períodos sobrepostos.
+  - [ ] Registrar qual modelo e quais instruções foram usados em cada leitura.
+  - [ ] Registrar a data, a duração e o consumo de cada análise.
+  - [ ] Proteger a análise contra instruções colocadas no currículo para manipular o resultado.
+  - [ ] Exibir erros compreensíveis sem revelar detalhes internos ou informações pessoais desnecessárias.
+
+- **Correção e revisão humana**
+  - [ ] Permitir corrigir nome, e-mail, telefone e localização.
+  - [ ] Permitir corrigir formação, experiências, competências, idiomas e certificações.
+  - [ ] Permitir corrigir os períodos de trabalho e o tempo de experiência.
+  - [ ] Mostrar claramente quais campos precisam de conferência e por quê.
+  - [ ] Permitir salvar a cidade digitada manualmente, sem depender de sugestões externas.
+  - [ ] Mostrar se uma alteração está sendo salva, foi salva ou falhou.
+  - [ ] Criar uma ação para concluir a revisão do currículo.
+  - [ ] Registrar quem revisou os dados, quando e o que foi alterado.
+  - [ ] Preservar as correções humanas quando a IA fizer uma nova leitura.
+  - [ ] Separar a informação original, a extração da IA e a correção do RH.
+  - [ ] Evitar que duas pessoas sobrescrevam as alterações uma da outra sem aviso.
+  - [ ] Avisar quando uma correção tornar uma avaliação anterior desatualizada.
+  - [ ] Permitir conferir o currículo original durante a revisão.
+
+- **Cadastro e gestão de vagas**
+  - [ ] Permitir editar vagas depois do cadastro.
+  - [ ] Permitir encerrar e reabrir vagas sem excluir candidatos.
+  - [ ] Validar título, experiência mínima e demais informações também fora da tela de cadastro.
+  - [ ] Impedir valores negativos e informações incoerentes.
+  - [ ] Exigir critérios suficientes antes de gerar um ranking.
+  - [ ] Identificar e remover requisitos repetidos para que não alterem a pontuação.
+  - [ ] Diferenciar claramente requisitos obrigatórios de diferenciais desejáveis.
+  - [ ] Permitir definir a importância de cada critério.
+  - [ ] Explicar como os requisitos obrigatórios afetam a avaliação.
+  - [ ] Identificar requisitos a partir da descrição da vaga, com confirmação do RH.
+  - [ ] Garantir que os critérios usados na avaliação correspondam à descrição e às exigências aprovadas da vaga.
+  - [ ] Guardar o histórico de mudanças da vaga e dos critérios.
+  - [ ] Avisar quando uma mudança na vaga exigir uma nova avaliação dos candidatos.
+  - [ ] Criar modelos de vaga reutilizáveis.
+  - [ ] Registrar quem criou e alterou cada vaga.
+
+- **Comparação entre currículo e vaga — urgente**
+  - [ ] Corrigir correspondências que confundem partes de palavras, como considerar JavaScript uma comprovação de Java.
+  - [ ] Reconhecer negações, como “não possui experiência com Excel”.
+  - [ ] Reconhecer abreviações e nomes equivalentes quando representarem a mesma competência.
+  - [ ] Considerar o contexto, o nível e a comprovação da experiência.
+  - [ ] Impedir que nome, e-mail ou outros dados pessoais contem como competências.
+  - [ ] Impedir que nomes de campos internos do sistema influenciem a nota.
+  - [ ] Diferenciar formação concluída, em andamento e incompleta.
+  - [ ] Corrigir o caso em que cidade vazia é considerada compatível com qualquer local.
+  - [ ] Tratar informações ausentes de maneira consistente.
+  - [ ] Não apresentar experiência desconhecida como zero anos comprovados.
+  - [ ] Impedir que candidato sem dados e vaga sem critérios recebam 100% de aderência.
+  - [ ] Rever os pontos concedidos automaticamente quando uma categoria de exigência não foi preenchida.
+  - [ ] Definir regras claras e justificadas para o cálculo e para os pesos da pontuação.
+  - [ ] Distinguir requisito atendido, parcialmente comprovado, sem informação suficiente e comprovadamente não atendido.
+  - [ ] Mostrar quais trechos do currículo sustentam cada conclusão.
+  - [ ] Explicar os pontos fortes e as lacunas sem inventar justificativas.
+  - [ ] Apresentar a nota como aderência aos critérios da vaga, sem prometer sucesso profissional ou contratação.
+  - [ ] Ampliar a comparação para compreender o significado das informações, com resultados medidos e evidências.
+  - [ ] Garantir que características pessoais sem relação com a vaga não influenciem a avaliação.
+  - [ ] Manter a decisão final sob responsabilidade do RH.
+
+- **Ranking e histórico das avaliações**
+  - [ ] Impedir que currículos com leitura falha ou revisão pendente recebam uma classificação final sem tratamento adequado.
+  - [ ] Mostrar separadamente candidatos que ainda precisam de processamento ou revisão.
+  - [ ] Garantir que o cálculo considere toda a base autorizada, inclusive quando há muitos candidatos.
+  - [ ] Preservar o ranking anterior até o novo resultado ser salvo completamente.
+  - [ ] Impedir que uma falha de gravação apague as avaliações anteriores.
+  - [ ] Evitar que cálculos simultâneos misturem resultados de avaliações diferentes.
+  - [ ] Guardar o histórico dos rankings.
+  - [ ] Registrar os critérios, o currículo e a revisão humana usados em cada avaliação.
+  - [ ] Mostrar a data da avaliação e indicar quando ela está desatualizada.
+  - [ ] Atualizar ou sinalizar as avaliações quando mudar o currículo, a revisão ou a vaga.
+  - [ ] Explicar por que determinado candidato não recebeu uma avaliação final.
+  - [ ] Garantir que repetir uma mesma solicitação não gere resultados ou registros duplicados.
+
+- **Idade e vagas de Jovem Aprendiz**
+  - [ ] Rever as regras de idade e as exceções aplicáveis com o responsável jurídico.
+  - [ ] Corrigir o limite de idade usado atualmente para vagas de aprendizagem.
+  - [ ] Tratar data de nascimento desconhecida como informação pendente de conferência.
+  - [ ] Não excluir automaticamente candidatos por falta de data de nascimento.
+  - [ ] Validar datas impossíveis, datas futuras e anos bissextos.
+  - [ ] Definir qual data serve de referência para verificar a idade.
+  - [ ] Permitir revisão autorizada dos casos especiais e registrar a justificativa.
+  - [ ] Evitar inferir deficiência ou outros dados sensíveis a partir do currículo.
+
+- **Banco de talentos e versões de currículos**
+  - [ ] Separar o cadastro da pessoa dos documentos enviados e das análises realizadas.
+  - [ ] Permitir mais de um currículo por candidato.
+  - [ ] Guardar versões antigas sem sobrescrever os documentos anteriores.
+  - [ ] Identificar arquivos iguais, mesmo quando têm nomes diferentes.
+  - [ ] Distinguir arquivos diferentes que tenham o mesmo nome.
+  - [ ] Sugerir a atualização de um candidato existente quando chegar um novo currículo da mesma pessoa.
+  - [ ] Exigir conferência antes de juntar cadastros que possam ser de pessoas diferentes.
+  - [ ] Não juntar candidatos apenas porque têm o mesmo nome.
+  - [ ] Manter a identificação de duplicados restrita aos dados da própria empresa.
+  - [ ] Permitir associar um candidato a várias vagas de forma explícita.
+  - [ ] Recuperar candidatos já cadastrados que possam atender a novas vagas.
+  - [ ] Recomendar candidatos do acervo com justificativas verificáveis.
+  - [ ] Manter buscas e recomendações atualizadas quando houver correção, nova versão ou exclusão.
+
+- **Busca, filtros e navegação**
+  - [ ] Fazer buscas e filtros considerarem toda a base da empresa.
+  - [ ] Dividir listas grandes em páginas ou carregamentos menores.
+  - [ ] Mostrar a quantidade real de candidatos e vagas, além dos itens carregados na tela.
+  - [ ] Melhorar a busca por competências, termos equivalentes e intenção da pesquisa.
+  - [ ] Padronizar a busca para lidar melhor com maiúsculas, minúsculas e acentos.
+  - [ ] Permitir filtrar candidatos pelo estado da leitura e da revisão.
+  - [ ] Melhorar os filtros por localização, experiência e requisitos da vaga.
+  - [ ] Diferenciar base vazia, pesquisa sem resultado e erro de carregamento.
+  - [ ] Mostrar uma mensagem apropriada quando uma categoria de vaga não tiver resultados.
+  - [ ] Permitir limpar filtros sem perder o contexto da busca.
+  - [ ] Distinguir ranking ainda não calculado de ranking sem resultados após um filtro.
+  - [ ] Evitar que candidatos recém-enviados ou corrigidos apareçam com informações antigas.
+
+- **Avaliação humana e colaboração**
+  - [ ] Guardar a decisão sobre o candidato separadamente para cada vaga.
+  - [ ] Permitir que a mesma pessoa seja aprovada para uma vaga e não aprovada para outra.
+  - [ ] Separar observações gerais sobre o candidato das observações específicas de uma vaga.
+  - [ ] Registrar autor, data e histórico das notas internas.
+  - [ ] Registrar as mudanças de situação do candidato e as justificativas.
+  - [ ] Evitar que uma nova observação apague silenciosamente o histórico anterior.
+  - [ ] Criar listas de candidatos selecionados para cada vaga.
+  - [ ] Permitir marcar candidatos como favoritos.
+  - [ ] Permitir comparar candidatos lado a lado usando os mesmos critérios.
+  - [ ] Mostrar dados ausentes e análises desatualizadas também na comparação.
+  - [ ] Permitir que gestores autorizados consultem candidatos e avaliações com acesso controlado.
+
+- **Relatórios**
+  - [ ] Implementar a geração de relatórios das vagas.
+  - [ ] Permitir escolher os candidatos incluídos no relatório.
+  - [ ] Incluir qualificações, pontos fortes, lacunas, critérios e evidências.
+  - [ ] Identificar a data da avaliação e a versão das informações utilizadas.
+  - [ ] Diferenciar conclusões da IA de decisões e observações do RH.
+  - [ ] Permitir exportar relatórios em PDF.
+  - [ ] Permitir exportar os dados autorizados em planilha quando necessário.
+  - [ ] Restringir geração, consulta e download conforme as permissões.
+  - [ ] Registrar quem gerou ou baixou cada relatório.
+  - [ ] Evitar informações pessoais desnecessárias nas exportações.
+
+- **Assistente interno de IA — evolução após corrigir o núcleo**
+  - [ ] Permitir perguntas em linguagem natural sobre a base da própria empresa.
+  - [ ] Responder com base em candidatos, vagas e avaliações realmente existentes.
+  - [ ] Mostrar as fontes de cada resposta.
+  - [ ] Informar quando não houver dados suficientes para responder.
+  - [ ] Explicar rankings usando os critérios e as evidências registrados.
+  - [ ] Comparar candidatos sob demanda.
+  - [ ] Sugerir perguntas de entrevista a partir de lacunas ou pontos a confirmar.
+  - [ ] Respeitar as permissões de cada usuário em todas as respostas.
+  - [ ] Impedir que instruções escondidas nos currículos manipulem o assistente.
+  - [ ] Impedir que o assistente rejeite, contrate ou exclua pessoas por conta própria.
+  - [ ] Medir a qualidade e o custo do assistente antes de ampliar seu uso.
+
+- **Exclusão, arquivamento e privacidade — urgente**
+  - [ ] Diferenciar claramente arquivar um cadastro de eliminar seus dados.
+  - [ ] Informar ao usuário o que será removido e o que será mantido em cada ação.
+  - [ ] Impedir que o arquivo seja perdido enquanto o restante da exclusão falha sem aviso.
+  - [ ] Guardar o andamento das exclusões e permitir recuperar operações interrompidas.
+  - [ ] Garantir que repetir uma exclusão não gere novos problemas.
+  - [ ] Impedir que reprocessamento e exclusão do mesmo currículo entrem em conflito.
+  - [ ] Tratar também análises, versões, resultados de busca e relatórios ao eliminar dados.
+  - [ ] Definir por quanto tempo os currículos e os dados relacionados serão guardados.
+  - [ ] Registrar as justificativas para manter dados quando houver necessidade.
+  - [ ] Permitir tratar internamente pedidos de consulta, correção, exportação e eliminação.
+  - [ ] Reduzir os dados enviados à IA ao necessário para a finalidade da análise.
+  - [ ] Verificar as condições de armazenamento, retenção e uso dos dados pelo fornecedor de IA.
+  - [ ] Definir os responsáveis e as bases de tratamento com apoio jurídico.
+  - [ ] Ajustar as mensagens sobre LGPD para refletirem os controles realmente implantados.
+  - [ ] Verificar a proteção das cópias de segurança e testar a recuperação dos dados.
+  - [ ] Garantir que restaurar uma cópia de segurança não reative indevidamente dados eliminados ou acessos retirados.
+
+- **Mensagens, erros e funcionamento das telas**
+  - [ ] Corrigir telas que ficam mostrando carregamento após erro ou registro inexistente.
+  - [ ] Mostrar mensagens específicas para falha de conexão, falta de permissão e sessão expirada.
+  - [ ] Oferecer uma ação clara para tentar novamente quando isso fizer sentido.
+  - [ ] Evitar mensagens de sucesso antes de confirmar que a informação foi salva.
+  - [ ] Não apresentar situações desconhecidas de processamento como leitura concluída.
+  - [ ] Atualizar informações na tela após salvar, enviar, revisar, reprocessar ou excluir.
+  - [ ] Desativar ou explicar ações indisponíveis, como abrir um currículo sem arquivo.
+  - [ ] Verificar se a abertura do currículo funciona quando o navegador bloqueia novas janelas.
+  - [ ] Verificar se notas e datas mostram o registro correto ao navegar entre candidatos.
+  - [ ] Evitar que falhas de serviços auxiliares impeçam o preenchimento manual de informações internas.
+  - [ ] Validar o uso por teclado e leitor de tela nos formulários, seleções e confirmações.
+
+- **Administração, acompanhamento e custos**
+  - [ ] Criar uma área de configurações da empresa.
+  - [ ] Permitir administrar membros, permissões e limites de uso.
+  - [ ] Registrar quem cadastrou, alterou, revisou, recalculou, exportou ou excluiu informações.
+  - [ ] Permitir consultar esse histórico apenas por pessoas autorizadas.
+  - [ ] Associar cada erro à operação e à empresa correspondentes.
+  - [ ] Evitar misturar os registros de erro de operações realizadas ao mesmo tempo.
+  - [ ] Retirar senhas, credenciais e conteúdo pessoal desnecessário dos registros de erro.
+  - [ ] Definir por quanto tempo o histórico de atividades e erros será mantido.
+  - [ ] Mostrar quantos currículos foram enviados, concluídos, recusados ou encaminhados para revisão.
+  - [ ] Medir tempo de processamento, falhas e consumo de IA.
+  - [ ] Calcular o custo real por análise, incluindo repetições e armazenamento.
+  - [ ] Definir limites de uso por empresa e avisar quando estiverem próximos de ser atingidos.
+  - [ ] Impedir que pedidos simultâneos ultrapassem os limites sem controle.
+  - [ ] Evitar contar duas vezes a mesma análise por causa de repetição de uma solicitação.
+  - [ ] Preparar o acompanhamento de consumo necessário para futuros planos comerciais.
+
+- **Organização e confiabilidade do programa**
+  - [ ] Organizar separadamente as telas, as regras de avaliação e o acesso aos dados.
+  - [ ] Reunir regras repetidas em um lugar comum para evitar comportamentos diferentes entre telas.
+  - [ ] Padronizar os estados possíveis de candidatos, vagas e processamento.
+  - [ ] Impedir que dados incompletos ou malformados quebrem as páginas.
+  - [ ] Registrar automaticamente o autor das operações, sem depender de preenchimento manual.
+  - [ ] Preparar o banco para as relações entre empresas, documentos, revisões e avaliações.
+  - [ ] Corrigir os dados antigos incompatíveis antes de aplicar novas regras.
+  - [ ] Planejar a atualização dos arquivos antigos sem quebrar os vínculos com os candidatos.
+  - [ ] Preservar o histórico e conferir a quantidade e a integridade dos dados durante mudanças.
+  - [ ] Carregar apenas as informações necessárias em cada lista.
+  - [ ] Reduzir consultas repetidas quando não houver processamento em andamento.
+  - [ ] Evitar carregar e analisar grandes volumes inteiros de uma só vez.
+  - [ ] Melhorar a pesquisa e os cálculos para continuarem rápidos com o crescimento da base.
+  - [ ] Verificar compatibilidade e segurança dos componentes usados pelo programa.
+  - [ ] Revisar componentes sem uso confirmado antes de decidir removê-los.
+  - [ ] Padronizar a instalação para que diferentes ambientes usem as mesmas versões.
+  - [ ] Documentar as configurações necessárias para executar, testar e publicar a Ceny.
+  - [ ] Verificar se credenciais privadas foram incluídas no histórico de arquivos e corrigir qualquer exposição confirmada.
+  - [ ] Documentar como preparar o armazenamento privado dos currículos.
+  - [ ] Preservar os controles de segurança já existentes durante as correções.
+
+- **Testes e confirmações pendentes**
+  - [ ] Preparar um ambiente separado com empresas e candidatos fictícios.
+  - [ ] Instalar as dependências nesse ambiente e confirmar que a aplicação pode ser gerada e executada.
+  - [ ] Executar as verificações de qualidade do código que não puderam ser realizadas na auditoria inicial.
+  - [ ] Testar os fluxos completos nas telas, do envio à gravação e à exibição do resultado.
+  - [ ] Testar entrada, recuperação de senha, saída, troca de empresa e retirada de acesso.
+  - [ ] Comprovar que uma empresa não acessa dados de outra pelas telas, pelos arquivos ou por acessos diretos.
+  - [ ] Testar a aplicação com quantidades de registros maiores do que uma página.
+  - [ ] Testar falhas em cada etapa de envio, leitura, salvamento, ranking e exclusão.
+  - [ ] Testar operações simultâneas e interrupções durante o processamento.
+  - [ ] Criar testes automáticos para impedir o retorno dos erros já reproduzidos.
+  - [ ] Montar um conjunto representativo de currículos e vagas para avaliar a qualidade da IA.
+  - [ ] Conferir as respostas com revisores de RH e guardar os resultados esperados.
+  - [ ] Medir erros de leitura, informações inventadas e candidatos relevantes que ficaram de fora.
+  - [ ] Repetir análises para medir se os resultados permanecem consistentes.
+  - [ ] Confirmar que mudar apenas o nome ou a apresentação do currículo não altera indevidamente a avaliação.
+  - [ ] Testar currículos com instruções para manipular a IA.
+  - [ ] Medir velocidade, consumo de memória e custo com lotes e bases maiores.
+  - [ ] Definir os resultados mínimos de qualidade, segurança e desempenho antes do uso comercial.
+  - [ ] Verificar as configurações reais de proteção dos arquivos e dos serviços em ambiente autorizado.
+  - [ ] Verificar proteção de acesso pelo navegador e segurança das configurações publicadas.
+  - [ ] Consultar as verificações atualizadas de falhas de segurança dos componentes utilizados.
+  - [ ] Testar a recuperação de cópias de segurança.
+  - [ ] Registrar o que foi testado, o que foi aprovado e o que continua sem confirmação.
+  - [ ] Automatizar as verificações essenciais antes de publicar novas versões.
+
