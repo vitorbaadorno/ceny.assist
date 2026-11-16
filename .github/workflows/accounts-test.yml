@@ -8,6 +8,18 @@ on:
 permissions:
   contents: read
 jobs:
+  history-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Block historical credential findings pending verified remediation
+        run: node scripts/security-scan.mjs --history
   isolated-auth:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -26,8 +38,8 @@ jobs:
           version: 2.122.0
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Scan source and history without revealing secret values
-        run: node scripts/security-scan.mjs --history
+      - name: Scan current source without revealing secret values
+        run: node scripts/security-scan.mjs
       - name: Block high and critical dependency vulnerabilities
         run: bun audit --audit-level=high
       - name: Typecheck and unit authorization tests
