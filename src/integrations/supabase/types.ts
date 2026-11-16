@@ -1747,6 +1747,10 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      product_quality_metrics: {
+        Args: { p_company: string; p_since: string };
+        Returns: Json;
+      };
       request_vacancy_analysis: {
         Args: { p_company: string; p_candidate: string; p_job: string; p_request: string };
         Returns: string;

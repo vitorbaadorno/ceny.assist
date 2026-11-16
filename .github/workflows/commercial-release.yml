@@ -1,0 +1,25 @@
+name: Commercial release gate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    environment: commercial-release
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Validate approved evidence for the current commit
+        env:
+          CENY_RELEASE_EVIDENCE_JSON: ${{ secrets.CENY_RELEASE_EVIDENCE_JSON }}
+        run: |
+          umask 077
+          node --input-type=module -e 'import fs from "node:fs"; fs.writeFileSync("/tmp/ceny-release-evidence.json", process.env.CENY_RELEASE_EVIDENCE_JSON || "{}");'
+          CENY_RELEASE_EVIDENCE=/tmp/ceny-release-evidence.json node scripts/check-release.mjs
+      - name: Remove temporary evidence
+        if: always()
+        run: rm -f /tmp/ceny-release-evidence.json

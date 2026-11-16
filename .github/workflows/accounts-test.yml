@@ -1,5 +1,7 @@
 name: Accounts and company isolation
 on:
+  pull_request:
+    branches: [ceny-versaonova]
   push:
     branches: [ceny-versaonova]
   workflow_dispatch:
@@ -8,9 +10,11 @@ permissions:
 jobs:
   isolated-auth:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -22,6 +26,10 @@ jobs:
           version: 2.122.0
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Scan source and history without revealing secret values
+        run: node scripts/security-scan.mjs --history
+      - name: Block high and critical dependency vulnerabilities
+        run: bun audit --audit-level=high
       - name: Typecheck and unit authorization tests
         run: |
           bun run typecheck
@@ -45,6 +53,8 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/candidate_collaboration.sql > artifacts/candidate-collaboration.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/vacancy_reports.sql > artifacts/vacancy-reports.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/privacy_lifecycle.sql > artifacts/privacy-lifecycle.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/product_quality_metrics.sql > artifacts/product-quality.txt
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/security_catalog.sql > artifacts/security-catalog.txt
       - name: Validate real file intake and Storage
         # All SQL fixtures run in rolled-back transactions.
         run: |
@@ -76,11 +86,23 @@ jobs:
         run: |
           supabase db reset --local --no-seed --version 20261107181433
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/platform_before.sql -f "$(echo supabase/migrations/*_platform_integrity.sql)" -f supabase/tests/platform_after.sql
+      - name: Restore current schema for browser journeys
+        run: supabase db reset --local --no-seed
+      - name: Install browser and exercise RH interface
+        env:
+          CENY_BROWSER_ISOLATED: "true"
+        run: |
+          bunx playwright install --with-deps chromium
+          bun run test:browser
       - name: Build application
         env:
           VITE_SUPABASE_URL: http://127.0.0.1:54321
           VITE_SUPABASE_PUBLISHABLE_KEY: local-test-placeholder
         run: bun run build
+      - name: Inspect browser bundle and prepare release manifest
+        run: |
+          bun run security:scan
+          bun run release:manifest
       - name: Preserve test results without credentials
         if: always()
         uses: actions/upload-artifact@v4
@@ -107,6 +129,9 @@ jobs:
             artifacts/ranking-results.json
             artifacts/apprentice-age.txt
             artifacts/upload-results.json
+            artifacts/product-quality.txt
+            artifacts/security-catalog.txt
+            artifacts/release-manifest.json
       - name: Stop disposable test environment
         if: always()
         run: supabase stop --no-backup

@@ -57,6 +57,12 @@ function CompanyLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background md:flex-row">
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-3 focus:text-foreground"
+      >
+        Pular para o conteúdo
+      </a>
       <aside className="flex shrink-0 flex-col gap-6 bg-sidebar px-4 py-6 text-sidebar-foreground md:w-64">
         <div>
           <p className="text-xs uppercase tracking-widest text-sidebar-foreground/60">RH</p>
@@ -105,6 +111,7 @@ function CompanyLayout() {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
             return (
               <Link
+                aria-current={active ? "page" : undefined}
                 onClick={() => {
                   setSettings(false);
                   setPrivacy(false);
@@ -143,7 +150,11 @@ function CompanyLayout() {
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-x-hidden px-4 py-8 md:px-10">
+      <main
+        id="conteudo-principal"
+        tabIndex={-1}
+        className="flex-1 overflow-x-hidden px-4 py-8 md:px-10"
+      >
         {companyLoading ? (
           <p>Carregando empresas...</p>
         ) : companyError ? (

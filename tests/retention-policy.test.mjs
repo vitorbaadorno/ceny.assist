@@ -2,16 +2,36 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { runRetention, validateRetentionPolicy } from "../scripts/retention-policy.mjs";
 const company = "11111111-1111-4111-8111-111111111111";
-const policy = { version: 1, company_id: company, approval_reference: "synthetic-approval", approved_by: "test",
-  approved_at: "2026-01-01", review_at: "2027-01-01", candidate_days: 30, basis: "candidate_created_at" };
+const policy = {
+  version: 1,
+  company_id: company,
+  approval_reference: "synthetic-approval",
+  approved_by: "test",
+  approved_at: "2026-01-01",
+  review_at: "2027-01-01",
+  candidate_days: 30,
+  basis: "candidate_created_at",
+};
 function fixture({ holds = 0, merged = false, error = false } = {}) {
   const calls = [];
-  return { calls, async rpc(name, args) {
-    calls.push({ name, args });
-    if (error) return { error: {} };
-    return { data: name === "privacy_candidates" ? [{ id: "old", created_at: "2025-01-01" }, { id: "new", created_at: "2026-11-15" }] :
-      name === "preview_candidate_erasure" ? { candidate_ids: merged ? ["old", "new"] : ["old"], holds } : "operation" };
-  } };
+  return {
+    calls,
+    async rpc(name, args) {
+      calls.push({ name, args });
+      if (error) return { error: {} };
+      return {
+        data:
+          name === "privacy_candidates"
+            ? [
+                { id: "old", created_at: "2025-01-01" },
+                { id: "new", created_at: "2026-11-15" },
+              ]
+            : name === "preview_candidate_erasure"
+              ? { candidate_ids: merged ? ["old", "new"] : ["old"], holds }
+              : "operation",
+      };
+    },
+  };
 }
 const options = { now: new Date("2026-11-16") };
 test("unapproved, expired and future retention policies fail closed", async () => {
@@ -27,7 +47,10 @@ test("dry run never mutates; legal holds and recent merged identities prevent de
     const db = fixture(params);
     const result = await runRetention(db, policy, options);
     assert.equal(result.eligible, params.holds || params.merged ? 0 : 1);
-    assert.equal(db.calls.some(c => c.name === "request_candidate_erasure"), false);
+    assert.equal(
+      db.calls.some((c) => c.name === "request_candidate_erasure"),
+      false,
+    );
   }
 });
 test("approved execution delegates exact scope to transactional permission and hold checks", async () => {

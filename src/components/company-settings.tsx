@@ -124,6 +124,9 @@ export function CompanySettings() {
         </p>
       </header>
       {companyId && canAdmin && <CompanyOperations key={companyId} companyId={companyId} />}
+      {companyId && canAdmin && (
+        <ProductQuality key={`quality-${companyId}`} companyId={companyId} />
+      )}
       {!companyId && (
         <p className="rounded border p-4">
           Você ainda não selecionou uma empresa com acesso ativo. Aceite um convite ou cadastre a
@@ -488,3 +491,4 @@ export function CompanySettings() {
     </section>
   );
 }
+import { ProductQuality } from "./product-quality";
