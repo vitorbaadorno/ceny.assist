@@ -1,4 +1,4 @@
-// Backend configuration. A different paid model requires only a secret change.
+// Backend only. Free quota is restricted to the fixed synthetic health probe.
 export const MODEL =
   (typeof Deno !== "undefined" ? Deno.env.get("GEMINI_MODEL") : undefined) ?? "gemini-2.5-flash";
 export const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/";

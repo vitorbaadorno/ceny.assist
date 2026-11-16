@@ -5,7 +5,7 @@ import { PROMPT_VERSION } from "../supabase/functions/_shared/extraction-prompt.
 import { measureExtraction } from "./quality-metrics.mjs";
 const manifest = JSON.parse(await Deno.readTextFile("tests/fixtures/quality/manifest.json"));
 const live = Deno.args.includes("--live");
-if (live && !Deno.env.get("LOVABLE_API_KEY"))
+if (live && !Deno.env.get("GEMINI_API_KEY"))
   throw new Error("Configure a credencial de IA no ambiente seguro antes da avaliação real.");
 const report: { mode: string; model: string; prompt_version: string; cases: unknown[] } = {
   mode: live ? "live" : "not_run",

@@ -1,4 +1,4 @@
-import { prepareProfessionalText, requireAiPrivacyReview } from "./ai-privacy.ts";
+import { prepareProfessionalText } from "./ai-privacy.ts";
 import { requireCompanyRole } from "./access.ts";
 import { requireGeminiPrivacy } from "./gemini-config.ts";
 import { Buffer } from "node:buffer";
