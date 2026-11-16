@@ -12,6 +12,10 @@
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
+    "test:browser": "playwright test",
+    "security:scan": "node scripts/security-scan.mjs --build",
+    "release:check": "node scripts/check-release.mjs",
+    "release:manifest": "node scripts/release-manifest.mjs",
     "test:interface": "bun test tests/collaboration-interface.test.tsx tests/reports-interface.test.tsx tests/privacy-interface.test.tsx tests/reliability-interface.test.tsx"
   },
   "overrides": {
@@ -87,6 +91,7 @@
   "devDependencies": {
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.26.5",
+    "@playwright/test": "1.65.1",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
