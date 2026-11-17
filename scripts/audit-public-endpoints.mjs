@@ -15,6 +15,19 @@ try {
   if (base.protocol !== "https:" || base.hostname !== "wikerxujjvmoksrmjywo.supabase.co")
     throw new Error();
   const tests = [
+    {
+      name: "analisar-curriculo:method-denied",
+      path: "/functions/v1/analisar-curriculo",
+      headers: {},
+      method: "GET",
+      expected: [405],
+    },
+    {
+      name: "analisar-curriculo:malformed-scheduler",
+      path: "/functions/v1/analisar-curriculo",
+      headers: { "x-ceny-queue-token": "synthetic-invalid" },
+      method: "POST",
+    },
     ...["ceny-worker", "analisar-curriculo", "ceny-queue"].map((name) => ({
       name: `${name}:missing-auth`,
       path: `/functions/v1/${name}`,
@@ -52,7 +65,7 @@ try {
     results.push({
       name: check.name,
       status: response.status,
-      passed: [401, 403].includes(response.status),
+      passed: (check.expected ?? [401, 403]).includes(response.status),
     });
   }
   fs.mkdirSync("artifacts", { recursive: true });

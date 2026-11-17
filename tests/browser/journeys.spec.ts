@@ -20,7 +20,7 @@ test("anonymous access, localized errors and mobile login remain accessible", as
   await expect(page.getByRole("heading", { name: "Página não encontrada" })).toBeVisible();
 });
 
-test("owner creates company and vacancy, sends synthetic document and reaches privacy controls", async ({
+test("owner creates company and vacancy, uploads, reviews and archives a synthetic candidate", async ({
   page,
 }) => {
   test.skip(
@@ -82,13 +82,50 @@ test("owner creates company and vacancy, sends synthetic document and reaches pr
   await expect(page.getByRole("link").filter({ hasText: "Analista sintético" })).toBeVisible();
   await page.getByRole("link", { name: "Enviar currículos", exact: true }).click();
   await page.getByLabel("Selecionar currículos").setInputFiles("tests/fixtures/quality/table.docx");
+  const upload = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith("/ceny-worker") && url.searchParams.get("action") === "upload";
+  });
   await page.getByRole("button", { name: "Iniciar envio", exact: true }).click();
+  const uploaded = await upload;
+  expect(uploaded.status()).toBe(200);
+  const receipt = await uploaded.json();
+  expect(typeof receipt.documentId).toBe("string");
+  const stored = await admin
+    .from("resume_documents")
+    .select("id,state")
+    .eq("id", receipt.documentId)
+    .single();
+  expect(stored.error).toBeNull();
+  expect(stored.data?.id).toBe(receipt.documentId);
   await expect(page.getByRole("button", { name: "Iniciar envio", exact: true })).toBeDisabled();
   await expect(page.getByText("table.docx").first()).toBeVisible();
   await page.getByRole("button", { name: "Privacidade e dados", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Definições pendentes de aprovação" }),
   ).toBeVisible();
+  await page.getByRole("link", { name: "Candidatos", exact: true }).click();
+  await page.goto(`/candidatos/${receipt.candidateId}`);
+  await page.getByLabel("Nome", { exact: true }).fill("Pessoa sintética revisada");
+  await page.getByRole("checkbox", { name: /Conferi o currículo original/ }).check();
+  await page.getByRole("button", { name: "Concluir revisão", exact: true }).click();
+  await expect(page.getByText("Revisado pelo RH", { exact: true }).first()).toBeVisible();
+  const reviewed = await admin
+    .from("candidates")
+    .select("review_status,nome")
+    .eq("id", receipt.candidateId)
+    .single();
+  expect(reviewed.data?.review_status).toBe("completed");
+  expect(reviewed.data?.nome).toBe("Pessoa sintética revisada");
+  await page.getByRole("button", { name: "Arquivar", exact: true }).click();
+  await page.getByRole("button", { name: "Arquivar currículo", exact: true }).click();
+  await expect(page).toHaveURL("/");
+  const archived = await admin
+    .from("candidates")
+    .select("excluido")
+    .eq("id", receipt.candidateId)
+    .single();
+  expect(archived.data?.excluido).toBe(true);
   // SQL/HTTP suites cover review, ranking, exports, archive and erasure independently.
   // A full approved AI/human browser journey remains a staging release criterion.
 });
