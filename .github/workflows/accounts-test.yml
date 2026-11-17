@@ -8,6 +8,18 @@ on:
 permissions:
   contents: read
 jobs:
+  dependency-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+      - name: Block high and critical dependency vulnerabilities
+        run: bun audit --audit-level=high
   history-security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -40,8 +52,6 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Scan current source without revealing secret values
         run: node scripts/security-scan.mjs
-      - name: Block high and critical dependency vulnerabilities
-        run: bun audit --audit-level=high
       - name: Typecheck and unit authorization tests
         run: |
           bun run typecheck
