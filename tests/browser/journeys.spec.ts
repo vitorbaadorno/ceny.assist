@@ -46,7 +46,9 @@ test("owner creates company and vacancy, uploads, reviews and archives a synthet
   await page.getByLabel("E-mail", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
   const login = page.waitForResponse(
-    (response) => new URL(response.url()).pathname === "/auth/v1/token",
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/auth/v1/token",
   );
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
   expect((await login).status()).toBe(200);
@@ -84,7 +86,11 @@ test("owner creates company and vacancy, uploads, reviews and archives a synthet
   await page.getByLabel("Selecionar currículos").setInputFiles("tests/fixtures/quality/table.docx");
   const upload = page.waitForResponse((response) => {
     const url = new URL(response.url());
-    return url.pathname.endsWith("/ceny-worker") && url.searchParams.get("action") === "upload";
+    return (
+      response.request().method() === "POST" &&
+      url.pathname.endsWith("/ceny-worker") &&
+      url.searchParams.get("action") === "upload"
+    );
   });
   await page.getByRole("button", { name: "Iniciar envio", exact: true }).click();
   const uploaded = await upload;
