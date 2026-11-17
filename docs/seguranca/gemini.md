@@ -1,5 +1,11 @@
 # Análise com Google Gemini
 
+## Estado vigente em 16/11/2026
+
+O responsável informou uso do **plano gratuito**, preservado nesta entrega. Manter `GEMINI_API_KEY` exclusivamente nos Secrets Supabase e `CENY_GEMINI_DATA_TIER=free`; não configurar `paid` para liberar análises. Currículos reais continuam bloqueados, com revisão manual disponível. O probe privado transmite apenas texto sintético fixo. Os [termos Google](https://aistudio.google.com/docs/terms#data-use-unpaid) orientam não enviar dados pessoais, sensíveis ou confidenciais ao serviço gratuito. Não houve contratação de serviços pagos.
+
+As instruções abaixo sobre plano pago descrevem uma condição futura que exige autorização financeira e aprovação jurídica reais; não são autorização para alterar a conta. Consulte [governança de lançamento](governanca-lancamento.md) e o relatório de implementação. Testes locais/CI não certificam configurações hospedadas nem qualidade do modelo ao vivo.
+
 O upload validado permanece no bucket privado resumes. analisar-curriculo autentica pelo Supabase e usa os mesmos comandos de fila e cotas da plataforma. O banco limita a 10 chamadas por minuto por usuário e empresa, usando atualização atômica da janela. O agendador ceny-queue processa o original em segundo plano com reserva, recuperaÃ§Ã£o e limite de tentativas. Novas chamadas com action=analyze recebem companyId, candidateId, jobId e requestId. Elas exigem vÃ­nculo ativo com a vaga aprovada e reservam a anÃ¡lise pelo documento ativo. A avaliaÃ§Ã£o por vaga continua usando os snapshots, versÃµes, critÃ©rios aprovados e evidÃªncias da plataforma.
 
 A configuração do modelo está em _shared/gemini-config.ts. O identificador inicial é gemini-2.5-flash. GEMINI_MODEL permite uma troca pelo backend. Confirme disponibilidade e condições antes de trocar. A API pode redirecionar identificadores depreciados. model_requested e model_reported registram essa diferença.

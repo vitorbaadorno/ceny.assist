@@ -30,6 +30,8 @@ Executar cadastro, confirmação, convite, recuperação, logout global, expira�
 
 ## 11 — Limites e custos
 
+O monitor exige `CENY_DAILY_TOKEN_BUDGET` inteiro positivo definido pelo operador. Soma recibos concluídos nas últimas 24 horas por páginas, sem ler currículos. Orçamento ausente, ultrapassado ou recibos com consumo desconhecido geram alerta; o serviço gratuito não torna o consumo ilimitado. Esse teto é um alarme adicional, não substitui as cotas atômicas de admissão nem limitações impostas pelo Google.
+
 Limites existentes: 5 arquivos/lote, 10 MB/arquivo, 20 páginas, 8 milhões de pixels, 20 MB descompactados, 60 mil caracteres, até 3 tentativas, timeout do trabalho 120 s e da chamada Gemini 90 s. O banco possui admissão por usuário/empresa e cotas mensais atômicas. O limite de 10 solicitações/minuto do endpoint **não equivale à cota Gemini do projeto**, compartilhada entre empresas; [limites Google](https://aistudio.google.com/docs/rate-limits) variam por modelo/projeto. No plano gratuito nenhum currículo real é enviado; não declarar capacidade ou custo por currículo mensurados.
 
 Ensaiar concorrência com dois tenants e recusas 429, timeout e lease vencida na CI; depois carga sintética em staging com limites reais documentados e autorização de cota. A área de consumo já distingue tokens desconhecidos e valores conciliados; zero não substitui fatura ausente. Confirmar preço comercial somente após medir p50/p95, tentativas, bytes-hora e suporte. Não adicionar retries ilimitados nem fallback para fornecedor não aprovado.

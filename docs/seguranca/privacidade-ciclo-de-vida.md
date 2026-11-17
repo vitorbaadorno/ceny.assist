@@ -1,19 +1,21 @@
 # Privacidade e ciclo de vida dos dados
 
+> Atualização 16/11/2026: o fornecedor atual é **Google Gemini**, não o gateway Lovable descrito nas evidências históricas de 5/11 abaixo. O plano declarado é gratuito; envio de currículos reais permanece bloqueado. Governança e prazos continuam sem aprovação. Foi implementado executor de retenção condicionado a política aprovada, com dry-run padrão, **não ativado em produção**; pedidos/auditoria/tombstones continuam sem prazo de descarte aprovado. Há novos utilitários de backup cifrado, replicação e monitoramento, ainda dependentes de infraestrutura e ensaio hospedado. Consulte [governança](governanca-lancamento.md) e [operação](operacao-comercial.md) para estado vigente. Não usar registros históricos como comprovação de implantação atual.
+
 Etapa iniciada em 5 de novembro de 2026, na `ceny-versaonova`, exclusivamente no Supabase `wikerxujjvmoksrmjywo`. A `main` permanece preservada.
 
 ## Decisões explicitamente adiadas pelo responsável
 
 Em 5/11/2026, o usuário pediu para registrar as duas perguntas de governança como pendências, sem defini-las nesta etapa:
 
-| Pendência | Situação e efeito |
-| --- | --- |
-| Prazo de retenção dos currículos, versões, análises, resultados, relatórios, pedidos e auditoria | **Sem prazo aprovado.** Não há eliminação automática por idade. Não interpretar arquivamento como autorização para guarda ilimitada. |
-| Responsáveis pelo tratamento, controlador/operadores, encarregado e apoio jurídico | **A definir.** O perfil técnico owner não comprova esses papéis jurídicos. |
-| Finalidades, bases de tratamento, hipóteses de conservação e prazos legais dos pedidos | **Validação jurídica pendente.** A data de acompanhamento de um pedido é operacional. |
-| Contrato/DPA e configuração efetiva do gateway/fornecedor de IA | **Pendente.** Não há alegação de retenção zero nem garantia de não treinamento específica para esta conta. |
-| Política de backup, chaves, acessos, retenção e evidências de recuperação hospedada | **Pendente.** Não foi restaurado nem apagado um backup de produção. |
-| Registro externo contínuo de eliminações e revogações | **Destino, frequência, monitoramento e custódia a definir.** O utilitário de manifesto não equivale a um serviço de replicação implantado. |
+| Pendência                                                                                        | Situação e efeito                                                                                                                          |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Prazo de retenção dos currículos, versões, análises, resultados, relatórios, pedidos e auditoria | **Sem prazo aprovado.** Não há eliminação automática por idade. Não interpretar arquivamento como autorização para guarda ilimitada.       |
+| Responsáveis pelo tratamento, controlador/operadores, encarregado e apoio jurídico               | **A definir.** O perfil técnico owner não comprova esses papéis jurídicos.                                                                 |
+| Finalidades, bases de tratamento, hipóteses de conservação e prazos legais dos pedidos           | **Validação jurídica pendente.** A data de acompanhamento de um pedido é operacional.                                                      |
+| Contrato/DPA e configuração efetiva do gateway/fornecedor de IA                                  | **Pendente.** Não há alegação de retenção zero nem garantia de não treinamento específica para esta conta.                                 |
+| Política de backup, chaves, acessos, retenção e evidências de recuperação hospedada              | **Pendente.** Não foi restaurado nem apagado um backup de produção.                                                                        |
+| Registro externo contínuo de eliminações e revogações                                            | **Destino, frequência, monitoramento e custódia a definir.** O utilitário de manifesto não equivale a um serviço de replicação implantado. |
 
 Não preencher essas lacunas com consentimento presumido, bases legais inventadas ou prazos arbitrários. Revalidar juridicamente as mensagens antes do uso operacional com titulares reais.
 
@@ -48,7 +50,7 @@ Consulta/correção usa a revisão do RH; exportação de acesso entrega JSON ad
 
 Retenções exigem justificativa, criador e data de revisão. Não expiram silenciosamente. A liberação exige nova justificativa e ator. Não é possível adicionar uma retenção depois de aceita uma eliminação irreversível. A tela e o banco restringem todos esses dados a owner/admin.
 
-## IA e minimização
+## IA e minimização — registro histórico de 5/11, substituído pela integração Gemini
 
 O gateway continua sendo `https://ai.gateway.lovable.dev/v1/responses`, modelo definido no código. `store:false` foi mantido, mas **não prova retenção zero de gateway, logs ou subprocessadores**.
 

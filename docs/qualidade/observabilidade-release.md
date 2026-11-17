@@ -2,7 +2,7 @@
 
 ## 17 — Métricas
 
-Nova RPC `product_quality_metrics` retorna apenas agregados do tenant para owner/admin: falhas por formato, recebidos, cancelados/não recebidos, pendências, mediana/p95 do tempo desde enfileiramento até análise concluída, falhas/bloqueios e revisões humanas registradas. Pendências não contam como abandono; nenhum dado disponível não vira tempo zero. As revisões refletem o histórico ainda retido. Não há coleta de currículo, e-mail, navegação, texto ou ferramenta externa de analytics. SQL valida janela de até 90 dias e autorização corrente; interface consulta últimos 30 dias. Implantação depende de aplicar a migration e validar o ambiente; a UI mostra erro recuperável se a RPC não existe.
+Nova RPC `product_quality_metrics` retorna apenas agregados do tenant para owner/admin: falhas por formato, recebidos, cancelados/não recebidos, pendências, mediana/p95 do tempo desde enfileiramento até análise concluída, falhas/bloqueios e revisões humanas registradas. Pendências não contam como abandono; nenhum dado disponível não vira tempo zero. As revisões refletem o histórico ainda retido. Não há coleta de currículo, e-mail, navegação, texto ou ferramenta externa de analytics. SQL valida janela de até 90 dias e autorização corrente; interface consulta últimos 30 dias. A migration foi aplicada à Ceny e as permissões foram verificadas; testes SQL validam owner, outro tenant, consulta e anônimo. Testes de renderização validam ausência de medição, cache separado por empresa e erro recuperável. Publicação do frontend continua dependente do ambiente Lovable.
 
 ## 18 — Acessibilidade e erros
 
@@ -14,4 +14,8 @@ CI em push/PR executa tipos, regressão, interfaces, limites/privacidade, scanne
 
 Antes de publicar, exigir checks de engenharia **e** liberação comercial no ambiente/provedor. O workflow de liberação executa o gate e permanece vermelho sem evidências. Não há segredos ou evidências jurídicas embutidos no YAML. Configurar proteção de branch e deploy no GitHub/Lovable é uma verificação externa pendente; jobs no repositório não conseguem, sozinhos, impedir um provedor de publicar antes da CI.
 
+Consulta em 16/11/2026: endpoint de rulesets retornou lista vazia; leitura da proteção clássica da branch retornou 403 (`Resource not accessible by integration`). Não se afirma ausência de toda proteção, mas não há comprovação de que os gates sejam obrigatórios no provedor.
+
 Repetir auditoria antes de cada release e após mudança de fornecedor/modelo/permissão. Registrar diferenças, alertas, parecer, regressões e responsáveis. Dependência indisponível ou scanner não executado não equivale a aprovação. Não usar `continue-on-error` para testes críticos.
+
+Em 17/11/2026, os gates `history-security` e `dependency-security` permanecem reprovados, respectivamente pela chave Maps histórica sem comprovação de contenção e por GHSA-fc5q-39xc-vjpf sem versão oficial corrigida. Ambos são jobs independentes da regressão; a execução geral continua vermelha. Ver `../seguranca/dependencia-picomatch-2026-11-17.md`.

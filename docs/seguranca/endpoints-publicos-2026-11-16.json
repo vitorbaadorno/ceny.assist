@@ -1,0 +1,50 @@
+{
+  "checked_at": "2026-11-17T01:07:08.130Z",
+  "results": [
+    {
+      "name": "analisar-curriculo:method-denied",
+      "status": 405,
+      "passed": true
+    },
+    {
+      "name": "analisar-curriculo:malformed-scheduler",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "ceny-worker:missing-auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "analisar-curriculo:missing-auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "ceny-queue:missing-auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "ceny-worker:invalid-auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "analisar-curriculo:invalid-auth",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "ceny-queue:forged-token",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "candidates:anonymous",
+      "status": 401,
+      "passed": true
+    }
+  ]
+}
