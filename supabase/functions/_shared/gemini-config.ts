@@ -9,7 +9,7 @@ export function requireGeminiPrivacy() {
   )
     throw Object.assign(
       new Error(
-        "ValidaÃƒÂ§ÃƒÂ£o de tratamento de dados e serviÃƒÂ§o pago do Gemini pendente. Utilize a revisÃƒÂ£o manual.",
+        "Validação de tratamento de dados e serviço pago do Gemini pendente. Utilize a revisão manual.",
       ),
       { name: "AiPrivacyPending" },
     );

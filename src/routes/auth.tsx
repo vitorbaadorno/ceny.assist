@@ -151,6 +151,7 @@ function AuthPage() {
                   <Label htmlFor="nome">Nome completo</Label>
                   <Input
                     id="nome"
+                    disabled={loading || busy}
                     value={nome}
                     onChange={(e) => setNome(e.target.value)}
                     required
@@ -161,6 +162,7 @@ function AuthPage() {
                 <Label htmlFor="email">E-mail</Label>
                 <Input
                   id="email"
+                  disabled={loading || busy}
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -185,6 +187,7 @@ function AuthPage() {
                   <PasswordInput
                     key={mode}
                     id="password"
+                    disabled={loading || busy}
                     minLength={mode === "signup" ? PASSWORD_MIN_LENGTH : undefined}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
                     value={password}
@@ -199,6 +202,7 @@ function AuthPage() {
                   <Label htmlFor="confirmation">Confirmar senha</Label>
                   <PasswordInput
                     id="confirmation"
+                    disabled={loading || busy}
                     visibilityLabel="confirmação de senha"
                     autoComplete="new-password"
                     value={confirmation}

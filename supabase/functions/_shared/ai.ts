@@ -46,16 +46,16 @@ async function generate<T>(options: {
   onReceipt?: (r: AiReceipt) => void;
 }): Promise<T> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) throw new AiGatewayError(401, "ServiÃƒÂ§o Gemini nÃƒÂ£o configurado.");
+  if (!apiKey) throw new AiGatewayError(401, "Serviço Gemini não configurado.");
   if (!/^[a-zA-Z0-9.-]{1,100}$/.test(MODEL))
-    throw new AiGatewayError(400, "ConfiguraÃƒÂ§ÃƒÂ£o de modelo invÃƒÂ¡lida.");
+    throw new AiGatewayError(400, "Configuração de modelo inválida.");
   const parts = options.parts.map((p) => {
     if (p.type === "input_text") return { text: p.text };
     const data = p.type === "input_file" ? p.file_data : p.image_url;
     const match = /^data:(application\/pdf|image\/png|image\/jpeg);base64,([a-zA-Z0-9+/=]+)$/.exec(
       data,
     );
-    if (!match) throw new AiGatewayError(400, "Formato de documento nÃƒÂ£o suportado.");
+    if (!match) throw new AiGatewayError(400, "Formato de documento não suportado.");
     return { inlineData: { mimeType: match[1], data: match[2] } };
   });
   let response: Response;
@@ -79,14 +79,11 @@ async function generate<T>(options: {
       }),
     });
   } catch {
-    throw new AiGatewayError(503, "Falha de conexÃƒÂ£o com o Gemini.");
+    throw new AiGatewayError(503, "Falha de conexão com o Gemini.");
   }
   if (!response.ok) {
     await response.body?.cancel().catch(() => {});
-    throw new AiGatewayError(
-      response.status,
-      "ServiÃƒÂ§o Gemini indisponÃƒÂ­vel para esta tentativa.",
-    );
+    throw new AiGatewayError(response.status, "Serviço Gemini indisponível para esta tentativa.");
   }
   const reader = response.body?.getReader();
   if (!reader) throw new AiGatewayError(502, "Resposta Gemini ausente.");
@@ -110,7 +107,7 @@ async function generate<T>(options: {
   try {
     payload = JSON.parse(text);
   } catch {
-    throw new AiGatewayError(502, "Resposta Gemini invÃƒÂ¡lida.");
+    throw new AiGatewayError(502, "Resposta Gemini inválida.");
   }
   if (!payload || typeof payload !== "object" || Array.isArray(payload))
     throw new AiGatewayError(502, "Resposta Gemini incompatível.");
@@ -127,21 +124,18 @@ async function generate<T>(options: {
     payload.candidates?.length !== 1 ||
     payload.candidates[0]?.finishReason !== "STOP"
   )
-    throw new AiGatewayError(
-      422,
-      "Leitura Gemini incompleta ou bloqueada. FaÃƒÂ§a a revisÃƒÂ£o manual.",
-    );
+    throw new AiGatewayError(422, "Leitura Gemini incompleta ou bloqueada. Faça a revisão manual.");
   const content = payload.candidates[0]?.content?.parts;
   if (
     !Array.isArray(content) ||
     !content.length ||
     content.some((p: any) => typeof p.text !== "string" || p.thought)
   )
-    throw new AiGatewayError(502, "ConteÃƒÂºdo Gemini incompatÃƒÂ­vel.");
+    throw new AiGatewayError(502, "Conteúdo Gemini incompatível.");
   try {
     return JSON.parse(content.map((p: any) => p.text).join("")) as T;
   } catch {
-    throw new AiGatewayError(502, "RelatÃƒÂ³rio Gemini invÃƒÂ¡lido.");
+    throw new AiGatewayError(502, "Relatório Gemini inválido.");
   }
 }
 
