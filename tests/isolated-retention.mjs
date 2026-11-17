@@ -29,7 +29,6 @@ for (const id of [old, held, recent]) {
         company_id: company.data,
         nome: "Synthetic",
         created_at: new Date(Date.now() - (id === recent ? 1 : 100) * 86400000).toISOString(),
-        arquivo_original_path: `${company.data}/${id}/original`,
       })
     ).error,
   );

@@ -16,6 +16,10 @@ test("commercial gate rejects missing, stale, duplicate and wrong-commit approva
   assert.equal(evaluateRelease({ items }, "other-commit", now).verdict, "NO-GO");
   assert.equal(evaluateRelease({ items: items.slice(1) }, "test-commit", now).verdict, "NO-GO");
   assert.equal(
+    evaluateRelease({ items: items.filter((i) => i.id !== 8) }, "test-commit", now).verdict,
+    "NO-GO",
+  );
+  assert.equal(
     evaluateRelease({ items: items.filter((i) => i.id !== 8) }, "test-commit", now)
       .commercial_release,
     false,

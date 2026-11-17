@@ -7,6 +7,46 @@ const { QueryError } = await import("../src/components/query-feedback");
 const { CandidateNotes } = await import("../src/components/candidate-collaboration");
 const { JobEditor } = await import("../src/components/job-editor");
 const { JobProgress } = await import("../src/components/resume-queue");
+const { ProductQuality } = await import("../src/components/product-quality");
+
+test("quality telemetry preserves missing measurements and isolates company caches", () => {
+  const cache = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  cache.setQueryData(["product-quality", "company-a"], {
+    upload_failure_rate: null,
+    analysis_p50_ms: null,
+    analysis_p95_ms: null,
+    abandoned_files: 0,
+    pending_files: 1,
+    analysis_failed: 0,
+    analysis_blocked: 2,
+    human_reviews_recorded: 3,
+    formats: [{ format: "docx", total: 4, rejected: 0 }],
+  });
+  const render = (companyId: string) =>
+    renderToStaticMarkup(
+      <QueryClientProvider client={cache}>
+        <ProductQuality companyId={companyId} />
+      </QueryClientProvider>,
+    );
+  const own = render("company-a");
+  expect(own.match(/Sem medição/g)?.length).toBe(3);
+  expect(own).not.toContain("0.0%");
+  expect(own).toContain("docx");
+  const other = render("company-b");
+  expect(other).toContain("Consultando qualidade");
+  expect(other).not.toContain("docx");
+  cache.clear();
+});
+
+test("quality request failure is retryable and never reports successful empty metrics", () => {
+  const html = renderFailure(
+    ["product-quality", "company"],
+    <ProductQuality companyId="company" />,
+  );
+  expect(html).toContain('role="alert"');
+  expect(html).toContain("Tentar novamente");
+  expect(html).not.toContain("Envios por formato");
+});
 test("errors expose alert semantics, session action and a bounded retry control", () => {
   const session = renderToStaticMarkup(<QueryError error={{ status: 401 }} retry={() => {}} />);
   expect(session).toContain('role="alert"');
