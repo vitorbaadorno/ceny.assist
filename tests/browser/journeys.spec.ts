@@ -83,6 +83,8 @@ test("owner creates company and vacancy, uploads, reviews and archives a synthet
   await page.getByRole("button", { name: "Salvar rascunho", exact: true }).click();
   await expect(page.getByRole("link").filter({ hasText: "Analista sintético" })).toBeVisible();
   await page.getByRole("link", { name: "Enviar currículos", exact: true }).click();
+  const companyId = await page.getByLabel("Empresa ativa").inputValue();
+  expect(companyId).toMatch(/^[0-9a-f-]{36}$/);
   await page.getByLabel("Selecionar currículos").setInputFiles("tests/fixtures/quality/table.docx");
   const upload = page.waitForResponse((response) => {
     const url = new URL(response.url());
@@ -95,15 +97,26 @@ test("owner creates company and vacancy, uploads, reviews and archives a synthet
   await page.getByRole("button", { name: "Iniciar envio", exact: true }).click();
   const uploaded = await upload;
   expect(uploaded.status()).toBe(200);
-  const receipt = await uploaded.json();
-  expect(typeof receipt.documentId).toBe("string");
+  // Check persistence directly: Chromium may evict the response body from its
+  // inspector cache. This query is scoped to the newly created synthetic tenant.
+  await expect
+    .poll(async () => {
+      const result = await admin
+        .from("resume_documents")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId);
+      if (result.error) throw new Error("Could not verify disposable upload persistence");
+      return result.count;
+    })
+    .toBe(1);
   const stored = await admin
     .from("resume_documents")
-    .select("id,state")
-    .eq("id", receipt.documentId)
+    .select("id,state,candidate_id")
+    .eq("company_id", companyId)
     .single();
   expect(stored.error).toBeNull();
-  expect(stored.data?.id).toBe(receipt.documentId);
+  expect(stored.data?.candidate_id).toMatch(/^[0-9a-f-]{36}$/);
+  const receipt = { documentId: stored.data!.id, candidateId: stored.data!.candidate_id };
   await expect(page.getByRole("button", { name: "Iniciar envio", exact: true })).toBeDisabled();
   await expect(page.getByText("table.docx").first()).toBeVisible();
   await page.getByRole("button", { name: "Privacidade e dados", exact: true }).click();
