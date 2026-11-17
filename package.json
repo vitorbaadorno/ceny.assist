@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
+    "lint:release": "eslint src/lib/cities.ts src/lib/maps.functions.ts src/components/city-autocomplete.tsx src/components/product-quality.tsx src/components/company-settings.tsx src/routes/__root.tsx src/routes/_authenticated/route.tsx",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",

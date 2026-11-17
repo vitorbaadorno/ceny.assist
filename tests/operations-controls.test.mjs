@@ -13,8 +13,12 @@ test("alerts distinguish stuck queues, erasure, retries, provider errors and abs
     attempts: 10,
     failures: 0,
     ledger_age_minutes: 1,
+    daily_tokens: 10,
+    unknown_token_receipts: 0,
   };
-  assert.equal(evaluateHealth(healthy).healthy, true);
+  assert.equal(evaluateHealth(healthy, { daily_token_budget: 100 }).healthy, true);
+  assert.ok(evaluateHealth(healthy, { daily_token_budget: 1 }).alerts.includes("budget_exceeded"));
+  assert.ok(evaluateHealth(healthy).alerts.includes("budget_unconfigured"));
   for (const key of ["stuck_jobs", "stuck_erasures", "repeated_failures", "blocked_jobs"])
     assert.ok(evaluateHealth({ ...healthy, [key]: 1 }).alerts.includes(key));
   assert.ok(evaluateHealth({ ...healthy, failures: 5 }).alerts.includes("ai_failure_rate"));

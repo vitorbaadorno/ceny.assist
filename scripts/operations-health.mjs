@@ -17,9 +17,18 @@ export function evaluateHealth(snapshot, limits = {}) {
     snapshot.failures / snapshot.attempts >= thresholds.failure_rate
   )
     alerts.push("ai_failure_rate");
-  if (snapshot.ledger_age_minutes == null || snapshot.ledger_age_minutes > 15)
+  if (
+    !Number.isFinite(snapshot.ledger_age_minutes) ||
+    snapshot.ledger_age_minutes < -1 ||
+    snapshot.ledger_age_minutes > 15
+  )
     alerts.push("ledger_stale");
-  if (snapshot.budget_exceeded === true) alerts.push("budget_exceeded");
+  if (!Number.isSafeInteger(thresholds.daily_token_budget) || thresholds.daily_token_budget < 1)
+    alerts.push("budget_unconfigured");
+  else if (!Number.isSafeInteger(snapshot.daily_tokens) || snapshot.daily_tokens < 0)
+    alerts.push("usage_unknown");
+  else if (snapshot.daily_tokens > thresholds.daily_token_budget) alerts.push("budget_exceeded");
+  if (snapshot.unknown_token_receipts > 0) alerts.push("usage_unknown");
   return { healthy: alerts.length === 0, alerts: [...new Set(alerts)] };
 }
 
@@ -75,5 +84,36 @@ export async function collectHealth(admin, now = new Date()) {
           .gte("started_at", ago(60)),
       ),
     ]);
-  return { stuck_jobs, stuck_erasures, repeated_failures, blocked_jobs, attempts, failures };
+  let daily_tokens = 0,
+    unknown_token_receipts = 0;
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await admin
+      .from("resume_job_attempts")
+      .select("total_tokens,error_kind")
+      .gte("started_at", ago(24 * 60))
+      .lte("started_at", now.toISOString())
+      .not("finished_at", "is", null)
+      .order("job_id")
+      .order("attempt")
+      .range(offset, offset + 499);
+    if (error || !Array.isArray(data)) throw new Error("Consumo não confirmado.");
+    for (const receipt of data) {
+      if (Number.isSafeInteger(receipt.total_tokens) && receipt.total_tokens >= 0)
+        daily_tokens += receipt.total_tokens;
+      else if (!["configuration", "authorization"].includes(receipt.error_kind))
+        unknown_token_receipts++;
+    }
+    if (data.length < 500) break;
+    if (offset >= 100000) throw new Error("Consumo excede a janela de monitoramento.");
+  }
+  return {
+    stuck_jobs,
+    stuck_erasures,
+    repeated_failures,
+    blocked_jobs,
+    attempts,
+    failures,
+    daily_tokens,
+    unknown_token_receipts,
+  };
 }

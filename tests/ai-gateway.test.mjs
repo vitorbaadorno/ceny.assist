@@ -48,6 +48,9 @@ test("free or unreviewed processing never sends a resume", async (t) => {
 test("provider details, blocked output, truncated and malformed JSON fail safely", async (t) => {
   env(t);
   for (const response of [
+    Response.json(null),
+    Response.json([]),
+    Response.json("synthetic invalid scalar"),
     new Response("SECRET PROVIDER BODY", { status: 429 }),
     Response.json({
       candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ text: '{"ok":true}' }] } }],

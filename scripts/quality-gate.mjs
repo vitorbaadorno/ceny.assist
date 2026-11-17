@@ -9,16 +9,19 @@ export function evaluateQuality(report, expectedIds) {
   )
     failures.push("incomplete_corpus");
   for (const item of cases) {
+    const label = expectedIds.includes(item.id) ? item.id : "unexpected_case";
     if (
       !item.metrics ||
       !Number.isFinite(item.metrics.precision) ||
       !Number.isFinite(item.metrics.recall) ||
+      item.metrics.precision > 1 ||
+      item.metrics.recall > 1 ||
       item.metrics.precision < 0.95 ||
       item.metrics.recall < 0.9
     )
-      failures.push(`quality:${item.id}`);
-    if (!["concluido", "revisao_manual"].includes(item.status)) failures.push(`failed:${item.id}`);
-    if (item.review_expected && item.review_matched !== true) failures.push(`review:${item.id}`);
+      failures.push(`quality:${label}`);
+    if (!["concluido", "revisao_manual"].includes(item.status)) failures.push(`failed:${label}`);
+    if (item.review_expected && item.review_matched !== true) failures.push(`review:${label}`);
   }
   return { passed: failures.length === 0, failures };
 }

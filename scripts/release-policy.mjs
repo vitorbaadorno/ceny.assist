@@ -20,7 +20,8 @@ export function evaluateRelease(evidence, commit, now = Date.now()) {
   const p0 = blocked.some((id) => id <= 5),
     p1 = blocked.some((id) => id <= 11);
   return {
-    verdict: p0 ? "NO-GO" : p1 || blocked.length ? "GO CONDICIONAL" : "GO",
+    // Missing P1 evidence is not a documented and monitored mitigation.
+    verdict: p0 || p1 ? "NO-GO" : blocked.length ? "GO CONDICIONAL" : "GO",
     commercial_release: blocked.length === 0,
     blocked,
   };

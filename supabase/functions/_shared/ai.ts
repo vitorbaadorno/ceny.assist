@@ -24,7 +24,7 @@ export async function callAiJson<T>(options: {
 export async function probeGemini() {
   let receipt: AiReceipt | undefined;
   const result = await generate<{ ok: boolean }>({
-    signal:AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(30000),
     onReceipt: (r) => {
       receipt = r;
     },
@@ -112,6 +112,8 @@ async function generate<T>(options: {
   } catch {
     throw new AiGatewayError(502, "Resposta Gemini invÃƒÂ¡lida.");
   }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    throw new AiGatewayError(502, "Resposta Gemini incompatível.");
   options.onReceipt?.({
     response_id: typeof payload.responseId === "string" ? payload.responseId.slice(0, 200) : null,
     model_reported:

@@ -15,11 +15,14 @@ try {
   const response = await fetch(site, { redirect: "error", signal: AbortSignal.timeout(15000) });
   await response.body?.cancel();
   const last = Date.parse(process.env.CENY_LAST_VERIFIED_LEDGER_AT ?? "");
-  const result = evaluateHealth({
-    ...(await collectHealth(admin)),
-    reachable: response.ok,
-    ledger_age_minutes: Number.isFinite(last) ? (Date.now() - last) / 60000 : null,
-  });
+  const result = evaluateHealth(
+    {
+      ...(await collectHealth(admin)),
+      reachable: response.ok,
+      ledger_age_minutes: Number.isFinite(last) ? (Date.now() - last) / 60000 : null,
+    },
+    { daily_token_budget: Number(process.env.CENY_DAILY_TOKEN_BUDGET) },
+  );
   console.log(JSON.stringify(result));
   if (!result.healthy) process.exitCode = 1;
 } catch {

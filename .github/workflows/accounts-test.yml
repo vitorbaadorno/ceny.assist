@@ -45,6 +45,7 @@ jobs:
       - name: Typecheck and unit authorization tests
         run: |
           bun run typecheck
+          bun run lint:release
           bun run test
           bun run test:interface
       - name: Start disposable Supabase and mail catcher
@@ -89,7 +90,9 @@ jobs:
           node tests/isolated-rankings.mjs
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/apprentice_age.sql > artifacts/apprentice-age.txt
       - name: Privacy Storage erasure and isolated backup recovery
-        run: node tests/isolated-privacy.mjs
+        run: |
+          node tests/isolated-privacy.mjs
+          node tests/isolated-retention.mjs
       - name: Company operations, quotas, costs and restricted audit
         run: |
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/company_operations.sql

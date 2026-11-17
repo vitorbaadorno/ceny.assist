@@ -36,11 +36,40 @@ test("owner creates company and vacancy, sends synthetic document and reaches pr
     password = `Synthetic!${randomUUID()}Aa1`;
   const result = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   expect(result.error).toBeNull();
+  const diagnostics: { path: string; status: number }[] = [];
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.origin === new URL(config.API_URL).origin)
+      diagnostics.push({ path: url.pathname, status: response.status() });
+  });
   await page.goto("/auth");
   await page.getByLabel("E-mail", { exact: true }).fill(email);
   await page.getByLabel("Senha", { exact: true }).fill(password);
+  const login = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/auth/v1/token",
+  );
   await page.getByRole("button", { name: "Entrar", exact: true }).click();
-  await expect(page.getByLabel("Nome da empresa", { exact: true })).toBeVisible();
+  expect((await login).status()).toBe(200);
+  try {
+    await expect(page.getByLabel("Nome da empresa", { exact: true })).toBeVisible({
+      timeout: 20000,
+    });
+  } catch (error) {
+    console.log(
+      "Synthetic browser diagnostics",
+      JSON.stringify({
+        requests: diagnostics,
+        path: new URL(page.url()).pathname,
+        companyError: await page
+          .getByText("Não foi possível consultar suas empresas. Recarregue a página.")
+          .isVisible(),
+        pageError: await page
+          .getByRole("heading", { name: "Não foi possível carregar esta página" })
+          .isVisible(),
+      }),
+    );
+    throw error;
+  }
   await page.getByLabel("Nome da empresa", { exact: true }).fill("Empresa sintética navegador");
   await page.getByLabel("Nome completo do responsável").fill("Responsável sintético");
   await page.getByRole("button", { name: "Criar empresa", exact: true }).click();
