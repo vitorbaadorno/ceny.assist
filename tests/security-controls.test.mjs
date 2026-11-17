@@ -9,12 +9,25 @@ test("hosted Auth audit rejects wildcards, unconfirmed accounts and unsupported 
     mailer_autoconfirm: false,
     security_update_password_require_reauthentication: true,
     password_min_length: 12,
-    password_required_characters: "lower_upper_letters_digits_symbols",
+    password_required_characters:
+      "abcdefghijklmnopqrstuvwxyz:ABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$%\\:",
     password_hibp_enabled: true,
     external_anonymous_users_enabled: false,
     jwt_exp: 3600,
   };
   assert.equal(auditAuth(config, config.site_url).passed, true);
+  for (const chars of [
+    "lower_upper_letters_digits_symbols",
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789:!@#$",
+    "abc:ABC:012",
+  ]) {
+    assert.ok(
+      auditAuth(
+        { ...config, password_required_characters: chars },
+        config.site_url,
+      ).failures.includes("password_complexity"),
+    );
+  }
   assert.ok(
     auditAuth({ ...config, uri_allow_list: "https://**" }, config.site_url).failures.includes(
       "redirects",

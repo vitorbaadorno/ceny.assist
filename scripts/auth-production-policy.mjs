@@ -26,11 +26,21 @@ export function auditAuth(config, expectedOrigin) {
     failures.push("password_reauthentication");
   if (config.password_min_length < 12 || !Number.isInteger(config.password_min_length))
     failures.push("password_length");
-  if (config.password_required_characters !== "lower_upper_letters_digits_symbols")
+  // Management API uses colon-separated character sets, not the CLI enum.
+  // An escaped colon belongs to its character set (Supabase Auth decoding).
+  const groups =
+    typeof config.password_required_characters === "string"
+      ? config.password_required_characters.split(/(?<!\\):/).map((s) => s.replaceAll("\\:", ":"))
+      : [];
+  if (
+    ![/^[a-z]+$/, /^[A-Z]+$/, /^[0-9]+$/, /^[^a-zA-Z0-9\s]+$/].every((pattern) =>
+      groups.some((group) => pattern.test(group)),
+    )
+  )
     failures.push("password_complexity");
   if (config.password_hibp_enabled !== true) failures.push("leaked_password_protection");
   if (config.external_anonymous_users_enabled !== false) failures.push("anonymous_signin");
-  if (!Number.isInteger(config.jwt_exp) || config.jwt_exp > 3600 || config.jwt_exp < 60)
+  if (!Number.isInteger(config.jwt_exp) || config.jwt_exp > 3600 || config.jwt_exp < 300)
     failures.push("session_expiry");
   return { passed: failures.length === 0, failures };
 }
