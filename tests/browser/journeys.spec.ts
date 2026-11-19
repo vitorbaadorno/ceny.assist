@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "../local-pilot-registration.mjs";
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
@@ -34,6 +35,7 @@ test("owner creates company and vacancy, uploads, reviews and archives a synthet
   });
   const email = `browser-${randomUUID()}@test.invalid`,
     password = `Synthetic!${randomUUID()}Aa1`;
+  allowSyntheticRegistration(config, email);
   const result = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   expect(result.error).toBeNull();
   const diagnostics: { path: string; status: number }[] = [];

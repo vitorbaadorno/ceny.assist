@@ -21,9 +21,9 @@ export default defineConfig({
     timeout: 90000,
     env: {
       VITE_SUPABASE_URL: local?.API_URL ?? "http://127.0.0.1:54321",
-      VITE_SUPABASE_PUBLISHABLE_KEY: local?.ANON_KEY ?? "synthetic-public-placeholder",
+      VITE_SUPABASE_PUBLISHABLE_KEY: local?.ANON_KEY ?? "sb_publishable_synthetic",
       SUPABASE_URL: local?.API_URL ?? "http://127.0.0.1:54321",
-      SUPABASE_PUBLISHABLE_KEY: local?.ANON_KEY ?? "synthetic-public-placeholder",
+      SUPABASE_PUBLISHABLE_KEY: local?.ANON_KEY ?? "sb_publishable_synthetic",
     },
   },
 });

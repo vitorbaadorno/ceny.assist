@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [ceny-versaonova]
   push:
-    branches: [ceny-versaonova]
+    branches: [ceny-versaonova, codex/lgpd-lancamento]
   workflow_dispatch:
 permissions:
   contents: read
@@ -55,7 +55,7 @@ jobs:
       - name: Typecheck and unit authorization tests
         run: |
           bun run typecheck
-          bun run lint:release
+          bun run lint
           bun run test
           bun run test:interface
       - name: Start disposable Supabase and mail catcher
@@ -78,6 +78,8 @@ jobs:
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/privacy_lifecycle.sql > artifacts/privacy-lifecycle.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/product_quality_metrics.sql > artifacts/product-quality.txt
           psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/security_catalog.sql > artifacts/security-catalog.txt
+      - name: Launch privacy controls on disposable database
+        run: psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 -f supabase/tests/privacy_launch.sql
       - name: Validate real file intake and Storage
         # All SQL fixtures run in rolled-back transactions.
         run: |
@@ -90,6 +92,8 @@ jobs:
           node tests/isolated-uploads.mjs
       - name: Real signup, confirmation, login, recovery and expired links
         run: node tests/isolated-auth.mjs
+      - name: Real TOTP enrollment and authorization on disposable Auth
+        run: node tests/isolated-mfa.mjs
       - name: Concurrent human review and AI correction preservation
         run: node tests/isolated-reviews.mjs
       - name: Job governance and approved criteria

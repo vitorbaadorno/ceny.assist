@@ -11,12 +11,12 @@ test("successful sign-in renders first-company onboarding", async ({ page }) => 
     created_at: new Date().toISOString(),
   };
   const payload = Buffer.from(
-    JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 3600 }),
+    JSON.stringify({ sub: user.id, aal: "aal1", exp: Math.floor(Date.now() / 1000) + 3600 }),
   ).toString("base64url");
   await page.route("**/auth/v1/**", async (route) => {
     const body = new URL(route.request().url()).pathname.endsWith("/token")
       ? {
-          access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.synthetic`,
+          access_token: `eyJhbGciOiJIUzI1NiJ9.${payload}.c3ludGhldGlj`,
           refresh_token: "synthetic-refresh",
           expires_in: 3600,
           token_type: "bearer",

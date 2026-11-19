@@ -1,3 +1,4 @@
+import { PRIVACY_RIGHTS } from "@/lib/privacy-rights";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -184,6 +185,7 @@ function PrivacyAdmin({
   const [holdReason, setHoldReason] = useState("");
   const [holdDate, setHoldDate] = useState("");
   const [identity, setIdentity] = useState("");
+  const [controllerReference, setControllerReference] = useState("");
   const [resolution, setResolution] = useState("");
   const inventory = useQuery({
     queryKey: ["privacy-candidates", companyId, page],
@@ -372,10 +374,11 @@ function PrivacyAdmin({
         <label className="block">
           Tipo
           <select className={field} value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="access">Consulta</option>
-            <option value="correction">Correção</option>
-            <option value="export">Exportação</option>
-            <option value="erasure">Eliminação</option>
+            {Object.entries(PRIVACY_RIGHTS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="block">
@@ -508,19 +511,24 @@ function PrivacyAdmin({
           pedido. Confira referências a terceiros e complemente originais ou informações faltantes
           antes da entrega por canal autorizado. Nenhum envio ao titular ocorre nesta tela.
         </p>
+        <p className="text-sm">
+          Registrar um pedido não executa anonimização, bloqueio ou encerramento. Confirme a
+          providência com o controlador e registre sua evidência antes de concluir. Arquivar não
+          equivale a eliminar nem anonimizar.
+        </p>
+        <label className="block text-sm">
+          Referência interna do encaminhamento ao controlador (sem dados pessoais)
+          <input
+            className={field}
+            value={controllerReference}
+            maxLength={200}
+            onChange={(e) => setControllerReference(e.target.value)}
+          />
+        </label>
         {records?.requests.slice(0, 50).map((r) => (
           <article key={r.id} className="rounded border p-3 space-y-2">
             <p>
-              {r.reference} ·{" "}
-              {
-                {
-                  access: "Consulta",
-                  correction: "Correção",
-                  export: "Exportação",
-                  erasure: "Eliminação",
-                }[r.kind]
-              }{" "}
-              ·{" "}
+              {r.reference} · {PRIVACY_RIGHTS[r.kind] ?? "Pedido a conferir"} ·{" "}
               {
                 {
                   open: "Aberto",
@@ -534,6 +542,28 @@ function PrivacyAdmin({
               {r.candidate_id} · acompanhar em {date(r.due_at)}
             </p>
             <p className="text-sm">{r.resolution}</p>
+            {r.forwarded_at && (
+              <p className="text-sm">
+                Encaminhamento registrado em {date(r.forwarded_at)} · {r.controller_reference}
+              </p>
+            )}
+            {r.state === "verified" && (
+              <Button
+                disabled={action.isPending || controllerReference.trim().length < 5}
+                onClick={() =>
+                  action.mutate(() =>
+                    supabase.rpc("forward_privacy_request", {
+                      p_company: companyId,
+                      p_request: r.id,
+                      p_version: r.version,
+                      p_reference: controllerReference,
+                    }),
+                  )
+                }
+              >
+                Registrar encaminhamento ao controlador
+              </Button>
+            )}
             <div className="flex flex-wrap gap-2">
               {["open", "verified"].includes(r.state) && (
                 <>

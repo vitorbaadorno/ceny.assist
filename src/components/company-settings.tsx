@@ -1,3 +1,5 @@
+import { LegalLinks } from "@/components/legal-draft";
+import { MfaSettings } from "./mfa-security";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -174,6 +176,15 @@ export function CompanySettings() {
           </div>
         ))}
       </section>
+      <section aria-label="Governança" className="rounded border p-4">
+        <h2 className="font-semibold">Governança — preparação</h2>
+        <p>
+          Políticas v0.1 em revisão. Aprovações jurídicas, retenção e recuperação hospedada:
+          PENDENTE_VALIDACAO. Dados reais não liberados.
+        </p>
+        <LegalLinks />
+      </section>
+      <MfaSettings />
       <form
         className="space-y-3 rounded-lg border p-5"
         onSubmit={(e) => {
