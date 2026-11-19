@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -11,6 +12,7 @@ const admin = createClient(config.API_URL, config.SERVICE_ROLE_KEY, options);
 const user = createClient(config.API_URL, config.ANON_KEY, options);
 const email = `retention-${randomUUID()}@test.invalid`,
   password = `Synthetic!${randomUUID()}Aa1`;
+allowSyntheticRegistration(config, email);
 assert.ifError((await admin.auth.admin.createUser({ email, password, email_confirm: true })).error);
 assert.ifError((await user.auth.signInWithPassword({ email, password })).error);
 const company = await user.rpc("create_company", {

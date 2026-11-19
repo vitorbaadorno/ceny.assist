@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 // Actual Storage API deletion and logical backup/recovery, only disposable localhost.
 import fs from "node:fs";
 import assert from "node:assert/strict";
@@ -14,6 +15,7 @@ const admin = createClient(config.API_URL, config.SERVICE_ROLE_KEY, options),
   user = createClient(config.API_URL, config.ANON_KEY, options);
 const email = `privacy-${randomUUID()}@test.invalid`,
   password = `Test!${randomUUID()}Aa1`;
+allowSyntheticRegistration(config, email);
 let r = await admin.auth.admin.createUser({ email, password, email_confirm: true });
 assert.ifError(r.error);
 r = await user.auth.signInWithPassword({ email, password });

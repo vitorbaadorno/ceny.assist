@@ -45,6 +45,8 @@ export type Database = {
       };
       privacy_requests: {
         Row: {
+          controller_reference: string | null;
+          forwarded_at: string | null;
           candidate_id: string;
           company_id: string;
           created_at: string;
@@ -61,6 +63,8 @@ export type Database = {
           version: number;
         };
         Insert: {
+          controller_reference?: string | null;
+          forwarded_at?: string | null;
           candidate_id: string;
           company_id: string;
           created_at?: string;
@@ -77,6 +81,8 @@ export type Database = {
           version?: number;
         };
         Update: {
+          controller_reference?: string | null;
+          forwarded_at?: string | null;
           candidate_id?: string;
           company_id?: string;
           created_at?: string;
@@ -1747,6 +1753,15 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      session_requires_mfa: { Args: Record<PropertyKey, never>; Returns: boolean };
+      forward_privacy_request: {
+        Args: { p_company: string; p_request: string; p_version: number; p_reference: string };
+        Returns: string;
+      };
+      record_document_access: {
+        Args: { p_company: string; p_candidate: string };
+        Returns: boolean;
+      };
       product_quality_metrics: {
         Args: { p_company: string; p_since: string };
         Returns: Json;

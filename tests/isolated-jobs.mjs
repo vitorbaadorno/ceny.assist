@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 // Real HTTP requests against disposable local Supabase only. No AI calls.
 import fs from "node:fs";
 import assert from "node:assert/strict";
@@ -12,6 +13,7 @@ const results = [];
 async function account() {
   const email = `job-${randomUUID()}@test.invalid`,
     password = `Test!${randomUUID()}Aa1`;
+  allowSyntheticRegistration(config, email);
   const r = await admin.auth.admin.createUser({ email, password, email_confirm: true });
   assert.ifError(r.error);
   users.push(r.data.user.id);

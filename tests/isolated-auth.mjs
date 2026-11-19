@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 // Only talks to disposable localhost Supabase. No production keys or email delivery.
 import fs from "node:fs";
 import assert from "node:assert/strict";
@@ -62,6 +63,11 @@ let signupLink;
 let recoveryLink;
 let userId;
 try {
+  await check("signup without an invitation is rejected", async () => {
+    const result = await account.auth.signUp({ email, password });
+    assert.ok(result.error);
+  });
+  allowSyntheticRegistration(config, email);
   await check("weak password rejected by Auth service", async () => {
     const { error } = await account.auth.signUp({ email, password: "short" });
     assert.ok(error);

@@ -3,10 +3,19 @@ import { z } from "npm:zod@4.6.7";
 import type { Database } from "./database.ts";
 import { rankCandidates } from "./ranking.ts";
 import { processResume } from "./resumes.ts";
+import { signResume } from "./document-access.ts";
 import { receiveResume, cleanupResumes } from "./intake.ts";
 import { readLimitedBody, FileRejected } from "./file-policy.ts";
 
 const input = z.discriminatedUnion("action", [
+  z
+    .object({
+      action: z.literal("document"),
+      companyId: z.string().uuid(),
+      candidateId: z.string().uuid(),
+      documentId: z.string().uuid().optional(),
+    })
+    .strict(),
   z
     .object({
       action: z.literal("analyze"),
@@ -47,10 +56,10 @@ const json = (body: unknown, status = 200) =>
 
 export async function handleRequest(req: Request) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-  if (req.method !== "POST") return json({ error: "MÃƒÂ©todo invÃƒÂ¡lido." }, 405);
+  if (req.method !== "POST") return json({ error: "Método inválido." }, 405);
   const authorization = req.headers.get("Authorization");
   if (!authorization?.startsWith("Bearer "))
-    return json({ error: "AutenticaÃƒÂ§ÃƒÂ£o necessÃƒÂ¡ria." }, 401);
+    return json({ error: "Autenticação necessária." }, 401);
   const url = Deno.env.get("SUPABASE_URL")!;
   const supabase = createClient<Database>(url, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: authorization } },
@@ -58,7 +67,10 @@ export async function handleRequest(req: Request) {
   });
   const { data: auth, error } = await supabase.auth.getUser(authorization.slice(7));
   if (error || !auth.user || auth.user.is_anonymous)
-    return json({ error: "SessÃƒÂ£o invÃƒÂ¡lida." }, 401);
+    return json({ error: "Sessão inválida." }, 401);
+  const mfa = await supabase.rpc("session_requires_mfa");
+  if (mfa.error || mfa.data !== false)
+    return json({ error: "Confirme o segundo fator para continuar." }, 403);
   const admin = createClient<Database>(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -87,7 +99,7 @@ export async function handleRequest(req: Request) {
         })
         .refine(
           (args) => !args.candidateId || args.identityConfirmed === "true",
-          "Confirme a identidade antes de adicionar uma versÃƒÂ£o.",
+          "Confirme a identidade antes de adicionar uma versão.",
         )
         .parse(Object.fromEntries([...url.searchParams].filter(([key]) => key !== "action")));
       company = args.companyId;
@@ -106,6 +118,7 @@ export async function handleRequest(req: Request) {
       JSON.parse(new TextDecoder().decode(await readLimitedBody(req, 8192))),
     );
     company = body.companyId;
+    if (body.action === "document") return json(await signResume(body, context));
     if (!(await admit(company)))
       return json(
         {
@@ -166,12 +179,11 @@ export async function handleRequest(req: Request) {
     }
     console.error({ source: "worker", operation, action, code });
     if (error instanceof FileRejected) return json({ error: error.message }, 422);
-    if (error instanceof z.ZodError) return json({ error: "SolicitaÃƒÂ§ÃƒÂ£o invÃƒÂ¡lida." }, 400);
+    if (error instanceof z.ZodError) return json({ error: "Solicitação inválida." }, 400);
     // Never send provider responses, resume content or DB internals to a caller.
     return json(
       {
-        error:
-          "OperaÃƒÂ§ÃƒÂ£o indisponÃƒÂ­vel. Confira seu acesso e a configuraÃƒÂ§ÃƒÂ£o do serviÃƒÂ§o.",
+        error: "Operação indisponível. Confira seu acesso e a configuração do serviço.",
       },
       403,
     );

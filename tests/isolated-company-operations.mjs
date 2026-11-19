@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 import fs from "node:fs";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
@@ -15,6 +16,7 @@ async function checked(promise) {
 }
 const email = "ops-" + randomUUID() + "@test.invalid",
   password = "Test!" + randomUUID();
+allowSyntheticRegistration(config, email);
 const { user: owner } = await checked(
   admin.auth.admin.createUser({ email, password, email_confirm: true }),
 );

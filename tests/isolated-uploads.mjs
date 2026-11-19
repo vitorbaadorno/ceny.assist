@@ -1,3 +1,4 @@
+import { allowSyntheticRegistration } from "./local-pilot-registration.mjs";
 // Real Edge Function + Storage integration; localhost only, synthetic fixtures.
 import fs from "node:fs";
 import assert from "node:assert/strict";
@@ -13,6 +14,7 @@ const admin = createClient(config.API_URL, config.SERVICE_ROLE_KEY, options),
   user = createClient(config.API_URL, config.ANON_KEY, options);
 const email = `uploads-${randomUUID()}@test.invalid`,
   password = `Test!${randomUUID()}Aa1`;
+allowSyntheticRegistration(config, email);
 const { data: created, error: createError } = await admin.auth.admin.createUser({
   email,
   password,
@@ -201,15 +203,22 @@ try {
       assert.equal(new Set(docs.map((d) => d.object_path)).size, 2);
       versionPath = docs[1].object_path;
       for (const [i, doc] of docs.entries()) {
-        const { data, error } = await user.storage.from("resumes").download(doc.object_path);
-        assert.ifError(error);
+        assert.ok((await user.storage.from("resumes").download(doc.object_path)).error);
+        assert.ok(
+          (await user.storage.from("resumes").createSignedUrl(doc.object_path, 3600)).error,
+        );
+        const signed = await action({
+          action: "document",
+          candidateId: accepted[0].candidateId,
+          documentId: doc.id,
+        });
+        assert.equal(signed.status, 200);
+        const response = await fetch(signed.body.url);
+        assert.equal(response.status, 200);
         assert.deepEqual(
-          new Uint8Array(await data.arrayBuffer()),
+          new Uint8Array(await response.arrayBuffer()),
           i === 0 ? fixtures[0][1] : bytes,
         );
-        const signed = await user.storage.from("resumes").createSignedUrl(doc.object_path, 60);
-        assert.ifError(signed.error);
-        assert.equal((await fetch(signed.data.signedUrl)).status, 200);
       }
       const { count } = await user
         .from("candidates")
@@ -259,11 +268,14 @@ try {
     assert.equal(r.body.failed, 0);
     const { error: downloadError } = await admin.storage.from("resumes").download(path);
     assert.ok(downloadError);
-    const { error: keptError } = await user.storage
+    const { error: keptError } = await admin.storage
       .from("resumes")
       .download(`${company}/${accepted[0].candidateId}/original`);
     assert.ifError(keptError);
-    assert.ifError((await user.storage.from("resumes").download(versionPath)).error);
+    assert.ok((await user.storage.from("resumes").download(versionPath)).error);
+    const access = await action({ action: "document", candidateId: accepted[0].candidateId });
+    assert.equal(access.status, 200);
+    assert.equal((await fetch(access.body.url)).status, 200);
   });
   await check("concurrent dispatchers reserve at most two documents per company", async () => {
     const responses = await Promise.all([

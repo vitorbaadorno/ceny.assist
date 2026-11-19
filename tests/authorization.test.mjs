@@ -50,7 +50,7 @@ const createServerFn = () => {
 };
 function db(fixtures = {}, rpcError = null) {
   const calls = [];
-  return {
+  const thisClient = {
     calls,
     from(table) {
       const call = { table, filters: [] };
@@ -104,18 +104,28 @@ function db(fixtures = {}, rpcError = null) {
       return {
         error: rpcError,
         data:
-          name === "claim_resume_extraction"
-            ? { owned: true, token: "test-token", state: "reading" }
-            : name === "begin_ranking"
-              ? {
-                  id: jobId,
-                  status: "processing",
-                  total: 1,
-                  eligible: 1,
-                  job_snapshot: approvedJob,
-                }
-              : null,
+          name === "record_document_access"
+            ? true
+            : name === "claim_resume_extraction"
+              ? { owned: true, token: "test-token", state: "reading" }
+              : name === "begin_ranking"
+                ? {
+                    id: jobId,
+                    status: "processing",
+                    total: 1,
+                    eligible: 1,
+                    job_snapshot: approvedJob,
+                  }
+                : null,
       };
+    },
+    functions: {
+      async invoke(name, { body }) {
+        return {
+          data: await signResume(body, { supabase: thisClient, admin: thisClient, userId }),
+          error: null,
+        };
+      },
     },
     storage: {
       from(bucket) {
@@ -135,6 +145,7 @@ function db(fixtures = {}, rpcError = null) {
       },
     },
   };
+  return thisClient;
 }
 const companyId = "11111111-1111-4111-8111-111111111111";
 const candidateId = "22222222-2222-4222-8222-222222222222";
@@ -153,6 +164,9 @@ const approvedJob = {
   ],
 };
 const member = (role) => ({ data: { role }, error: null });
+const { signResume } = load("supabase/functions/_shared/document-access.ts", ["signResume"], {
+  requireCompanyRole,
+});
 const { getResumeUrl } = load("src/lib/resumes.functions.ts", ["getResumeUrl"], {
   createServerFn,
   z,

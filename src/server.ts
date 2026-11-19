@@ -1,6 +1,10 @@
 import { serverFailure } from "./lib/error-capture";
+import { securityHeaders, secureResponse } from "./lib/security-headers";
 type ServerEntry = {
-  fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
+  fetch: (
+    request: Request,
+    options: { context: { nonce: string } },
+  ) => Promise<Response> | Response;
 };
 
 let serverEntryPromise: Promise<ServerEntry> | undefined;
@@ -38,12 +42,31 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const nonce = crypto.randomUUID().replaceAll("-", "");
+    const headers = securityHeaders(
+      request,
+      nonce,
+      process.env["SUPABASE_URL"],
+      Boolean(import.meta.env.DEV),
+    );
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-ceny-csp-nonce", nonce);
+      const response = await handler.fetch(
+        new Request(request.url, {
+          headers: requestHeaders,
+          method: request.method,
+          ...(request.method === "GET" || request.method === "HEAD"
+            ? {}
+            : { body: request.body, duplex: "half" }),
+          signal: request.signal,
+        }),
+        { context: { nonce } },
+      );
+      return secureResponse(await normalizeCatastrophicSsrResponse(response), headers);
     } catch {
-      return serverFailure();
+      return secureResponse(serverFailure(), headers);
     }
   },
 };

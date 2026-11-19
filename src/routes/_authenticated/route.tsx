@@ -1,3 +1,4 @@
+import { MfaGate } from "@/components/mfa-security";
 import { CompanyProvider, useCompany } from "@/hooks/useCompany";
 import { UsageAlert } from "@/components/company-operations";
 import { CompanySettings } from "@/components/company-settings";
@@ -22,9 +23,11 @@ const nav = [
 
 function AuthenticatedLayout() {
   return (
-    <CompanyProvider>
-      <CompanyLayout />
-    </CompanyProvider>
+    <MfaGate>
+      <CompanyProvider>
+        <CompanyLayout />
+      </CompanyProvider>
+    </MfaGate>
   );
 }
 

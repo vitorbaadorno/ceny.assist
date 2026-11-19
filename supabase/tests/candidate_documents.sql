@@ -53,7 +53,7 @@ select public.save_candidate_review(pg_temp.id('company'),pg_temp.id('person'),(
 select public.select_candidate_document(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('doc1'),(select review_version from public.candidates where id=pg_temp.id('person')));
 select pg_temp.ok('selecting previous version restores extraction and preserves human correction',(select dados_extraidos->>'nome_completo'='Old AI' and nome='Human name' and review_status='pending' from public.candidates where id=pg_temp.id('person')));
 select pg_temp.ok('version selection has actor audit',(select count(*)=1 from public.candidate_document_events where candidate_id=pg_temp.id('person') and action='selected' and actor_id=pg_temp.id('owner')));
-select pg_temp.ok('both historical originals remain readable',(select count(*)=2 from storage.objects where bucket_id='resumes'));
+select pg_temp.ok('historical originals require authorized backend',(select count(*)=0 from storage.objects where bucket_id='resumes'));
 select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('job1'),true);
 select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('job2'),true);
 select public.set_candidate_job_link(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('job1'),true);
@@ -73,7 +73,7 @@ select pg_temp.ok('cancelling another version does not change active processing'
 select pg_temp.denied('merge requires explicit confirmation',$q$select public.confirm_candidate_merge(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('target'),0,0,'Verified synthetic original documents',false)$q$);
 select pg_temp.denied('merge rejects stale review versions',$q$select public.confirm_candidate_merge(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('target'),-1,-1,'Verified synthetic original documents',true)$q$);
 select public.confirm_candidate_merge(pg_temp.id('company'),pg_temp.id('person'),pg_temp.id('target'),(select review_version from public.candidates where id=pg_temp.id('person')),(select review_version from public.candidates where id=pg_temp.id('target')),'Verified synthetic original documents',true);
-select pg_temp.ok('merge transfers both versions without overwriting paths',(select count(*)=2 from public.resume_documents where candidate_id=pg_temp.id('target')) and (select count(*)=2 from storage.objects));
+select pg_temp.ok('merge transfers both versions without overwriting paths',(select count(*)=2 from public.resume_documents where candidate_id=pg_temp.id('target')) and (select count(*)=0 from storage.objects));
 select pg_temp.ok('analysis ownership follows documents',(select bool_and(candidate_id=pg_temp.id('target')) from public.resume_jobs where document_id in(pg_temp.id('doc1'),pg_temp.id('doc2'))));
 select pg_temp.ok('merge preserves old corrections and actor',(select source_snapshot->'correcoes_rh'->>'nome_completo'='Human name' and actor_id=pg_temp.id('owner') and jsonb_array_length(source_revisions)>0 from public.candidate_merges));
 select pg_temp.ok('merge keeps destination data and reopens review',(select nome='Existing person' and review_status='pending' from public.candidates where id=pg_temp.id('target')));

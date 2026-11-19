@@ -68,13 +68,17 @@ export const getResumeUrl = createServerFn({ method: "POST" })
       path = document.object_path;
       filename = document.filename;
     }
-    const { data: signed, error } = await context.supabase.storage
-      .from("resumes")
-      .createSignedUrl(path, 60, {
-        download: filename,
-      });
+    const { data: signed, error } = await context.supabase.functions.invoke("ceny-worker", {
+      body: {
+        action: "document",
+        companyId: data.companyId,
+        candidateId: data.candidateId,
+        ...(documentId ? { documentId } : {}),
+      },
+    });
     if (error)
       throw new Error(errorFeedback(error, "Não foi possível gerar o link do currículo.").message);
-    if (!signed?.signedUrl) throw new Error("Não foi possível gerar o link do currículo.");
-    return { url: signed.signedUrl };
+    if (typeof signed?.url !== "string")
+      throw new Error("Não foi possível gerar o link do currículo.");
+    return { url: signed.url };
   });

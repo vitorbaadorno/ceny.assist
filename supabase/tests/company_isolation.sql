@@ -56,7 +56,7 @@ select pg_temp.ok('only company A candidates',(select count(*)=1 from public.can
 select pg_temp.ok('only company A jobs',(select count(*)=1 from public.jobs));
 select pg_temp.ok('only company A scores',(select count(*)=1 from public.candidate_scores));
 select pg_temp.ok('only company A reports',(select count(*)=1 from public.job_reports));
-select pg_temp.ok('only company A storage',(select count(*)=1 from storage.objects where bucket_id='resumes'));
+select pg_temp.ok('direct storage denied even for company A',(select count(*)=0 from storage.objects where bucket_id='resumes'));
 select pg_temp.ok('other profile hidden',(select count(*)=0 from public.profiles where id=pg_temp.id('owner_b')));
 select pg_temp.ok('admin may read colleague profile',(select count(*)=1 from public.profiles where id=pg_temp.id('recruiter')));
 select pg_temp.denied('cross company insert',$q$insert into public.candidates(company_id,nome) values(pg_temp.id('b'),'Attack')$q$);

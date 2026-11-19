@@ -1,3 +1,4 @@
+import { LegalLinks } from "@/components/legal-draft";
 import { PasswordInput } from "@/components/password-input";
 import { z } from "zod";
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
@@ -94,7 +95,11 @@ function AuthPage() {
         navigate({ to: "/" });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Não foi possível entrar.");
+      toast.error(
+        mode === "signin"
+          ? "Não foi possível entrar. Confira suas credenciais ou recupere o acesso."
+          : "Solicitação não concluída. Confira o convite ou tente novamente mais tarde.",
+      );
     } finally {
       setBusy(false);
     }
@@ -128,7 +133,7 @@ function AuthPage() {
               {mode === "signin"
                 ? "Use seu e-mail corporativo para acessar o sistema."
                 : mode === "signup"
-                  ? "Cadastre um novo usuário da equipe de RH."
+                  ? "Cadastro restrito a pessoas com convite válido."
                   : mode === "confirm"
                     ? "Confirme seu e-mail para configurar sua empresa ou aceitar um convite."
                     : "Informe seu e-mail para receber o link de redefinição."}
@@ -234,7 +239,7 @@ function AuthPage() {
               className="w-full text-muted-foreground"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
-              {mode === "signin" ? "Não tem conta? Criar acesso" : "Voltar para entrar"}
+              {mode === "signin" ? "Recebi um convite: criar acesso" : "Voltar para entrar"}
             </Button>
             {mode === "signin" && (
               <Button
@@ -248,6 +253,7 @@ function AuthPage() {
             )}
           </CardContent>
         </Card>
+        <LegalLinks />
       </div>
     </main>
   );
