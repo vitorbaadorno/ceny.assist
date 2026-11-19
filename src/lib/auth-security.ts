@@ -10,7 +10,7 @@ export function passwordError(password: string, confirmation: string): string | 
     !/[a-z]/.test(password) ||
     !/[A-Z]/.test(password) ||
     !/[0-9]/.test(password) ||
-    !/[!@#$%^&*()_+\-=\[\]{};'\\:"|<>?,./`~]/.test(password)
+    !/[!@#$%^&*()_+\-=[\]{};'\\:"|<>?,./`~]/.test(password)
   )
     return PASSWORD_HELP;
   if (new TextEncoder().encode(password).length > 72)

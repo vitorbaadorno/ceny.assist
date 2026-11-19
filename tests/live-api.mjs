@@ -84,14 +84,12 @@ const tamper = await a
   .update({ dados_extraidos: { forged: true } })
   .eq("id", f.candidates[0].id);
 check("REST blocks AI output tampering", !!tamper.error);
-const scores = await a
-  .from("candidate_scores")
-  .insert({
-    company_id: f.companies[0],
-    candidate_id: f.candidates[0].id,
-    job_id: f.jobs[0].id,
-    score: 100,
-  });
+const scores = await a.from("candidate_scores").insert({
+  company_id: f.companies[0],
+  candidate_id: f.candidates[0].id,
+  job_id: f.jobs[0].id,
+  score: 100,
+});
 check("REST blocks direct score insertion", !!scores.error);
 const own = await a.storage.from("resumes").download(f.candidates[0].arquivo_original_path);
 assert.ifError(own.error);

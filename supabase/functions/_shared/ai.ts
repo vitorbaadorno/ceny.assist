@@ -103,7 +103,20 @@ async function generate<T>(options: {
     await reader.cancel().catch(() => {});
     throw new AiGatewayError(502, "Resposta Gemini excedeu os limites ou foi interrompida.");
   }
-  let payload: any;
+  let payload: {
+    responseId?: unknown;
+    modelVersion?: unknown;
+    usageMetadata?: {
+      promptTokenCount?: unknown;
+      candidatesTokenCount?: unknown;
+      totalTokenCount?: unknown;
+    };
+    promptFeedback?: { blockReason?: unknown };
+    candidates?: {
+      finishReason?: unknown;
+      content?: { parts?: { text?: unknown; thought?: unknown }[] };
+    }[];
+  };
   try {
     payload = JSON.parse(text);
   } catch {
@@ -129,11 +142,15 @@ async function generate<T>(options: {
   if (
     !Array.isArray(content) ||
     !content.length ||
-    content.some((p: any) => typeof p.text !== "string" || p.thought)
+    content.some(
+      (p: { text?: unknown; thought?: unknown }) => typeof p.text !== "string" || p.thought,
+    )
   )
     throw new AiGatewayError(502, "Conteúdo Gemini incompatível.");
   try {
-    return JSON.parse(content.map((p: any) => p.text).join("")) as T;
+    return JSON.parse(
+      content.map((p: { text?: unknown; thought?: unknown }) => p.text).join(""),
+    ) as T;
   } catch {
     throw new AiGatewayError(502, "Relatório Gemini inválido.");
   }
@@ -153,8 +170,10 @@ export async function availableGeminiModels() {
   }
   const data = await r.json();
   return (data.models ?? [])
-    .filter((m: any) => m.supportedGenerationMethods?.includes("generateContent"))
-    .map((m: any) => m.name)
+    .filter((m: { supportedGenerationMethods?: string[] }) =>
+      m.supportedGenerationMethods?.includes("generateContent"),
+    )
+    .map((m: { name?: unknown }) => m.name)
     .filter((s: unknown) => typeof s === "string" && /^models\/gemini-[a-zA-Z0-9.-]+$/.test(s))
     .slice(0, 50);
 }

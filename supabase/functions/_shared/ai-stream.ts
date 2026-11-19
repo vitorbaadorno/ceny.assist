@@ -15,7 +15,22 @@ export type AiReceipt = {
 };
 const count = (n: unknown) =>
   typeof n === "number" && Number.isSafeInteger(n) && n >= 0 ? n : null;
-export function receiptOf(response: any): AiReceipt {
+type StreamResponse = {
+  id?: unknown;
+  model?: unknown;
+  usage?: { input_tokens?: unknown; output_tokens?: unknown; total_tokens?: unknown };
+  status?: unknown;
+  error?: unknown;
+  incomplete_details?: unknown;
+  output_text?: unknown;
+  output?: {
+    type?: unknown;
+    status?: unknown;
+    role?: unknown;
+    content?: { type?: unknown; text?: unknown }[];
+  }[];
+};
+export function receiptOf(response: StreamResponse | null | undefined): AiReceipt {
   return {
     response_id: typeof response?.id === "string" ? response.id.slice(0, 200) : null,
     model_reported: typeof response?.model === "string" ? response.model.slice(0, 200) : null,
@@ -53,7 +68,7 @@ export async function readAiStream(
       if (!completed) throw invalid();
       return;
     }
-    let event: any;
+    let event: { type?: unknown; delta?: unknown; response?: StreamResponse };
     try {
       event = JSON.parse(data);
     } catch {

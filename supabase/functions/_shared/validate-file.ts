@@ -14,14 +14,16 @@ import {
   decodePDFRawStream,
 } from "pdf-lib";
 import DecodeStreamModule from "pdf-lib/cjs/core/streams/DecodeStream.js";
-import { SaxesParser } from "saxes";
+import { SaxesParser, type SaxesTagNS } from "saxes";
 import jpeg from "jpeg-js";
 import { PNG } from "pngjs";
 import { FILE_LIMITS, DOCX_MIME, checkFileEnvelope, FileRejected } from "./file-policy.ts";
 
 // Pinned pdf-lib 1.17.1 adapter: bound allocations BEFORE decompression, including
 // compressed object streams parsed by PDFDocument.load. Tests cover this boundary.
-const DecodeStream = (DecodeStreamModule as any).default ?? DecodeStreamModule;
+const DecodeStream =
+  (DecodeStreamModule as unknown as { default?: typeof DecodeStreamModule }).default ??
+  DecodeStreamModule;
 const ensureBuffer = DecodeStream.prototype.ensureBuffer;
 DecodeStream.prototype.ensureBuffer = function (size: number) {
   if (size > 16 * 1024 * 1024) throw new FileRejected("PDF excede o limite de descompactação.");
@@ -30,7 +32,7 @@ DecodeStream.prototype.ensureBuffer = function (size: number) {
 const parseObject = PDFObjectParser.prototype.parseObject;
 const parserBudgets = new WeakMap<object, { count: number; depth: number; start: number }>();
 PDFObjectParser.prototype.parseObject = function () {
-  const context = (this as any).context;
+  const context = (this as unknown as { context: object }).context;
   const budget = parserBudgets.get(context) ?? { count: 0, depth: 0, start: Date.now() };
   parserBudgets.set(context, budget);
   if (++budget.count > 30000 || ++budget.depth > 50 || Date.now() - budget.start > 3000)
@@ -182,9 +184,9 @@ async function readZip(bytes: Uint8Array) {
 const wordNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 function xml(
   content: Uint8Array,
-  onTag: (tag: any) => void,
+  onTag: (tag: SaxesTagNS) => void,
   onText = (text: string) => {},
-  onClose = (tag: any) => void 0,
+  onClose = (tag: SaxesTagNS) => void 0,
 ) {
   const parser = new SaxesParser({ xmlns: true });
   let depth = 0,
@@ -231,7 +233,7 @@ async function docx(bytes: Uint8Array) {
         content,
         (tag) => {
           const attrs = Object.fromEntries(
-            Object.values(tag.attributes).map((a: any) => [a.local, a.value]),
+            Object.values(tag.attributes).map((a) => [a.local, a.value]),
           );
           if (name === "[Content_Types].xml") {
             if (/macroEnabled|vba|oleObject|activeX/i.test(String(attrs["ContentType"])))
@@ -328,7 +330,7 @@ async function pdf(bytes: Uint8Array) {
     "Sound",
     "Movie",
   ]);
-  const scan = (obj: any, depth = 0): void => {
+  const scan = (obj: unknown, depth = 0): void => {
     if (!obj || visited.has(obj)) return;
     visited.add(obj);
     if (++nodes > 30000 || depth > 50) reject("PDF complexo demais.");

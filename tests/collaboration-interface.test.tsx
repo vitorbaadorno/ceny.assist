@@ -4,12 +4,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 mock.module("@/integrations/supabase/client", () => ({ supabase: {} }));
 mock.module("@tanstack/react-router", () => ({
-  Link: ({ children, to }: any) => <a href={to}>{children}</a>,
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 const { CandidateNotes, CandidateJobDecision, CandidateFavorite } =
   await import("../src/components/candidate-collaboration");
 const { CandidateComparison } = await import("../src/components/candidate-comparison");
-const link: any = {
+const link = {
   company_id: "company",
   candidate_id: "ana",
   job_id: "job",

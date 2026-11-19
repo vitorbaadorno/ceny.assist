@@ -7,7 +7,7 @@ mock.module("@/integrations/supabase/client", () => ({ supabase: {} }));
 mock.module("@/lib/vacancy-report.functions", () => ({
   downloadVacancyReport: async () => new Response(),
 }));
-mock.module("@tanstack/react-start", () => ({ useServerFn: (fn: any) => fn }));
+mock.module("@tanstack/react-start", () => ({ useServerFn: (fn: unknown) => fn }));
 const { VacancyReports, ReportPreview } = await import("../src/components/vacancy-reports");
 function render(canEdit: boolean, seeds: [unknown[], unknown][] = []) {
   const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
