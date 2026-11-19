@@ -1,4 +1,4 @@
-export const AI_MINIMIZATION_VERSION = "resume-professional-text-v1";
+export const AI_MINIMIZATION_VERSION = "resume-professional-text-v2";
 export class AiPrivacyPending extends Error {
   override name = "AiPrivacyPending";
 }
@@ -12,10 +12,18 @@ export function minimizeResumeText(text: string) {
   return text
     .split("\n")
     .map((line) => {
-      if (sections.test(line.trim())) professional = true;
+      // Recognizable professional prose may precede a conventional heading.
+      // Unknown introductory lines remain omitted; this is not anonymization.
+      if (
+        sections.test(line.trim()) ||
+        /^(?:analista|engenheir[oa]|desenvolvedor[ae]?|técnic[oa]|profissional|enfermeir[oa]|professor[ae]?|atuei|desenvolvi|coordenei|implementei|trabalhei)\b/i.test(
+          line.trim(),
+        )
+      )
+        professional = true;
       if (!professional) return "[identificação inicial omitida]";
       if (
-        /\b(?:cpf|cnpj|rg|passaporte|passport|nascimento|birth|idade|age|endere[çc]o|address|rua|avenida|cep|estado civil|marital|filhos|religi[aã]o|religion|ra[çc]a|racial|etnia|ethnic|defici[eê]ncia|disability|diagn[oó]stico|diagnosis|sa[uú]de|health|sexual|g[eê]nero|gender)\b/i.test(
+        /^(?:\s*(?:nome|name|cpf|cnpj|rg|passaporte|passport|(?:data de )?nascimento|(?:date of )?birth|idade|age|endere[çc]o|address|rua|avenida|cep|estado civil|marital|filhos|religi[aã]o|religion|ra[çc]a|racial|etnia|ethnic|defici[eê]ncia|disability|diagn[oó]stico|diagnosis|sa[uú]de|health|orienta[çc][aã]o sexual|g[eê]nero|gender)\s*[:=]|\s*(?:cpf|rg|cep|idade)\s+\d)|\b(?:tenho\s+\d{1,3}\s+anos|nasci em|sou portador|fui diagnosticad[oa])\b/i.test(
           line,
         )
       )

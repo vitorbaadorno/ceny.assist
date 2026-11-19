@@ -1,7 +1,6 @@
 import { prepareProfessionalText } from "./ai-privacy.ts";
 import { requireCompanyRole } from "./access.ts";
 import { requireGeminiPrivacy } from "./gemini-config.ts";
-import { Buffer } from "node:buffer";
 import { callAiJson } from "./ai.ts";
 import type { AiReceipt } from "./ai-stream.ts";
 import type { WorkerContext } from "./context.ts";
@@ -19,32 +18,24 @@ export async function extractResume(
   signal.throwIfAborted();
   const source = await validateFile(filename, bytes);
   requireGeminiPrivacy();
-  const text = source.text ? prepareProfessionalText(source) : undefined;
+  // A paid flag alone must never authorize transmission of an original binary.
+  const text = prepareProfessionalText(source);
   const raw = await callAiJson<unknown>({
     signal,
     onReceipt,
     instructions: EXTRACTION_INSTRUCTIONS,
-    parts: text
-      ? [
-          {
-            type: "input_text",
-            text:
-              EXTRACTION_REQUEST +
-              "\nDOCUMENTO NÃO CONFIÁVEL — parágrafos numerados:\n" +
-              text
-                .split("\n")
-                .map((line, i) => `[p${i + 1}] ${line}`)
-                .join("\n"),
-          },
-        ]
-      : [
-          { type: "input_text", text: EXTRACTION_REQUEST },
-          {
-            type: "input_file",
-            filename: "documento",
-            file_data: "data:" + source.mime + ";base64," + Buffer.from(bytes).toString("base64"),
-          },
-        ],
+    parts: [
+      {
+        type: "input_text",
+        text:
+          EXTRACTION_REQUEST +
+          "\nDOCUMENTO NÃO CONFIÁVEL — parágrafos numerados:\n" +
+          text
+            .split("\n")
+            .map((line, i) => `[p${i + 1}] ${line}`)
+            .join("\n"),
+      },
+    ],
     schemaName: "curriculo_v2",
     schema: extractionSchema,
   });
