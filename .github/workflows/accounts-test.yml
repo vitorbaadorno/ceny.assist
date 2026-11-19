@@ -141,6 +141,7 @@ jobs:
             artifacts/company-isolation.txt
             artifacts/accounts-permissions.txt
             artifacts/auth-results.json
+            artifacts/mfa-results.json
             artifacts/resume-intake.txt
             artifacts/resume-queue.txt
             artifacts/resume-analysis.txt

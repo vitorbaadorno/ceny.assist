@@ -40,7 +40,7 @@ select set_config('request.jwt.claims',jsonb_build_object('sub',pg_temp.id('owne
 select set_config('test.company',public.create_company('Synthetic A','Synthetic owner')::text,true);
 select pg_temp.denied('second company refused',$q$select public.create_company('Second','Synthetic owner')$q$);
 reset role;
-insert into public.candidates(id,company_id,created_by,nome_completo) values(pg_temp.id('candidate'),current_setting('test.company')::uuid,pg_temp.id('owner'),'Synthetic fixture');
+insert into public.candidates(id,company_id,created_by,nome) values(pg_temp.id('candidate'),current_setting('test.company')::uuid,pg_temp.id('owner'),'Synthetic fixture');
 insert into storage.objects(bucket_id,name) values('resumes','synthetic/original');
 set local role authenticated;
 select pg_temp.ok('authenticated cannot list Storage',(select count(*)=0 from storage.objects where bucket_id='resumes'));
